@@ -1,0 +1,168 @@
+:root {
+  --font-sans: 'Outfit', 'Prompt', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Black & Red Cyberpunk Theme */
+  --bg-dark: #070203;
+  --bg-surface: #0e0507;
+  --bg-card: rgba(18, 7, 10, 0.85);
+  --bg-card-hover: rgba(30, 10, 15, 0.92);
+  --bg-glass: rgba(20, 6, 9, 0.75);
+  --border-subtle: rgba(255, 30, 60, 0.15);
+  --border-glow: rgba(255, 26, 64, 0.45);
+  
+  --primary-red: #ff1a40;
+  --primary-crimson: #e60026;
+  --dark-red: #990017;
+  --accent-gold: #fbbf24;
+  --accent-green: #10b981;
+  --accent-cyan: #00f2fe;
+  
+  --text-main: #fff0f2;
+  --text-muted: #b89ca2;
+  --text-dim: #7a6368;
+  
+  --shadow-glow-red: 0 0 25px rgba(255, 26, 64, 0.4);
+  --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(255, 30, 60, 0.1);
+
+  /* Responsive Safe Area Insets for iOS Notch & Dynamic Island */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  max-width: 100vw;
+  overflow-x: hidden;
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 100vw;
+  overflow-x: hidden;
+  overflow-x: clip;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+input, textarea {
+  -webkit-user-select: auto;
+  -moz-user-select: auto;
+  -ms-user-select: auto;
+  user-select: auto;
+}
+
+/* Moving Animated Background */
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle at 20% 25%, rgba(230, 0, 38, 0.18) 0%, transparent 40%),
+    radial-gradient(circle at 80% 30%, rgba(255, 26, 64, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 50% 75%, rgba(153, 0, 23, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 70% 85%, rgba(255, 60, 0, 0.1) 0%, transparent 40%);
+  animation: ambientMove 18s ease-in-out infinite alternate;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Subtle Cyber Grid overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 26, 64, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 26, 64, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  z-index: -1;
+  pointer-events: none;
+  animation: gridShift 30s linear infinite;
+}
+
+@keyframes ambientMove {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-4%, 5%) scale(1.06);
+  }
+  100% {
+    transform: translate(3%, -3%) scale(0.98);
+  }
+}
+
+@keyframes gridShift {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #080305;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a0b10;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-crimson);
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Inputs */
+input, select, textarea {
+  font-family: inherit;
+  outline: none;
+}
+
+/* Glowing Animations */
+@keyframes pulseRed {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 26, 64, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 26, 64, 0.7);
+  }
+}
+
+@keyframes floatAnim {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.animate-float {
+  animation: floatAnim 4s ease-in-out infinite;
+}

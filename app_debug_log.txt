@@ -1,0 +1,76 @@
+[9/11/2026 6:39:40 AM] Main started. BaseDir: D:\wee\
+[9/11/2026 6:39:40 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 6:39:40 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 6:39:40 AM] Form1 Load event
+[9/11/2026 6:39:40 AM] Form1 Shown event
+[9/11/2026 6:39:57 AM] Main started. BaseDir: D:\wee\
+[9/11/2026 6:39:57 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 6:39:58 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 6:39:58 AM] Form1 Load event
+[9/11/2026 6:39:58 AM] Form1 Shown event
+[9/11/2026 6:42:47 AM] Form1 Closing reason: ApplicationExitCall
+[9/11/2026 6:42:47 AM] Application.Run completed/returned.
+[9/11/2026 6:42:47 AM] Process terminating.
+[9/11/2026 6:47:47 AM] Main started. BaseDir: D:\wee\
+[9/11/2026 6:47:47 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 6:47:47 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 6:47:47 AM] Form1 Load event
+[9/11/2026 6:47:47 AM] Form1 Shown event
+[9/11/2026 6:52:38 AM] Main started. BaseDir: D:\wee\
+[9/11/2026 6:52:38 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 6:52:38 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 6:52:38 AM] Form1 Load event
+[9/11/2026 6:52:38 AM] Form1 Shown event
+[9/11/2026 7:17:01 AM] Form1 Closing reason: ApplicationExitCall
+[9/11/2026 7:17:01 AM] Application.Run completed/returned.
+[9/11/2026 7:17:01 AM] Process terminating.
+[9/11/2026 7:17:03 AM] Main started. BaseDir: D:\wee\
+[9/11/2026 7:17:03 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 7:17:04 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 7:17:04 AM] Form1 Load event
+[9/11/2026 7:17:04 AM] Form1 Shown event
+[9/11/2026 7:17:55 AM] Form1 Closing reason: ApplicationExitCall
+[9/11/2026 7:17:55 AM] Application.Run completed/returned.
+[9/11/2026 7:17:55 AM] Process terminating.
+[9/11/2026 7:32:29 AM] Main started. BaseDir: D:\wee\
+[9/11/2026 7:32:29 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 7:32:29 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 7:32:29 AM] Form1 Load event
+[9/11/2026 7:32:29 AM] Form1 Shown event
+[9/11/2026 7:34:55 AM] Form1 Closing reason: ApplicationExitCall
+[9/11/2026 7:34:55 AM] Application.Run completed/returned.
+[9/11/2026 7:34:55 AM] Process terminating.
+[9/11/2026 7:34:59 AM] Main started. BaseDir: D:\wee\
+[9/11/2026 7:34:59 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 7:35:00 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 7:35:00 AM] Form1 Load event
+[9/11/2026 7:35:00 AM] Form1 Shown event
+[9/11/2026 7:43:06 AM] Main started. BaseDir: D:\wee\
+[9/11/2026 7:43:06 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 7:43:06 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 7:43:06 AM] Form1 Load event
+[9/11/2026 7:43:06 AM] Form1 Shown event
+[9/12/2026 10:57:53 PM] Main started. BaseDir: D:\wee\
+[9/12/2026 10:57:53 PM] ApplicationConfiguration initialized. Creating Form1...
+[9/12/2026 10:57:53 PM] Form1 instance created. Calling Application.Run...
+[9/12/2026 10:57:53 PM] Form1 Load event
+[9/12/2026 10:57:53 PM] Form1 Shown event
+[9/15/2026 3:55:38 AM] Form1 Closing reason: ApplicationExitCall
+[9/15/2026 3:55:38 AM] Application.Run completed/returned.
+[9/15/2026 3:55:38 AM] Process terminating.
+[9/15/2026 4:10:41 AM] Main started. BaseDir: D:\wee\
+[9/15/2026 4:10:41 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/15/2026 4:10:41 AM] Form1 instance created. Calling Application.Run...
+[9/15/2026 4:10:41 AM] Form1 Load event
+[9/15/2026 4:10:41 AM] Form1 Shown event
+[9/15/2026 4:10:55 AM] Form1 Closing reason: ApplicationExitCall
+[9/15/2026 4:10:55 AM] Application.Run completed/returned.
+[9/15/2026 4:10:55 AM] Process terminating.
+[9/15/2026 4:30:25 AM] Main started. BaseDir: D:\wee\
+[9/15/2026 4:30:25 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/15/2026 4:30:26 AM] Form1 instance created. Calling Application.Run...
+[9/15/2026 4:30:26 AM] Form1 Load event
+[9/15/2026 4:30:26 AM] Form1 Shown event
+[9/15/2026 4:30:32 AM] Form1 Closing reason: ApplicationExitCall
+[9/15/2026 4:30:32 AM] Application.Run completed/returned.
+[9/15/2026 4:30:32 AM] Process terminating.

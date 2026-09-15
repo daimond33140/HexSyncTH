@@ -1,0 +1,8 @@
+[9/11/2026 7:15:12 AM] Main started. BaseDir: D:\wee\release_client_v9.1.2\
+[9/11/2026 7:15:12 AM] ApplicationConfiguration initialized. Creating Form1...
+[9/11/2026 7:15:12 AM] Form1 instance created. Calling Application.Run...
+[9/11/2026 7:15:12 AM] Form1 Load event
+[9/11/2026 7:15:12 AM] Form1 Shown event
+[9/11/2026 7:16:09 AM] Form1 Closing reason: ApplicationExitCall
+[9/11/2026 7:16:09 AM] Application.Run completed/returned.
+[9/11/2026 7:16:09 AM] Process terminating.
