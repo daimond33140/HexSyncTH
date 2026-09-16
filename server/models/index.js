@@ -11,9 +11,15 @@ let sequelize;
 if (dbDialect === 'postgres' && process.env.DATABASE_URL) {
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    },
     logging: false,
   });
-  console.log('[Database] Connected to PostgreSQL');
+  console.log('[Database] Connected to PostgreSQL (Supabase Cloud)');
 } else {
   // SQLite: Self-contained database file for easy portable installation on customer's PC
   const dataDir = path.resolve(__dirname, '../data');
