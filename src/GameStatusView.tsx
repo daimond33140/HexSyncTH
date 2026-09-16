@@ -1056,11 +1056,22 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
 
             <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>ชื่อเกม</label>
+                <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>ชื่อเกม (Title)</label>
                 <input
                   type="text"
                   value={editingGame.title}
                   onChange={(e) => setEditingGame({ ...editingGame, title: e.target.value })}
+                  style={{ width: '100%', background: '#09090b', border: '1px solid #3f3f46', color: '#fff', padding: '8px 10px', borderRadius: '6px' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>คำอธิบายใต้ชื่อเกม (Subtitle)</label>
+                <input
+                  type="text"
+                  placeholder="เช่น ระบบเช็คสถานะ & เมนูช่วยเล่น VIP"
+                  value={editingGame.subtitle || ''}
+                  onChange={(e) => setEditingGame({ ...editingGame, subtitle: e.target.value })}
                   style={{ width: '100%', background: '#09090b', border: '1px solid #3f3f46', color: '#fff', padding: '8px 10px', borderRadius: '6px' }}
                 />
               </div>
