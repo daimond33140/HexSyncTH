@@ -4895,13 +4895,41 @@ export default function App() {
                 <span>฿{user.balance.toLocaleString()}</span>
               </button>
 
-              <button
+                            <button
                 className={`btn-outline ${view === 'history' ? 'active' : ''}`}
                 onClick={() => setView('history')}
               >
                 <IconHistory size={16} />
-                <span>ประวัติซื้อ</span>
+                <span>ประวัติการซื้อ</span>
               </button>
+
+              {/* GAME STATUS & DOWNLOAD HUB - VISIBLE ONLY AFTER LOGIN */}
+              <button
+                className={`btn-outline ${view === 'status' ? 'active' : ''}`}
+                onClick={() => setView('status')}
+                style={{
+                  background: view === 'status' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.2))' : 'rgba(16, 185, 129, 0.1)',
+                  borderColor: view === 'status' ? '#10b981' : 'rgba(16, 185, 129, 0.35)',
+                  color: '#10b981',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <ShieldCheck size={16} color="#10b981" />
+                <span>สถานะเกม & ดาวน์โหลด</span>
+              </button>
+
+              {view !== 'store' && (
+                <button
+                  className="btn-outline"
+                  onClick={() => setView('store')}
+                >
+                  <IconGamepad size={16} />
+                  <span>หน้าร้านค้า</span>
+                </button>
+              )}
 
               {/* ADMIN DASHBOARD BUTTON - VISIBLE FOR ADMIN & SUPERADMIN */}
               {(user.role === 'admin' || user.role === 'superadmin') && (
