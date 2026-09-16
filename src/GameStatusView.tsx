@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import {
+  Upload,
+  
   ShieldCheck,
   ShieldAlert,
   RefreshCw,
@@ -165,6 +167,84 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
     navigator.clipboard.writeText(text);
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  // Image Upload helper from computer files (auto-compress to base64)
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = (file.name || '').toLowerCase();
+    const fileType = (file.type || '').toLowerCase();
+    const isGif = fileType.includes('gif') || fileName.endsWith('.gif');
+    const isSvg = fileType.includes('svg') || fileName.endsWith('.svg');
+
+    if (!file.type.startsWith('image/') && !isGif && !isSvg) {
+      alert('กรุณาเลือกไฟล์รูปภาพที่ถูกต้อง (JPG, PNG, WebP, GIF, SVG)');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      alert('ไฟล์รูปภาพมีขนาดใหญ่เกินไป (จำกัดไม่เกิน 20MB)');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const result = uploadEvent.target?.result as string;
+      if (!result) return;
+
+      if (isGif || isSvg) {
+        if (editingGame) {
+          setEditingGame({ ...editingGame, bannerUrl: result });
+        }
+        e.target.value = '';
+        return;
+      }
+
+      // Auto-compress for crisp quality and fast web loading
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxDim = 1200;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.88);
+            if (editingGame) {
+              setEditingGame({ ...editingGame, bannerUrl: compressed });
+            }
+          } else {
+            if (editingGame) {
+              setEditingGame({ ...editingGame, bannerUrl: result });
+            }
+          }
+        } catch {
+          if (editingGame) {
+            setEditingGame({ ...editingGame, bannerUrl: result });
+          }
+        }
+        e.target.value = '';
+      };
+      img.src = result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const filteredGames = games.filter(game => {
@@ -1053,13 +1133,64 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
               </div>
 
               <div>
-                <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>URL รูปภาพปก (Banner)</label>
+                <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '6px' }}>
+                  รูปภาพปกเกม (Banner)
+                </label>
+                
+                {/* Upload Button from PC */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                  <label
+                    style={{
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      color: '#fff',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Upload size={15} />
+                    <span>📁 อัปโหลดรูปภาพจากเครื่องคอมพิวเตอร์</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleBannerUpload}
+                    />
+                  </label>
+                  <span style={{ fontSize: '0.75rem', color: '#71717a' }}>หรือวาง URL ด้านล่าง</span>
+                </div>
+
                 <input
                   type="text"
+                  placeholder="https://... หรือกดอัปโหลดจากคอมด้านบน"
                   value={editingGame.bannerUrl}
                   onChange={(e) => setEditingGame({ ...editingGame, bannerUrl: e.target.value })}
-                  style={{ width: '100%', background: '#09090b', border: '1px solid #3f3f46', color: '#fff', padding: '8px 10px', borderRadius: '6px' }}
+                  style={{ width: '100%', background: '#09090b', border: '1px solid #3f3f46', color: '#fff', padding: '8px 10px', borderRadius: '6px', fontSize: '0.85rem' }}
                 />
+
+                {/* Banner Preview */}
+                {editingGame.bannerUrl && (
+                  <div style={{ marginTop: '8px', position: 'relative', height: '110px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #27272a', background: '#111' }}>
+                    <img
+                      src={editingGame.bannerUrl}
+                      alt="Banner Preview"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                    <div style={{ position: 'absolute', bottom: '4px', right: '6px', background: 'rgba(0,0,0,0.75)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', color: '#10b981', fontWeight: 600 }}>
+                      ✓ ตัวอย่างภาพปก
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
