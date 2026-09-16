@@ -11,6 +11,7 @@ interface Particle {
 }
 
 export const CursorEffect: React.FC = () => {
+  const [isTouchDevice, setIsTouchDevice] = useState(true); // default to true to prevent initial flash on mobile
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isClicking, setIsClicking] = useState(false);
@@ -25,7 +26,24 @@ export const CursorEffect: React.FC = () => {
   const particles = useRef<Particle[]>([]);
   const animFrameId = useRef<number | null>(null);
 
+  // Only enable on desktop PC with precision mouse pointer
   useEffect(() => {
+    const checkTouch = () => {
+      const isMobile =
+        window.matchMedia('(max-width: 768px)').matches ||
+        window.matchMedia('(pointer: coarse)').matches ||
+        'ontouchstart' in window ||
+        (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+      setIsTouchDevice(Boolean(isMobile));
+    };
+    checkTouch();
+    window.addEventListener('resize', checkTouch);
+    return () => window.removeEventListener('resize', checkTouch);
+  }, []);
+
+  useEffect(() => {
+    if (isTouchDevice) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -69,76 +87,59 @@ export const CursorEffect: React.FC = () => {
       }
     };
 
-    // Detect Hovering over interactive elements
-    const handleMouseOver = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      const interactive = target.closest(
-        'button, a, input, textarea, select, [role="button"], .product-card, .btn-primary, .btn-outline, label, .clickable'
-      );
-      setIsHovering(Boolean(interactive));
-    };
-
-    const handleMouseDown = (e: MouseEvent) => {
-      setIsClicking(true);
-      // Burst 12 bright particles on click
-      for (let i = 0; i < 12; i++) {
-        const angle = (Math.PI * 2 * i) / 12;
-        const speed = Math.random() * 4 + 2;
-        particles.current.push({
-          x: e.clientX,
-          y: e.clientY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          size: Math.random() * 4 + 2.5,
-          alpha: 1,
-          color: '#ff1a40'
-        });
-      }
-    };
-
-    const handleMouseUp = () => setIsClicking(false);
+    // Mouse Leave / Enter window
     const handleMouseLeave = () => setIsVisible(false);
     const handleMouseEnter = () => setIsVisible(true);
 
+    // Mouse Down / Up
+    const handleMouseDown = () => setIsClicking(true);
+    const handleMouseUp = () => setIsClicking(false);
+
+    // Dynamic hover detection over interactive elements
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const interactive = target.closest('button, a, input, select, textarea, [role="button"], .interactive-hover');
+      setIsHovering(Boolean(interactive));
+    };
+
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('mouseover', handleMouseOver, { passive: true });
+    window.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('mouseenter', handleMouseEnter);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('mouseleave', handleMouseLeave);
-    document.addEventListener('mouseenter', handleMouseEnter);
+    document.addEventListener('mouseover', handleMouseOver, { passive: true });
 
-    // Render loop
+    // Smooth Canvas Particle Animation Loop
     const render = () => {
-      // 1. Smooth Spring Lerp for Outer Ring
-      const lerp = 0.22;
-      ringPos.current.x += (mousePos.current.x - ringPos.current.x) * lerp;
-      ringPos.current.y += (mousePos.current.y - ringPos.current.y) * lerp;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Smooth lag lerp for outer ring (damping: 0.18 for tight responsiveness)
+      ringPos.current.x += (mousePos.current.x - ringPos.current.x) * 0.18;
+      ringPos.current.y += (mousePos.current.y - ringPos.current.y) * 0.18;
 
       if (cursorRingRef.current) {
         cursorRingRef.current.style.transform = `translate3d(${ringPos.current.x}px, ${ringPos.current.y}px, 0)`;
       }
 
-      // 2. Draw Particle Trail
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+      // Render & update particles
       for (let i = particles.current.length - 1; i >= 0; i--) {
         const p = particles.current[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.alpha -= 0.022;
+        p.alpha -= 0.025;
         p.size *= 0.96;
 
-        if (p.alpha <= 0 || p.size <= 0.3) {
+        if (p.alpha <= 0 || p.size < 0.3) {
           particles.current.splice(i, 1);
           continue;
         }
 
         ctx.save();
-        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
-        ctx.shadowBlur = 12;
         ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
@@ -153,88 +154,79 @@ export const CursorEffect: React.FC = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseover', handleMouseOver);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('mouseenter', handleMouseEnter);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('mouseleave', handleMouseLeave);
-      document.removeEventListener('mouseenter', handleMouseEnter);
+      document.removeEventListener('mouseover', handleMouseOver);
       if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
     };
-  }, []);
+  }, [isTouchDevice]);
+
+  if (isTouchDevice) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        pointerEvents: 'none',
-        zIndex: 9999999,
-        overflow: 'hidden',
-        opacity: isVisible ? 1 : 0,
-        transition: 'opacity 0.25s ease'
-      }}
-    >
-      {/* 1. Canvas for Floating Sparks & Click Burst */}
+    <>
+      {/* Background Particle FX Canvas */}
       <canvas
         ref={canvasRef}
         style={{
-          position: 'absolute',
+          position: 'fixed',
           top: 0,
           left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none'
+          width: '100vw',
+          height: '100vh',
+          pointerEvents: 'none',
+          zIndex: 99998,
         }}
       />
 
-      {/* 2. Fluid Outer Ring with Neon Ruby Glow */}
+      {/* Center Laser Dot */}
+      <div
+        ref={cursorDotRef}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '6px',
+          height: '6px',
+          backgroundColor: '#ffffff',
+          borderRadius: '50%',
+          pointerEvents: 'none',
+          zIndex: 100000,
+          transform: 'translate3d(-100px, -100px, 0)',
+          marginTop: '-3px',
+          marginLeft: '-3px',
+          opacity: isVisible ? 1 : 0,
+          boxShadow: '0 0 10px #ff1a40, 0 0 20px #ff0055',
+          transition: 'opacity 0.2s ease',
+        }}
+      />
+
+      {/* Cybernetic Trailing Spring Ring */}
       <div
         ref={cursorRingRef}
         style={{
-          position: 'absolute',
+          position: 'fixed',
           top: 0,
           left: 0,
           width: isHovering ? '48px' : isClicking ? '26px' : '36px',
           height: isHovering ? '48px' : isClicking ? '26px' : '36px',
+          border: isHovering ? '1.5px solid #ff4d6d' : '1px solid rgba(255, 26, 64, 0.75)',
+          backgroundColor: isHovering ? 'rgba(255, 26, 64, 0.12)' : isClicking ? 'rgba(255, 26, 64, 0.25)' : 'transparent',
+          borderRadius: '50%',
+          pointerEvents: 'none',
+          zIndex: 99999,
+          transform: 'translate3d(-100px, -100px, 0)',
           marginTop: isHovering ? '-24px' : isClicking ? '-13px' : '-18px',
           marginLeft: isHovering ? '-24px' : isClicking ? '-13px' : '-18px',
-          borderRadius: '50%',
-          border: isHovering ? '2px solid #ff4d6d' : '1.5px solid rgba(255, 26, 64, 0.75)',
-          background: isHovering
-            ? 'radial-gradient(circle, rgba(255, 26, 64, 0.28) 0%, rgba(255, 77, 109, 0.08) 70%, transparent 100%)'
-            : isClicking
-            ? 'rgba(255, 26, 64, 0.45)'
-            : 'radial-gradient(circle, rgba(255, 26, 64, 0.15) 0%, transparent 80%)',
+          opacity: isVisible ? 1 : 0,
           boxShadow: isHovering
-            ? '0 0 25px rgba(255, 26, 64, 0.8), inset 0 0 12px rgba(255, 77, 109, 0.5)'
-            : '0 0 16px rgba(255, 26, 64, 0.5)',
-          transition: 'width 0.18s cubic-bezier(0.16, 1, 0.3, 1), height 0.18s cubic-bezier(0.16, 1, 0.3, 1), margin 0.18s cubic-bezier(0.16, 1, 0.3, 1), background 0.18s ease, border 0.18s ease, box-shadow 0.18s ease',
-          pointerEvents: 'none',
-          willChange: 'transform'
+            ? '0 0 20px rgba(255, 26, 64, 0.5), inset 0 0 10px rgba(255, 26, 64, 0.3)'
+            : '0 0 12px rgba(255, 26, 64, 0.3)',
+          transition: 'width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1), margin 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border 0.2s ease, opacity 0.2s ease',
         }}
       />
-
-      {/* 3. Central Neon Dot */}
-      <div
-        ref={cursorDotRef}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: isHovering ? '6px' : isClicking ? '10px' : '8px',
-          height: isHovering ? '6px' : isClicking ? '10px' : '8px',
-          marginTop: isHovering ? '-3px' : isClicking ? '-5px' : '-4px',
-          marginLeft: isHovering ? '-3px' : isClicking ? '-5px' : '-4px',
-          borderRadius: '50%',
-          background: isHovering ? '#ffffff' : '#ff1a40',
-          boxShadow: isHovering
-            ? '0 0 12px #ffffff, 0 0 22px #ff1a40'
-            : '0 0 12px #ff1a40, 0 0 18px #ff4d6d',
-          pointerEvents: 'none',
-          willChange: 'transform',
-          transition: 'width 0.12s ease, height 0.12s ease, margin 0.12s ease, background 0.12s ease'
-        }}
-      />
-    </div>
+    </>
   );
 };

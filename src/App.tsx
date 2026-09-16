@@ -4090,7 +4090,6 @@ export default function App() {
                   fontSize: '1.25rem',
                   fontWeight: 800,
                   color: '#ff4d6d',
-                  display: 'flex',
                   alignItems: 'center',
                   gap: '8px'
                 }}
@@ -4874,14 +4873,10 @@ export default function App() {
         )}
 
         <div className="nav-actions">
-          {/* Angpao Topup Button */}
-          <button className="btn-angpao" onClick={handleOpenTopup}>
-            <IconGift size={16} />
-            <span>ซองอั่งเปา</span>
-          </button>
+          
 
           {/* Cart Button */}
-          <button className="btn-cart" onClick={() => setShowCartModal(true)} title="ตะกร้าสินค้า">
+          <button className="btn-cart desktop-only-btn" onClick={() => setShowCartModal(true)} title="ตะกร้าสินค้า">
             <IconCart size={20} />
             {cart.length > 0 && (
               <span className="cart-badge-count">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
@@ -4896,7 +4891,7 @@ export default function App() {
               </button>
 
                             <button
-                className={`btn-outline ${view === 'history' ? 'active' : ''}`}
+                className={`btn-outline desktop-only-btn ${view === 'history' ? 'active' : ''}`}
                 onClick={() => setView('history')}
               >
                 <IconHistory size={16} />
@@ -4905,7 +4900,7 @@ export default function App() {
 
               {/* GAME STATUS & DOWNLOAD HUB - VISIBLE ONLY AFTER LOGIN */}
               <button
-                className={`btn-outline ${view === 'status' ? 'active' : ''}`}
+                className={`btn-outline desktop-only-btn ${view === 'status' ? 'active' : ''}`}
                 onClick={() => setView('status')}
                 style={{
                   background: view === 'status' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.2))' : 'rgba(16, 185, 129, 0.1)',
@@ -4923,7 +4918,7 @@ export default function App() {
 
               {view !== 'store' && (
                 <button
-                  className="btn-outline"
+                  className="btn-outline desktop-only-btn"
                   onClick={() => setView('store')}
                 >
                   <IconGamepad size={16} />

@@ -3625,3 +3625,15 @@ html, body, #root, .app-container {
 }
 
 
+
+/* Hide floating cursor and desktop navbar items on mobile */
+@media (max-width: 768px), (pointer: coarse) {
+  .desktop-only-btn,
+  .btn-angpao,
+  .cursor-dot,
+  .cursor-ring,
+  .cursor-canvas {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
