@@ -1,3 +1,21 @@
+// Auto-Route API to 24/7 Cloud Backend on Render when hosted on Vercel
+const CLOUD_API_URL = 'https://hexsyncth-backend.onrender.com';
+if (typeof window !== 'undefined') {
+  const host = window.location.hostname;
+  const isLocal = host === 'localhost' || host === '127.0.0.1' || host === 'hexsyncth.site';
+  if (!isLocal) {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+      if (typeof input === 'string' && input.startsWith('/api')) {
+        input = CLOUD_API_URL + input;
+      } else if (input instanceof URL && input.pathname.startsWith('/api')) {
+        input = new URL(CLOUD_API_URL + input.pathname + input.search);
+      }
+      return originalFetch(input, init);
+    };
+  }
+}
+
 import { Component, StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
