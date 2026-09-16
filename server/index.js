@@ -120,7 +120,7 @@ app.use('/api/system', updateRoutes);
 
 const PORT = process.env.PORT || 4000;
 const isSqlite = sequelize.getDialect() === 'sqlite';
-sequelize.sync(isSqlite ? {} : { alter: true }).then(() => {
+sequelize.sync().then(() => {
   console.log(`Database (${sequelize.getDialect()}) synced successfully with models`);
   const server = app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
   
