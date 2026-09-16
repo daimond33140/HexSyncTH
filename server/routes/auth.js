@@ -85,7 +85,7 @@ router.post('/register', async (req, res) => {
 
     const token = jwt.sign(
       { id: newUser.id, username: newUser.username, role: newUser.role },
-      process.env.JWT_SECRET || 'keyshop_secret',
+      process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c',
       { expiresIn: '7d' }
     );
 
@@ -232,7 +232,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
-      process.env.JWT_SECRET || 'keyshop_secret',
+      process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c',
       { expiresIn: '7d' }
     );
 
@@ -268,7 +268,7 @@ router.post('/update-location', async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'keyshop_secret');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c');
     const user = await User.findByPk(decoded.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -383,7 +383,7 @@ router.get('/check-status', async (req, res) => {
     const token = parts.length === 2 ? parts[1] : parts[0];
     if (!token) return res.json({ loggedIn: false });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'keyshop_secret');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c');
     const user = await User.findByPk(decoded.id);
     if (!user) return res.json({ loggedIn: false });
 

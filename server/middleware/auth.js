@@ -4,7 +4,7 @@ require('dotenv').config();
 const { Setting, User, SecurityThreatLog } = require('../models');
 const { getClientIp, banIpImmediately, banDeviceImmediately } = require('./ipBan');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'keyshop_secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c';
 
 // Helper to calculate exactly 10 years, 9 months, 9 days ban duration
 function calculate10YearsBanDate() {

@@ -102,7 +102,7 @@ function antiFloodMiddleware(req, res, next) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     try {
       const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'keyshop_secret');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c');
       if (decoded && decoded.role === 'admin') {
         return next();
       }

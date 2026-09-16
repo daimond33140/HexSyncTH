@@ -44,7 +44,7 @@ router.post('/report-threat', async (req, res) => {
       try {
         const parts = authHeader.split(' ');
         const token = parts.length === 2 ? parts[1] : parts[0];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'keyshop_secret');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c');
         if (decoded && decoded.username) {
           authenticatedUser = decoded;
         }

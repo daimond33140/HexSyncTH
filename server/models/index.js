@@ -5,11 +5,13 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 const path = require('path');
 const fs = require('fs');
 
-const dbDialect = (process.env.DB_DIALECT || 'sqlite').toLowerCase();
+const defaultPostgresUrl = 'postgresql://postgres.iulrcagkpuqgvshyjgfp:HexSyncTH33140%21@aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres';
+const databaseUrl = process.env.DATABASE_URL || defaultPostgresUrl;
+const dbDialect = (process.env.DB_DIALECT || 'postgres').toLowerCase();
 let sequelize;
 
-if (dbDialect === 'postgres' && process.env.DATABASE_URL) {
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
+if (dbDialect === 'postgres' && databaseUrl) {
+  sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     dialectOptions: {
       ssl: {
