@@ -28,6 +28,7 @@ const deviceRoutes = require('./routes/devices');
 const securityRoutes = require('./routes/security');
 const superadminRoutes = require('./routes/superadmin');
 const updateRoutes = require('./routes/updates');
+const gamesRoutes = require('./routes/games');
 const { ipBanMiddleware, getClientIp, isIpWhitelisted } = require('./middleware/ipBan');
 const { antiFloodMiddleware } = require('./middleware/antiFlood');
 const { wafSecurityMiddleware } = require('./middleware/wafSecurity');
@@ -53,6 +54,7 @@ app.use(cors({ origin: true, credentials: true }));
 // Specific upload endpoints are allowed up to 30MB below
 app.use('/api/topup/slip', express.json({ limit: '30mb' }));
 app.use('/api/products', express.json({ limit: '30mb' }));
+app.use('/api/games', express.json({ limit: '30mb' }));
 app.use('/api/categories', express.json({ limit: '30mb' }));
 app.use('/api/security/report-threat', express.json({ limit: '15mb' })); // Allow base64 screenshots
 app.use(express.json({ limit: '1mb' }));
@@ -117,6 +119,7 @@ app.use('/api/devices', deviceRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/system', updateRoutes);
+app.use('/api/games', gamesRoutes);
 
 const PORT = process.env.PORT || 4000;
 const isSqlite = sequelize.getDialect() === 'sqlite';

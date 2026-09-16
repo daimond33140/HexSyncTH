@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Upload,
   
@@ -152,15 +152,64 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
   const [editingGame, setEditingGame] = useState<GameItem | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
-  // Save to localStorage whenever games or settings change
-  const handleSaveGames = (newGames: GameItem[]) => {
+    // Fetch games & settings from server / Supabase on mount
+  useEffect(() => {
+    fetch('/api/games')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.success && Array.isArray(data.games)) {
+          setGames(data.games);
+          localStorage.setItem('hexsync_games_status', JSON.stringify(data.games));
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/games/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.success && data.settings) {
+          setSettings(data.settings);
+          localStorage.setItem('hexsync_status_settings', JSON.stringify(data.settings));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Save to Database (Supabase Cloud) and localStorage
+  const handleSaveGames = async (newGames: GameItem[]) => {
     setGames(newGames);
     localStorage.setItem('hexsync_games_status', JSON.stringify(newGames));
+    try {
+      const token = localStorage.getItem('hexsync_token');
+      await fetch('/api/games', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ games: newGames })
+      });
+    } catch (err) {
+      console.error('Failed to sync games to server:', err);
+    }
   };
 
-  const handleSaveSettings = (newSettings: StatusSettings) => {
+  const handleSaveSettings = async (newSettings: StatusSettings) => {
     setSettings(newSettings);
     localStorage.setItem('hexsync_status_settings', JSON.stringify(newSettings));
+    try {
+      const token = localStorage.getItem('hexsync_token');
+      await fetch('/api/games/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ settings: newSettings })
+      });
+    } catch (err) {
+      console.error('Failed to sync settings to server:', err);
+    }
   };
 
   const handleCopyNote = (text: string) => {
