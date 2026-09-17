@@ -20,7 +20,9 @@ import {
   Edit3,
   Plus,
   Trash2,
-  Save
+  Save,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 export type GameStatus = 'undetected' | 'risk' | 'updating' | 'detected';
@@ -239,6 +241,18 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
   }, []);
 
   // Save to Database (Supabase Cloud) and localStorage
+
+  const handleMoveGame = (gameId: string, direction: 'up' | 'down') => {
+    const idx = games.findIndex(g => g.id === gameId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= games.length) return;
+    const newGames = [...games];
+    const [moved] = newGames.splice(idx, 1);
+    newGames.splice(targetIdx, 0, moved);
+    handleSaveGames(newGames);
+  };
+
   const handleSaveGames = async (newGames: GameItem[]) => {
     setGames(newGames);
     localStorage.setItem('hexsync_games_status', JSON.stringify(newGames));
@@ -781,6 +795,61 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
               >
                 {/* Card Banner */}
                 <div style={{ position: 'relative', height: '140px', background: '#111' }}>
+                  {/* Admin Order Controller Buttons */}
+                  {isAdmin && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '10px',
+                      left: game.isFree ? '95px' : '10px',
+                      zIndex: 4,
+                      display: 'flex',
+                      gap: '4px',
+                      background: 'rgba(0,0,0,0.8)',
+                      padding: '3px 6px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255,255,255,0.25)',
+                      backdropFilter: 'blur(8px)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleMoveGame(game.id, 'up'); }}
+                        title="ย้ายเกมไปข้างหน้า (ขึ้น)"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        <ArrowUp size={14} color="#10b981" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleMoveGame(game.id, 'down'); }}
+                        title="ย้ายเกมไปข้างหลัง (ลง)"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        <ArrowDown size={14} color="#10b981" />
+                      </button>
+                      <span style={{ fontSize: '0.68rem', color: '#6ee7b7', fontWeight: 600, alignSelf: 'center', marginLeft: '2px' }}>
+                        ย้ายช่อง
+                      </span>
+                    </div>
+                  )}
                   {game.isFree && (
                     <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
                       <span style={{

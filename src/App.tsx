@@ -22,6 +22,8 @@ import {
   IconZap,
   IconLayers,
   IconArrowRight,
+  IconArrowUp,
+  IconArrowDown,
   IconCart,
   IconDownload,
   IconGift,
@@ -528,7 +530,8 @@ export function getGameBaseTitle(name: string): string {
 export function groupProductsByGame(
   productsList: Product[],
   categoriesList: CategoryItem[],
-  customImagesJson?: string
+  customImagesJson?: string,
+  gameOrderJson?: string
 ): GameGroup[] {
   let customMap: Record<string, { bannerImage?: string; image?: string; description?: string }> = {};
   if (customImagesJson) {
@@ -579,10 +582,31 @@ export function groupProductsByGame(
     return 50;
   };
 
-  return Object.values(map).map(grp => {
+  let gameOrder: string[] = [];
+  if (gameOrderJson) {
+    try {
+      const parsed = JSON.parse(gameOrderJson);
+      if (Array.isArray(parsed)) gameOrder = parsed;
+    } catch {}
+  }
+
+  const result = Object.values(map).map(grp => {
     grp.packages.sort((a, b) => orderScore(a.name) - orderScore(b.name));
     return grp;
   });
+
+  if (gameOrder.length > 0) {
+    result.sort((a, b) => {
+      const idxA = gameOrder.indexOf(a.title);
+      const idxB = gameOrder.indexOf(b.title);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return 0;
+    });
+  }
+
+  return result;
 }
 
 export default function App() {
@@ -949,6 +973,7 @@ export default function App() {
       bank_account_number: '123-4-56789-0',
       promptpay_number: '0812345678',
       hexsync_game_custom_images: '{}',
+      hexsync_game_order: '[]',
 
       dashboard_override_enabled: 'false',
       custom_stat_sales: '154,200',
@@ -976,7 +1001,7 @@ export default function App() {
   });
 
   // Grouped products by game (with custom image support)
-  const gameGroups = React.useMemo(() => groupProductsByGame(products, categories, (siteSettings as any).hexsync_game_custom_images), [products, categories, (siteSettings as any).hexsync_game_custom_images]);
+  const gameGroups = React.useMemo(() => groupProductsByGame(products, categories, (siteSettings as any).hexsync_game_custom_images, (siteSettings as any).hexsync_game_order), [products, categories, (siteSettings as any).hexsync_game_custom_images, (siteSettings as any).hexsync_game_order]);
   const filteredGameGroups = React.useMemo(() => {
     return gameGroups.filter((g: GameGroup) => {
       const matchCat = selectedCategory === 'all' || g.categoryId === selectedCategory;
@@ -2582,6 +2607,40 @@ export default function App() {
     }
   };
 
+
+
+  // Move game card order on storefront and admin
+  const handleMoveStoreGame = async (gameTitle: string, direction: 'up' | 'down') => {
+    const currentTitles = gameGroups.map(g => g.title);
+    const idx = currentTitles.indexOf(gameTitle);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= currentTitles.length) return;
+    
+    const newOrder = [...currentTitles];
+    const [moved] = newOrder.splice(idx, 1);
+    newOrder.splice(targetIdx, 0, moved);
+    const updatedJson = JSON.stringify(newOrder);
+
+    setSiteSettings((prev: any) => ({ ...prev, hexsync_game_order: updatedJson }));
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          hexsync_game_order: updatedJson,
+          adminUsername: user?.username
+        })
+      });
+      if (res.ok) {
+        showToast('จัดลำดับเกมสำเร็จแล้ว');
+      } else {
+        showToast('บันทึกลำดับไม่สำเร็จ');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
 
   // Save custom game banner, icon, and description
   const handleSaveGameMeta = async (e: React.FormEvent) => {
@@ -5525,6 +5584,65 @@ export default function App() {
                         <span className="pulse-dot" />
                         <span>{!isOutOfStock ? 'พร้อมส่ง' : 'สินค้าหมด'}</span>
                       </div>
+
+                      {/* Admin Quick Order Controller on Storefront */}
+                      {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: '10px',
+                            zIndex: 4,
+                            display: 'flex',
+                            gap: '4px',
+                            background: 'rgba(0,0,0,0.8)',
+                            padding: '3px 6px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,26,64,0.4)',
+                            backdropFilter: 'blur(8px)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            title="ย้ายเกมไปข้างหน้า (ขึ้น)"
+                            onClick={() => handleMoveStoreGame(group.title, 'up')}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              padding: '2px 4px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <IconArrowUp size={14} color="#ff4d6d" />
+                          </button>
+                          <button
+                            type="button"
+                            title="ย้ายเกมไปข้างหลัง (ลง)"
+                            onClick={() => handleMoveStoreGame(group.title, 'down')}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              padding: '2px 4px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <IconArrowDown size={14} color="#ff4d6d" />
+                          </button>
+                          <span style={{ fontSize: '0.68rem', color: '#ff8da1', fontWeight: 600, alignSelf: 'center' }}>
+                            ย้ายช่อง
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="game-card-body">
@@ -6136,6 +6254,28 @@ export default function App() {
 
                         {/* Card Actions */}
                         <div className="admin-game-card-footer">
+                          {/* Order Buttons */}
+                          <div style={{ display: 'flex', gap: '3px', background: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                            <button
+                              type="button"
+                              className="btn-outline"
+                              style={{ padding: '6px 8px', fontSize: '0.75rem', borderColor: 'transparent' }}
+                              title="เลื่อนช่องไปข้างหน้า"
+                              onClick={() => handleMoveStoreGame(group.title, 'up')}
+                            >
+                              <IconArrowUp size={14} color="#10b981" />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-outline"
+                              style={{ padding: '6px 8px', fontSize: '0.75rem', borderColor: 'transparent' }}
+                              title="เลื่อนช่องไปข้างหลัง"
+                              onClick={() => handleMoveStoreGame(group.title, 'down')}
+                            >
+                              <IconArrowDown size={14} color="#10b981" />
+                            </button>
+                          </div>
+
                           <button
                             type="button"
                             className="btn-primary"
@@ -6146,7 +6286,7 @@ export default function App() {
                             }}
                           >
                             <IconKey size={15} />
-                            <span>📦 เติมสต็อกคีย์ ({group.totalStock})</span>
+                            <span>📦 เติมคีย์ ({group.totalStock})</span>
                           </button>
 
                           <button
@@ -6162,7 +6302,7 @@ export default function App() {
                             title="ตั้งค่ารูปภาพพื้นหลัง/แบนเนอร์ และไอคอนเกมนี้"
                           >
                             <IconEdit size={14} />
-                            <span>🖼️ แต่งรูป & แบนเนอร์</span>
+                            <span>🖼️ แต่งรูป</span>
                           </button>
                         </div>
                       </div>
