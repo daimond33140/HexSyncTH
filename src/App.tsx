@@ -24,6 +24,8 @@ import {
   IconArrowRight,
   IconArrowUp,
   IconArrowDown,
+  IconWrench,
+  IconAlertTriangle,
   IconCart,
   IconDownload,
   IconGift,
@@ -493,6 +495,8 @@ export interface GameGroup {
   maxPrice: number;
   totalStock: number;
   packages: Product[];
+  availabilityStatus?: 'ready' | 'maintenance' | 'not_ready';
+  maintenanceNote?: string;
 }
 
 export function extractDurationLabel(name: string): string {
@@ -533,7 +537,7 @@ export function groupProductsByGame(
   customImagesJson?: string,
   gameOrderJson?: string
 ): GameGroup[] {
-  let customMap: Record<string, { bannerImage?: string; image?: string; description?: string }> = {};
+  let customMap: Record<string, { bannerImage?: string; image?: string; description?: string; availabilityStatus?: string; maintenanceNote?: string }> = {};
   if (customImagesJson) {
     try {
       customMap = JSON.parse(customImagesJson);
@@ -561,7 +565,9 @@ export function groupProductsByGame(
         startingPrice: p.price,
         maxPrice: p.price,
         totalStock: 0,
-        packages: []
+        packages: [],
+        availabilityStatus: (custom.availabilityStatus as any) || 'ready',
+        maintenanceNote: custom.maintenanceNote || ''
       };
     }
 
@@ -652,6 +658,8 @@ export default function App() {
   const [gameBannerInput, setGameBannerInput] = useState('');
   const [gameIconInput, setGameIconInput] = useState('');
   const [gameDescInput, setGameDescInput] = useState('');
+  const [gameAvailabilityInput, setGameAvailabilityInput] = useState<'ready' | 'maintenance' | 'not_ready'>('ready');
+  const [gameMaintenanceNoteInput, setGameMaintenanceNoteInput] = useState('');
 
 
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
@@ -2649,7 +2657,7 @@ export default function App() {
     e.preventDefault();
     if (!editingGameMeta) return;
 
-    let customMap: Record<string, { bannerImage?: string; image?: string; description?: string }> = {};
+    let customMap: Record<string, { bannerImage?: string; image?: string; description?: string; availabilityStatus?: string; maintenanceNote?: string }> = {};
     try {
       if ((siteSettings as any).hexsync_game_custom_images) {
         customMap = JSON.parse((siteSettings as any).hexsync_game_custom_images);
@@ -2660,7 +2668,9 @@ export default function App() {
       bannerImage: gameBannerInput.trim() || editingGameMeta.bannerImage,
       image: gameIconInput.trim() || editingGameMeta.image,
       description: gameDescInput.trim() || editingGameMeta.description,
-    };
+      availabilityStatus: gameAvailabilityInput,
+      maintenanceNote: gameMaintenanceNoteInput.trim()
+    } as any;
 
     const updatedJson = JSON.stringify(customMap);
 
@@ -5596,16 +5606,24 @@ export default function App() {
             <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
               {filteredGameGroups.map((group) => {
                 const isOutOfStock = group.totalStock <= 0;
+                const isMaintenance = group.availabilityStatus === 'maintenance';
+                const isNotReady = group.availabilityStatus === 'not_ready';
+                const isCardDisabled = isMaintenance || isNotReady;
+
                 return (
                   <div
                     key={group.id}
-                    className="game-package-card"
+                    className={`game-package-card ${isMaintenance ? 'in-maintenance' : ''} ${isNotReady ? 'not-ready-card' : ''}`}
                     onClick={() => {
+                      if (isCardDisabled) {
+                        showToast(isMaintenance ? '⚠️ สินค้านี้อยู่ระหว่างปิดปรับปรุงชั่วคราว ยังไม่สามารถเข้าดูหรือสั่งซื้อได้' : 'ℹ️ สินค้านี้ยังไม่พร้อมจำหน่าย');
+                        return;
+                      }
                       setSelectedGameGroup(group);
                       setSelectedPackageTier(group.packages[0] || null);
                       setPackageQty(1);
                     }}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: isCardDisabled ? 'not-allowed' : 'pointer' }}
                   >
                     {/* Banner Header with Status pill */}
                     <div className="game-card-banner-wrapper">
@@ -5617,9 +5635,23 @@ export default function App() {
                           (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600';
                         }}
                       />
-                      <div className={`game-card-status-tag ${!isOutOfStock ? 'in-stock' : 'out-of-stock'}`}>
-                        <span className="pulse-dot" />
-                        <span>{!isOutOfStock ? 'พร้อมส่ง' : 'สินค้าหมด'}</span>
+                      <div className={`game-card-status-tag ${isMaintenance ? 'maintenance' : isNotReady ? 'not-ready' : !isOutOfStock ? 'in-stock' : 'out-of-stock'}`}>
+                        {isMaintenance ? (
+                          <>
+                            <span className="maintenance-gear-spin"><IconWrench size={13} color="#fbbf24" /></span>
+                            <span>ปิดปรับปรุง</span>
+                          </>
+                        ) : isNotReady ? (
+                          <>
+                            <IconAlertTriangle size={13} color="#cbd5e1" />
+                            <span>ยังไม่พร้อมขาย</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="pulse-dot" />
+                            <span>{!isOutOfStock ? 'พร้อมส่ง' : 'สินค้าหมด'}</span>
+                          </>
+                        )}
                       </div>
 
                       {/* Admin Quick Order Controller on Storefront */}
@@ -5730,23 +5762,77 @@ export default function App() {
                       <div className="game-card-footer">
                         <div className="game-card-price-block">
                           <span className="price-label">เริ่มต้น</span>
-                          <span className="price-val">฿{group.startingPrice.toFixed(2)}</span>
+                          <span className="price-val" style={isCardDisabled ? { color: '#9ca3af' } : {}}>฿{group.startingPrice.toFixed(2)}</span>
                         </div>
 
                         <button
-                          className="btn-select-package"
+                          className={`btn-select-package ${isCardDisabled ? 'disabled-btn' : ''}`}
+                          disabled={isCardDisabled}
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (isCardDisabled) {
+                              showToast(isMaintenance ? '⚠️ สินค้านี้อยู่ระหว่างปิดปรับปรุงชั่วคราว' : 'ℹ️ สินค้านี้ยังไม่พร้อมจำหน่าย');
+                              return;
+                            }
                             setSelectedGameGroup(group);
                             setSelectedPackageTier(group.packages[0] || null);
                             setPackageQty(1);
                           }}
                         >
-                          <span>เลือกแพ็กเกจ</span>
-                          <IconArrowRight size={15} />
+                          {isMaintenance ? (
+                            <>
+                              <span className="maintenance-gear-spin"><IconWrench size={14} /></span>
+                              <span>ปิดปรับปรุง</span>
+                            </>
+                          ) : isNotReady ? (
+                            <>
+                              <IconAlertTriangle size={14} color="#9ca3af" />
+                              <span>ยังไม่พร้อมขาย</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>เลือกแพ็กเกจ</span>
+                              <IconArrowRight size={15} />
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
+
+                    {/* Maintenance Full Overlay on Card */}
+                    {isMaintenance && (
+                      <div className="game-card-maintenance-overlay">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                          <span className="maintenance-gear-spin">
+                            <IconWrench size={26} color="#f59e0b" />
+                          </span>
+                          <span className="maintenance-gear-reverse">
+                            <IconAlertTriangle size={24} color="#ff1a40" />
+                          </span>
+                        </div>
+                        <div style={{ color: '#f59e0b', fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                          ⚠️ อยู่ระหว่างปิดปรับปรุง
+                        </div>
+                        <p style={{ margin: 0, color: '#fde68a', fontSize: '0.82rem', lineHeight: 1.4, maxWidth: '240px' }}>
+                          {group.maintenanceNote || 'กำลังอัปเดตระบบความปลอดภัยและแพตช์ใหม่ กรุณารอเปิดจำหน่าย'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Not Ready Overlay on Card */}
+                    {isNotReady && (
+                      <div className="game-card-maintenance-overlay" style={{ background: 'rgba(15, 10, 12, 0.85)' }}>
+                        <div style={{ marginBottom: '8px' }}>
+                          <IconAlertTriangle size={28} color="#94a3b8" />
+                        </div>
+                        <div style={{ color: '#cbd5e1', fontWeight: 800, fontSize: '1rem', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                          🔒 ยังไม่พร้อมจำหน่าย
+                        </div>
+                        <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.82rem', lineHeight: 1.4, maxWidth: '240px' }}>
+                          {group.maintenanceNote || 'สินค้านี้ยังไม่เปิดให้สั่งซื้อในขณะนี้'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -6335,6 +6421,8 @@ export default function App() {
                               setGameBannerInput(group.bannerImage);
                               setGameIconInput(group.image);
                               setGameDescInput(group.description);
+                              setGameAvailabilityInput(group.availabilityStatus || 'ready');
+                              setGameMaintenanceNoteInput(group.maintenanceNote || '');
                             }}
                             title="ตั้งค่ารูปภาพพื้นหลัง/แบนเนอร์ และไอคอนเกมนี้"
                           >
@@ -11339,6 +11427,96 @@ export default function App() {
                     </label>
                   </div>
                 </div>
+              </div>
+
+              {/* Availability & Maintenance Status Controller */}
+              <div style={{ marginBottom: '1.25rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <label className="input-label" style={{ marginBottom: '8px', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>⚙️ สถานะการจำหน่ายสินค้านี้:</span>
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setGameAvailabilityInput('ready')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: gameAvailabilityInput === 'ready' ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                      background: gameAvailabilityInput === 'ready' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.02)',
+                      color: gameAvailabilityInput === 'ready' ? '#10b981' : '#9ca3af',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <span>✅ พร้อมส่ง</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 400 }}>ซื้อได้ตามปกติ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGameAvailabilityInput('maintenance')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: gameAvailabilityInput === 'maintenance' ? '2px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
+                      background: gameAvailabilityInput === 'maintenance' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.02)',
+                      color: gameAvailabilityInput === 'maintenance' ? '#fbbf24' : '#9ca3af',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <span>⚠️ ปิดปรับปรุง</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 400 }}>ไอคอนหมุน & ห้ามซื้อ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setGameAvailabilityInput('not_ready')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: gameAvailabilityInput === 'not_ready' ? '2px solid #94a3b8' : '1px solid rgba(255,255,255,0.1)',
+                      background: gameAvailabilityInput === 'not_ready' ? 'rgba(148, 163, 184, 0.2)' : 'rgba(255,255,255,0.02)',
+                      color: gameAvailabilityInput === 'not_ready' ? '#cbd5e1' : '#9ca3af',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <span>🔒 ยังไม่พร้อมขาย</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 400 }}>ปิดไม่ให้ซื้อ</span>
+                  </button>
+                </div>
+
+                {gameAvailabilityInput !== 'ready' && (
+                  <div>
+                    <label className="input-label" style={{ fontSize: '0.78rem', color: '#fde68a', marginBottom: '4px' }}>
+                      ข้อความแจ้งเตือนลูกค้าในการ์ดสินค้า (ถ้ามี):
+                    </label>
+                    <input
+                      type="text"
+                      className="text-input"
+                      style={{ fontSize: '0.82rem', padding: '6px 10px' }}
+                      placeholder="เช่น กำลังอัปเดตรองรับแพตช์ล่าสุด หรือ เร็วๆ นี้"
+                      value={gameMaintenanceNoteInput}
+                      onChange={(e) => setGameMaintenanceNoteInput(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Description */}

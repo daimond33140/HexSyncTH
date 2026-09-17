@@ -4248,3 +4248,73 @@ html, body, #root, .app-container {
   0%, 100% { transform: scale(0.85); opacity: 0.75; }
   50% { transform: scale(1.15); opacity: 1; }
 }
+
+/* Product Maintenance & Not Ready Badge & Overlay */
+.game-card-status-tag.maintenance {
+  background: rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  color: #fbbf24;
+}
+
+.game-card-status-tag.not-ready {
+  background: rgba(148, 163, 184, 0.25);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  color: #cbd5e1;
+}
+
+.game-card-maintenance-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 6, 9, 0.82);
+  backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  padding: 1.5rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.maintenance-gear-spin {
+  animation: gearSpin 3.5s linear infinite;
+  display: inline-block;
+  color: #f59e0b;
+}
+
+.maintenance-gear-reverse {
+  animation: gearSpinRev 2.8s linear infinite;
+  display: inline-block;
+  color: #ff1a40;
+}
+
+@keyframes gearSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes gearSpinRev {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.game-package-card.in-maintenance {
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15) !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.2);
+}
+
+.game-package-card.not-ready-card {
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  cursor: not-allowed !important;
+}
+
+.btn-select-package.disabled-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #9ca3af !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
