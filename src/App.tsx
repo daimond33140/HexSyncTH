@@ -1622,6 +1622,21 @@ export default function App() {
               sessionStorage.removeItem('hexsync_user_banned_info');
               localStorage.removeItem('hexsync_user_banned_info');
             } catch { }
+            if (data.user) {
+              setUser((prev) => {
+                if (!prev) return data.user;
+                const updated = {
+                  ...prev,
+                  balance: data.user.balance !== undefined ? Number(data.user.balance) : prev.balance,
+                  role: data.user.role || prev.role,
+                  email: data.user.email || prev.email,
+                };
+                try {
+                  localStorage.setItem('hexsync_user', JSON.stringify(updated));
+                } catch { }
+                return updated;
+              });
+            }
           }
         }
       } catch { }
@@ -4071,7 +4086,11 @@ export default function App() {
         showToast(data.message);
         fetchAdminData();
         if (user && targetUser.username === user.username) {
-          setUser({ ...user, balance: data.balance });
+          const updated = { ...user, balance: Number(data.balance) };
+          setUser(updated);
+          try {
+            localStorage.setItem('hexsync_user', JSON.stringify(updated));
+          } catch { }
         }
       }
     } catch {
@@ -4447,13 +4466,17 @@ export default function App() {
         setEditingUserModal(null);
         fetchAdminData();
         if (user && user.id === editingUserModal.id) {
-          setUser({
+          const updated = {
             ...user,
             username: editingUserModal.username,
             email: editingUserModal.email,
             role: editingUserModal.role,
             balance: Number(editingUserModal.creditBalance),
-          });
+          };
+          setUser(updated);
+          try {
+            localStorage.setItem('hexsync_user', JSON.stringify(updated));
+          } catch { }
         }
       } else {
         showToast(data.message || 'แก้ไขข้อมูลไม่สำเร็จ');
