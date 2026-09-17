@@ -670,7 +670,7 @@ export default function App() {
   const [showCreateLicenseModal, setShowCreateLicenseModal] = useState<boolean>(false);
   const [showAddTimeModal, setShowAddTimeModal] = useState<LicenseItem | null>(null);
   const [addTimeHours, setAddTimeHours] = useState<number>(24);
-  const [apiDocLang, setApiDocLang] = useState<'cpp' | 'csharp' | 'python' | 'nodejs'>('cpp');
+  const [apiDocLang, setApiDocLang] = useState<'cpp' | 'csharp' | 'python' | 'nodejs' | 'ios'>('ios');
 
   // License form state
   const [licenseFormKeyType, setLicenseFormKeyType] = useState<'auto' | 'custom'>('auto');
@@ -7556,7 +7556,7 @@ export default function App() {
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    {(['cpp', 'csharp', 'python', 'nodejs'] as const).map(lang => (
+                    {(['ios', 'cpp', 'csharp', 'python', 'nodejs'] as const).map(lang => (
                       <button
                         key={lang}
                         type="button"
@@ -7573,7 +7573,7 @@ export default function App() {
                           textTransform: 'uppercase'
                         }}
                       >
-                        {lang === 'cpp' ? 'C++' : (lang === 'csharp' ? 'C# (.NET)' : (lang === 'python' ? 'Python' : 'Node.js'))}
+                        {lang === 'ios' ? '📱 iOS (.IPA)' : (lang === 'cpp' ? 'C++' : (lang === 'csharp' ? 'C# (.NET)' : (lang === 'python' ? 'Python' : 'Node.js')))}
                       </button>
                     ))}
                   </div>
@@ -7599,6 +7599,42 @@ export default function App() {
                     overflowX: 'auto',
                     lineHeight: 1.5
                   }}>
+                    {apiDocLang === 'ios' && `// Objective-C / Swift for iOS (.IPA / Dylib / Theos Mod Menu)
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+void VerifyLicense(NSString *key, void (^completion)(BOOL success, NSString *message, NSString *remainingTime)) {
+    // 1. ดึงค่า HWID ประจำเครื่อง iPhone/iPad (IDFV Identifier)
+    NSString *hwid = [[[UIDevice currentDevice] identifierForVendor] UUIDString];
+    
+    // 2. สร้าง URL ยิงตรวจสอบที่ระบบหลังบ้าน HexSyncTH
+    NSString *apiBase = @"${typeof window !== 'undefined' ? window.location.origin : 'https://hexsyncth.site'}/api/license/verify";
+    NSString *urlString = [NSString stringWithFormat:@"%@?key=%@&hwid=%@", apiBase, key, hwid];
+    NSURL *url = [NSURL URLWithString:[urlString stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]]];
+    
+    // 3. ยิงตรวจสอบความถูกต้องและเวลาคงเหลือ
+    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if (error || !data) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(NO, @"ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", nil);
+            });
+            return;
+        }
+        
+        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if ([json[@"status"] isEqualToString:@"active"]) {
+                // คีย์ถูกต้อง & มีสิทธิ์ใช้งาน -> อนุญาตให้เปิดเมนูหรือเล่นเกมได้
+                completion(YES, @"สำเร็จ", json[@"license"][@"remainingFormatted"]);
+            } else {
+                // คีย์หมดอายุ หรือ เครื่องไม่ตรง
+                completion(NO, json[@"message"] ?: @"คีย์ไม่ถูกต้อง", nil);
+            }
+        });
+    }];
+    [task resume];
+}`}
+
                     {apiDocLang === 'cpp' && `// C++ WinINet License Verification Example
 #include <iostream>
 #include <string>
