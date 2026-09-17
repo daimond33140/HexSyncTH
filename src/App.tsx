@@ -853,6 +853,20 @@ export default function App() {
   // User state (starts as NOT logged in)
   const [user, setUser] = useState<UserState | null>(null);
 
+  // User Dropdown State & Ref
+  const [showUserDropdown, setShowUserDropdown] = useState<boolean>(false);
+  const userDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // User Profile & Password Hub Modal States
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [profileTab, setProfileTab] = useState<'overview' | 'purchases' | 'topups' | 'password'>('overview');
@@ -5827,7 +5841,52 @@ export default function App() {
         )}
 
         <div className="nav-actions">
-          
+          {/* Navigation Links: Store / Game Status / Admin */}
+          {user && (
+            <>
+              {view !== "store" && (
+                <button
+                  className="btn-outline desktop-only-btn"
+                  onClick={() => setView("store")}
+                >
+                  <IconGamepad size={16} />
+                  <span>หน้าร้านค้า</span>
+                </button>
+              )}
+
+              <button
+                className={`btn-outline desktop-only-btn ${view === "status" ? "active" : ""}`}
+                onClick={() => setView("status")}
+                style={{
+                  background: view === "status" ? "linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.2))" : "rgba(16, 185, 129, 0.1)",
+                  borderColor: view === "status" ? "#10b981" : "rgba(16, 185, 129, 0.35)",
+                  color: "#10b981",
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <ShieldCheck size={16} color="#10b981" />
+                <span>สถานะเกม & ดาวน์โหลด</span>
+              </button>
+
+              {(user.role === "admin" || user.role === "superadmin") && (
+                <button
+                  className={`btn-admin ${view === "admin" ? "active" : ""}`}
+                  onClick={() => {
+                    setView("admin");
+                    fetchAdminData();
+                  }}
+                >
+                  <IconSettings size={16} />
+                  <span>{user.role === "superadmin" ? "ระบบหลังบ้าน 👑" : "ระบบหลังบ้าน"}</span>
+                </button>
+              )}
+
+              <div className="nav-divider desktop-only-btn" />
+            </>
+          )}
 
           {/* Cart Button */}
           <button className="btn-cart desktop-only-btn" onClick={() => setShowCartModal(true)} title="ตะกร้าสินค้า">
@@ -5839,99 +5898,120 @@ export default function App() {
 
           {user ? (
             <>
-              <button className="btn-balance" onClick={handleOpenTopup}>
+              {/* Wallet Balance Pill */}
+              <button className="btn-balance" onClick={handleOpenTopup} title="คลิกเพื่อเติมเงิน">
                 <IconWallet size={16} />
                 <span>฿{user.balance.toLocaleString()}</span>
               </button>
 
-              {/* My Profile Button */}
-              <button
-                className={`btn-profile-badge desktop-only-btn ${showProfileModal ? 'active' : ''}`}
-                onClick={() => handleOpenProfile('overview')}
-                title="โปรไฟล์ของฉัน (ดูประวัติทั้งหมด & เปลี่ยนรหัสผ่าน)"
-              >
-                <div className="profile-mini-avatar">
-                  {user.role === 'superadmin' ? '👑' : user.role === 'admin' ? '🛡️' : '👤'}
-                </div>
-                <div className="profile-mini-info">
-                  <span className="profile-mini-name">{user.username}</span>
-                  <span className={`profile-mini-role role-${user.role}`}>
-                    {user.role === 'superadmin' ? 'SUPERADMIN' : user.role === 'admin' ? 'ADMIN' : 'MEMBER'}
-                  </span>
-                </div>
-              </button>
-
-                            <button
-                className={`btn-outline desktop-only-btn ${view === 'history' ? 'active' : ''}`}
-                onClick={() => setView('history')}
-              >
-                <IconHistory size={16} />
-                <span>ประวัติการซื้อ</span>
-              </button>
-
-              {/* GAME STATUS & DOWNLOAD HUB - VISIBLE ONLY AFTER LOGIN */}
-              <button
-                className={`btn-outline desktop-only-btn ${view === 'status' ? 'active' : ''}`}
-                onClick={() => setView('status')}
-                style={{
-                  background: view === 'status' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.2))' : 'rgba(16, 185, 129, 0.1)',
-                  borderColor: view === 'status' ? '#10b981' : 'rgba(16, 185, 129, 0.35)',
-                  color: '#10b981',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <ShieldCheck size={16} color="#10b981" />
-                <span>สถานะเกม & ดาวน์โหลด</span>
-              </button>
-
-              {view !== 'store' && (
+              {/* User Profile & Menu Dropdown */}
+              <div className="user-dropdown-container desktop-only-btn" ref={userDropdownRef}>
                 <button
-                  className="btn-outline desktop-only-btn"
-                  onClick={() => setView('store')}
+                  className={`btn-profile-badge ${showUserDropdown ? "active" : ""}`}
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  title="เมนูผู้ใช้งาน"
                 >
-                  <IconGamepad size={16} />
-                  <span>หน้าร้านค้า</span>
+                  <div className="profile-mini-avatar">
+                    {user.role === "superadmin" ? "👑" : user.role === "admin" ? "🛡️" : "👤"}
+                  </div>
+                  <div className="profile-mini-info">
+                    <span className="profile-mini-name">{user.username}</span>
+                    <span className={`profile-mini-role role-${user.role}`}>
+                      {user.role === "superadmin" ? "SUPERADMIN" : user.role === "admin" ? "ADMIN" : "MEMBER"}
+                    </span>
+                  </div>
+                  <span className="profile-dropdown-arrow">▼</span>
                 </button>
-              )}
 
-              {/* ADMIN DASHBOARD BUTTON - VISIBLE FOR ADMIN & SUPERADMIN */}
-              {(user.role === 'admin' || user.role === 'superadmin') && (
-                <button
-                  className={`btn-admin ${view === 'admin' ? 'active' : ''}`}
-                  onClick={() => {
-                    setView('admin');
-                    fetchAdminData();
-                  }}
-                >
-                  <IconSettings size={16} />
-                  <span>{user.role === 'superadmin' ? 'ระบบหลังบ้าน 👑' : 'ระบบหลังบ้าน'}</span>
-                </button>
-              )}
+                {showUserDropdown && (
+                  <div className="user-dropdown-menu">
+                    <div className="user-dropdown-header">
+                      <div className="user-dropdown-uname">
+                        {user.role === "superadmin" ? "👑" : user.role === "admin" ? "🛡️" : "👤"}
+                        <span>{user.username}</span>
+                      </div>
+                      <div className="user-dropdown-email">{user.email || "สมาชิก HexSyncTH"}</div>
+                    </div>
 
-              <button
-                className="btn-nav-logout"
-                title="ออกจากระบบ"
-                onClick={() => {
-                  if (window.confirm('คุณต้องการออกจากระบบหรือไม่?')) {
-                    handleLogout();
-                  }
-                }}
-              >
-                <IconLogOut size={16} />
-                <span className="logout-text">ออกจากระบบ</span>
-              </button>
+                    <button
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        handleOpenProfile("overview");
+                      }}
+                    >
+                      <IconUser size={16} />
+                      <span>ข้อมูลโปรไฟล์ของฉัน</span>
+                    </button>
+
+                    <button
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        handleOpenProfile("purchases");
+                      }}
+                    >
+                      <IconKey size={16} />
+                      <span>ประวัติการซื้อ & คีย์</span>
+                      {purchases?.length > 0 && (
+                        <span className="user-dropdown-badge">{purchases.length}</span>
+                      )}
+                    </button>
+
+                    <button
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        handleOpenProfile("topups");
+                      }}
+                    >
+                      <IconWallet size={16} />
+                      <span>ประวัติการเติมเงิน</span>
+                    </button>
+
+                    <button
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        handleOpenProfile("password");
+                      }}
+                    >
+                      <IconLock size={16} />
+                      <span>เปลี่ยนรหัสผ่าน</span>
+                    </button>
+
+                    <button
+                      className="user-dropdown-item danger"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        if (window.confirm("คุณต้องการออกจากระบบหรือไม่?")) {
+                          handleLogout();
+                        }
+                      }}
+                    >
+                      <IconLogOut size={16} />
+                      <span>ออกจากระบบ</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
-            <button
-              className="btn-primary"
-              onClick={() => handleOpenAuthModal('login')}
-            >
-              <IconUser size={16} />
-              <span>เข้าสู่ระบบ / สมัคร</span>
-            </button>
+            <>
+              <button
+                className="btn-outline desktop-only-btn"
+                onClick={() => handleOpenAuthModal("login")}
+              >
+                <IconUser size={16} />
+                <span>เข้าสู่ระบบ</span>
+              </button>
+              <button
+                className="btn-primary desktop-only-btn"
+                onClick={() => handleOpenAuthModal("register")}
+              >
+                <span>สมัครสมาชิก</span>
+              </button>
+            </>
           )}
         </div>
       </header>
