@@ -1,4 +1,4 @@
-import { GameStatusView } from './GameStatusView';
+﻿import { GameStatusView } from './GameStatusView';
 import { ShieldCheck } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -2880,10 +2880,7 @@ export default function App() {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({
-          hexsync_game_custom_images: updatedJson,
-          adminUsername: user?.username
-        })
+        body: JSON.stringify({ settings: { hexsync_game_custom_images: updatedJson }, adminUsername: user?.username })
       });
 
       if (res.ok) {
