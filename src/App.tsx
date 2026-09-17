@@ -644,6 +644,11 @@ export default function App() {
   const [adminProductViewMode, setAdminProductViewMode] = useState<'game' | 'flat'>('game');
   const [managingKeysGameGroup, setManagingKeysGameGroup] = useState<GameGroup | null>(null);
 
+  // Purchase Realtime Animated Progress States
+  const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
+  const [purchaseProgress, setPurchaseProgress] = useState<number>(0);
+  const [purchaseStatusText, setPurchaseStatusText] = useState<string>('');
+
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -3197,13 +3202,31 @@ export default function App() {
 
   const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
-  // 2-Step Purchase Checkout
+  // 2-Step Purchase Checkout with Ultra-fast Animated Percentage Progress
   const executePurchase = async (itemsToBuy: { productId: number; quantity: number }[]) => {
     if (!user) {
       setAuthModalOpen(true);
       showToast('กรุณาเข้าสู่ระบบก่อนทำรายการสั่งซื้อ');
       return;
     }
+
+    setIsPurchasing(true);
+    setPurchaseProgress(20);
+    setPurchaseStatusText('กำลังตรวจสอบยอดเงินและตัดคีย์จากสต็อก...');
+
+    let prog = 20;
+    const progTimer = setInterval(() => {
+      prog += Math.floor(Math.random() * 10) + 12;
+      if (prog > 92) prog = 92;
+      setPurchaseProgress(prog);
+      if (prog < 50) {
+        setPurchaseStatusText('กำลังตรวจสอบความปลอดภัยและยอดเงิน...');
+      } else if (prog < 85) {
+        setPurchaseStatusText('กำลังดึงคีย์และสร้างใบสั่งซื้อ...');
+      } else {
+        setPurchaseStatusText('กำลังบันทึกประวัติการทำรายการ...');
+      }
+    }, 55);
 
     try {
       const res = await fetch('/api/purchases/checkout', {
@@ -3217,11 +3240,19 @@ export default function App() {
       });
 
       const data = await res.json();
+      clearInterval(progTimer);
+
       if (!res.ok) {
+        setIsPurchasing(false);
+        setPurchaseProgress(0);
         showToast(data.message || 'เกิดข้อผิดพลาดในการสั่งซื้อ');
         return;
       }
 
+      setPurchaseProgress(100);
+      setPurchaseStatusText('สั่งซื้อสำเร็จเรียบร้อย 100%!');
+
+      // Optimistic instant updates so UI never freezes
       setUser({ ...user, balance: data.newBalance });
       setCart([]);
       setShowCartModal(false);
@@ -3235,14 +3266,24 @@ export default function App() {
       if (data.purchases) {
         setPurchases([...data.purchases, ...purchases]);
       } else {
-        await fetchPurchases();
+        fetchPurchases();
       }
 
-      await fetchProducts();
+      // Background re-fetch without blocking UI transition
+      fetchProducts();
       fetchStats();
-      setView('history');
-      showToast('🎉 สั่งซื้อสำเร็จ! ระบบได้ดึงคีย์จริงออกจากสต็อกเรียบร้อยแล้ว');
+
+      setTimeout(() => {
+        setIsPurchasing(false);
+        setPurchaseProgress(0);
+        setView('history');
+        showToast('🎉 สั่งซื้อสำเร็จ! นำคุณมายังหน้ารายการสั่งซื้อเพื่อดูคีย์และไปโหลดในหน้าสถานะเกม');
+      }, 200);
+
     } catch (err: any) {
+      clearInterval(progTimer);
+      setIsPurchasing(false);
+      setPurchaseProgress(0);
       showToast('การสั่งซื้อไม่สำเร็จ: ' + err.message);
     }
   };
@@ -5245,6 +5286,62 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Realtime Purchase Progress Overlay Modal */}
+      {isPurchasing && (
+        <div
+          className="modal-overlay"
+          style={{
+            zIndex: 9999999,
+            background: 'rgba(5, 2, 4, 0.88)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(160deg, #18080d 0%, #0d0407 100%)',
+              border: '1.5px solid rgba(255, 26, 64, 0.55)',
+              boxShadow: '0 0 50px rgba(255, 26, 64, 0.4), 0 20px 50px rgba(0,0,0,0.8)',
+              borderRadius: '22px',
+              padding: '2.2rem 2.2rem',
+              textAlign: 'center',
+              maxWidth: '430px',
+              width: '92%',
+              animation: 'fadeInScale 0.22s ease-out'
+            }}
+          >
+            {/* Spinning Double Rings */}
+            <div className="hexsync-spinner-box" style={{ margin: '0 auto 1.25rem', width: '80px', height: '80px' }}>
+              <div className="hexsync-spin-outer" />
+              <div className="hexsync-spin-inner" />
+              <div className="hexsync-spin-core" />
+              <div className="hexsync-loader-progress-inside">
+                <span>{purchaseProgress}%</span>
+              </div>
+            </div>
+
+            <div style={{ color: '#fff', fontSize: '1.35rem', fontWeight: 900, marginBottom: '0.35rem', letterSpacing: '0.5px' }}>
+              กำลังดำเนินการสั่งซื้อ...
+            </div>
+
+            <div className="hexsync-loader-percent-badge" style={{ margin: '0.2rem 0 0.6rem' }}>
+              <span className="hexsync-loader-percent-text">{purchaseProgress}%</span>
+            </div>
+
+            <div className="hexsync-loader-progress-bar-wrap" style={{ width: '100%', margin: '0 auto 0.85rem' }}>
+              <div className="hexsync-loader-progress-bar-fill" style={{ width: `${purchaseProgress}%` }} />
+            </div>
+
+            <div style={{ color: '#ffb3c1', fontSize: '0.88rem', fontWeight: 500 }}>
+              {purchaseStatusText}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Active YouTube Audio Player (Mounted only when site data has loaded) */}
       {isAppReady && siteSettings.bg_music_enabled === 'true' && isYouTube && ytVideoId && (
         <div
@@ -5952,10 +6049,55 @@ export default function App() {
                 <IconHistory size={26} color="#ff1a40" />
                 <span>ประวัติการซื้อของคุณ</span>
               </h2>
-              <p>คีย์เฉพาะของคุณที่ดึงออกจากสต็อก พร้อมปุ่มดาวน์โหลดไฟล์/โปรแกรม</p>
+              <p>คีย์เฉพาะของคุณที่ดึงออกจากสต็อก สามารถกดไปดาวน์โหลดไฟล์ในหน้าระบบสถานะเกมได้ทันที</p>
             </div>
             <button className="btn-outline" onClick={() => setView('store')}>
               ← กลับไปหน้าร้านค้า
+            </button>
+          </div>
+
+          {/* Quick Hub Navigator Banner */}
+          <div
+            style={{
+              marginBottom: '1.25rem',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              borderRadius: '14px',
+              padding: '0.9rem 1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+              boxShadow: '0 4px 20px rgba(16, 185, 129, 0.15)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.25)', padding: '8px', borderRadius: '10px', color: '#10b981', display: 'flex' }}>
+                <IconDownload size={22} />
+              </div>
+              <div>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem' }}>ศูนย์เช็คสถานะ & ดาวน์โหลดเกมทั้งหมด</div>
+                <div style={{ color: '#a7f3d0', fontSize: '0.78rem', marginTop: '2px' }}>ดาวน์โหลดไฟล์ตัวช่วยเล่น / อัปเดตล่าสุดได้ที่หน้าระบบสถานะเกม</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                fontSize: '0.85rem',
+                padding: '0.5rem 1.1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              onClick={() => setView('status')}
+            >
+              <IconDownload size={16} />
+              <span>ไปหน้าสถานะเกม & ดาวน์โหลด →</span>
             </button>
           </div>
 
@@ -11373,8 +11515,16 @@ export default function App() {
                   </button>
                   <button
                     className="btn-primary"
-                    style={{ flex: 2, justifyContent: 'center' }}
+                    disabled={isPurchasing}
+                    style={{
+                      flex: 2,
+                      justifyContent: 'center',
+                      opacity: isPurchasing ? 0.7 : 1,
+                      cursor: isPurchasing ? 'not-allowed' : 'pointer',
+                      gap: '8px'
+                    }}
                     onClick={() => {
+                      if (isPurchasing) return;
                       if (!user) {
                         setShowConfirm2Step(false);
                         setShowDirectBuyConfirm(null);
@@ -11390,7 +11540,14 @@ export default function App() {
                       }
                     }}
                   >
-                    ยืนยันการชำระเงินทันที
+                    {isPurchasing ? (
+                      <>
+                        <IconRefreshCw size={16} className="spin-slow" />
+                        <span>กำลังสั่งซื้อ ({purchaseProgress}%)...</span>
+                      </>
+                    ) : (
+                      <span>ยืนยันการชำระเงินทันที</span>
+                    )}
                   </button>
                 </div>
               </div>
