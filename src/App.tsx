@@ -1192,7 +1192,13 @@ export default function App() {
   const [myDeviceInfo, setMyDeviceInfo] = useState<DeviceInfoData | null>(null);
   const [viewingUserDevice, setViewingUserDevice] = useState<{ user: any; info: DeviceInfoData | null; devicesList?: any[] } | null>(null);
   const [loadingUserDevices, setLoadingUserDevices] = useState<boolean>(false);
-  const [blockVpnSetting, setBlockVpnSetting] = useState<boolean>(false);
+  const [blockVpnSetting, setBlockVpnSetting] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('hexsync_block_vpn') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [viewingUserMap, setViewingUserMap] = useState<any | null>(null);
   const [showCreatorModal, setShowCreatorModal] = useState(false);
   const [blacklistSubTab, setBlacklistSubTab] = useState<'ips' | 'devices' | 'whitelist' | 'ddosJail'>('ips');
@@ -2492,6 +2498,7 @@ export default function App() {
       fetchAdminSlips();
       fetchBannedIps();
       fetchBannedDevices();
+    fetchVpnStatus();
       fetchMyIp();
       if (user?.role === 'superadmin') {
         fetchSuperAdminPasscode();
@@ -4787,18 +4794,22 @@ export default function App() {
     }
   };
 
-  // Fetch VPN Blocking Status
+  // Fetch VPN Blocking Status (Public instant sync & cache)
   const fetchVpnStatus = async () => {
     try {
-      const res = await fetch('/api/devices/vpn-status', { headers: getAuthHeaders() });
+      const res = await fetch('/api/devices/vpn-status');
       if (res.ok) {
         const data = await res.json();
-        setBlockVpnSetting(data.blockVpn);
+        const active = Boolean(data.blockVpn);
+        setBlockVpnSetting(active);
+        try {
+          localStorage.setItem('hexsync_block_vpn', String(active));
+        } catch { }
       }
     } catch { }
   };
 
-  // Toggle VPN Blocking on/off
+  // Toggle VPN Blocking on/off (Admin Only with real-time persistence)
   const handleToggleVpnBlock = async () => {
     const nextVal = !blockVpnSetting;
     try {
@@ -4808,11 +4819,19 @@ export default function App() {
         body: JSON.stringify({ enabled: nextVal })
       });
       if (res.ok) {
-        setBlockVpnSetting(nextVal);
-        showToast(nextVal ? '🛡️ เปิดระบบบล็อก VPN & Proxy ทั้งระบบแล้ว' : 'ปิดการบล็อก VPN & Proxy แล้ว');
+        const data = await res.json();
+        const finalVal = typeof data.blockVpn === 'boolean' ? data.blockVpn : nextVal;
+        setBlockVpnSetting(finalVal);
+        try {
+          localStorage.setItem('hexsync_block_vpn', String(finalVal));
+        } catch { }
+        showToast(finalVal ? '🛡️ เปิดใช้งานบล็อก VPN & Proxy ทั้งระบบแล้ว' : 'ปิดการบล็อก VPN & Proxy แล้ว');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || 'ไม่สามารถเปลี่ยนการตั้งค่า VPN');
       }
     } catch {
-      showToast('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า VPN');
+      showToast('ไม่สามารถเปลี่ยนการตั้งค่า VPN');
     }
   };
 
@@ -9470,7 +9489,7 @@ async function verifyLicense(key, hwid) {
                   type="button"
                   className={`tab-btn ${blacklistSubTab === 'devices' ? 'active' : ''}`}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1.25rem', fontSize: '0.9rem' }}
-                  onClick={() => { setBlacklistSubTab('devices'); fetchBannedDevices(); }}
+                  onClick={() => { setBlacklistSubTab('devices'); fetchBannedDevices(); fetchVpnStatus(); }}
                 >
                   <IconLaptop size={16} />
                   <span>รายการเลขเครื่องที่ถูกแบน ({bannedDevicesList.length})</span>

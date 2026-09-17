@@ -302,6 +302,16 @@ router.post('/emergency-unban', async (req, res) => {
   }
 });
 
+// Public GET /api/devices/vpn-status - Get current VPN defense status (Instant Sync)
+router.get('/vpn-status', async (req, res) => {
+  try {
+    const s = await Setting.findOne({ where: { key: 'block_vpn_proxy' } });
+    res.json({ blockVpn: s ? s.value === 'true' : false });
+  } catch (err) {
+    res.json({ blockVpn: false });
+  }
+});
+
 // All endpoints below require Admin privileges
 router.use(requireAdmin);
 
@@ -457,15 +467,7 @@ router.post('/ban-all-user-devices', async (req, res) => {
   }
 });
 
-// 3.3 GET /api/devices/vpn-status - Get VPN blocking status
-router.get('/vpn-status', async (req, res) => {
-  try {
-    const s = await Setting.findOne({ where: { key: 'block_vpn_proxy' } });
-    res.json({ blockVpn: s ? s.value === 'true' : false });
-  } catch (err) {
-    res.status(500).json({ message: 'Error reading VPN status' });
-  }
-});
+
 
 // 3.4 POST /api/devices/toggle-vpn-block - Toggle VPN & Proxy blocking
 router.post('/toggle-vpn-block', async (req, res) => {

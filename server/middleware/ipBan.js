@@ -111,30 +111,86 @@ async function refreshVpnSetting() {
   }
 }
 
-// Safe VPN & Proxy Detection (Does NOT flag Vercel, Cloudflare, or Thai residential ISPs)
-const THAI_ISPS = ['ais', 'true', 'dtac', '3bb', 'triple t', 'tot', 'cat telecom', 'national telecom', 'nt', 'awn'];
+// Safe VPN, Proxy & Cloudflare 1.1.1.1 WARP Detection
+const THAI_ISPS = [
+  'ais', 'advanced info', 'advanced wireless', 'awn',
+  'true', 'truemove', 'true internet', 'real future', 'true online',
+  'dtac', 'trinet', 'total access',
+  '3bb', 'triple t', 'jasmine',
+  'tot', 'cat telecom', 'national telecom', 'nt broadband',
+  'cs loxinfo', 'symphony', 'uih', 'proen'
+];
+
+// Direct subnets used by Cloudflare 1.1.1.1 WARP and major VPN egress
+function isKnownVpnSubnet(ip) {
+  if (!ip) return false;
+  // Cloudflare WARP 1.1.1.1 primary egress subnets
+  if (
+    ip.startsWith('104.28.') ||
+    ip.startsWith('8.29.') ||
+    ip.startsWith('8.30.') ||
+    ip.startsWith('162.158.') ||
+    ip.startsWith('162.159.')
+  ) {
+    return true;
+  }
+  // Cloudflare public proxy subnets (172.64.0.0/13: 172.64. - 172.71.)
+  if (ip.startsWith('172.')) {
+    const parts = ip.split('.');
+    const second = parseInt(parts[1], 10);
+    if (second >= 64 && second <= 71) return true;
+  }
+  return false;
+}
 
 function isVpnOrProxy(req) {
-  // Never flag reverse proxy headers because Vercel/Cloudflare add x-forwarded-for and via!
   const ip = getClientIp(req);
   if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
     return false;
   }
+  if (isKnownVpnSubnet(ip)) return true;
   if (vpnIpCache.has(ip)) {
     return vpnIpCache.get(ip).isVpn;
   }
   return false;
 }
 
-// Background asynchronous IP intelligence lookup for Datacenter / Hosting / VPN
+// Background asynchronous IP intelligence lookup for Datacenter / Hosting / VPN / 1.1.1.1 WARP
 async function checkIpVpnStatus(ip) {
-  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
     return false;
   }
-  // Thai mobile and fiber IP ranges (e.g. 49.228-237.x.x is AIS Thailand)
-  if (ip.startsWith('49.22') || ip.startsWith('49.23') || ip.startsWith('58.') || ip.startsWith('171.') || ip.startsWith('124.')) {
+
+  // Only bypass true RFC1918 private range (172.16.0.0 to 172.31.255.255)
+  if (ip.startsWith('172.')) {
+    const parts = ip.split('.');
+    const second = parseInt(parts[1], 10);
+    if (second >= 16 && second <= 31) return false;
+  }
+
+  // Instant 0ms detection for Cloudflare 1.1.1.1 WARP egress subnets!
+  if (isKnownVpnSubnet(ip)) {
+    vpnIpCache.set(ip, { isVpn: true, org: 'Cloudflare WARP (1.1.1.1)', checkedAt: Date.now() });
+    return true;
+  }
+
+  // Fast bypass for genuine Thai cellular/broadband carrier blocks (NEVER match Cloudflare)
+  if (
+    ip.startsWith('49.22') ||
+    ip.startsWith('49.23') ||
+    ip.startsWith('49.24') ||
+    ip.startsWith('49.25') ||
+    ip.startsWith('58.') ||
+    ip.startsWith('171.') ||
+    ip.startsWith('124.') ||
+    ip.startsWith('180.180.') ||
+    ip.startsWith('180.181.') ||
+    ip.startsWith('180.182.') ||
+    ip.startsWith('180.183.')
+  ) {
     return false;
   }
+
   if (vpnIpCache.has(ip)) {
     const entry = vpnIpCache.get(ip);
     if (Date.now() - entry.checkedAt < 24 * 3600 * 1000) {
@@ -143,25 +199,42 @@ async function checkIpVpnStatus(ip) {
   }
 
   try {
-    const https = require('https');
+    const http = require('http');
     return new Promise((resolve) => {
-      const req = https.get(`https://ip-api.com/json/${ip}?fields=status,hosting,proxy,isp,org,as,countryCode`, { timeout: 2500 }, (res) => {
+      // Use http://ip-api.com (free endpoint requires http, not https)
+      const req = http.get(`http://ip-api.com/json/${ip}?fields=status,hosting,proxy,isp,org,as,countryCode`, { timeout: 2500 }, (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
           try {
             const parsed = JSON.parse(data);
-            const orgLower = (parsed.org || parsed.isp || '').toLowerCase();
-            const isThaiIsp = THAI_ISPS.some(t => orgLower.includes(t)) || parsed.countryCode === 'TH';
-            
-            // If it's a genuine Thai ISP, it's NOT a VPN
-            if (isThaiIsp && !parsed.proxy) {
-              vpnIpCache.set(ip, { isVpn: false, org: parsed.org || '', checkedAt: Date.now() });
+            if (parsed.status !== 'success') return resolve(false);
+
+            const orgLower = (parsed.org || '').toLowerCase();
+            const ispLower = (parsed.isp || '').toLowerCase();
+            const asLower = (parsed.as || '').toLowerCase();
+
+            // 1. Cloudflare 1.1.1.1 WARP detection
+            const isCloudflareWarp = orgLower.includes('cloudflare') ||
+                                    ispLower.includes('cloudflare') ||
+                                    asLower.includes('as13335') ||
+                                    orgLower.includes('warp');
+
+            if (isCloudflareWarp) {
+              vpnIpCache.set(ip, { isVpn: true, org: 'Cloudflare WARP (1.1.1.1)', checkedAt: Date.now() });
+              return resolve(true);
+            }
+
+            // 2. Genuine Thai ISP whitelist check (Strictly checks provider names, NOT countryCode!)
+            const isGenuineThaiIsp = THAI_ISPS.some(t => orgLower.includes(t) || ispLower.includes(t));
+            if (isGenuineThaiIsp && !parsed.proxy && !parsed.hosting) {
+              vpnIpCache.set(ip, { isVpn: false, org: parsed.org || parsed.isp || '', checkedAt: Date.now() });
               return resolve(false);
             }
 
-            const isVpn = Boolean((parsed.hosting || parsed.proxy) && !isThaiIsp);
-            vpnIpCache.set(ip, { isVpn, org: parsed.org || '', checkedAt: Date.now() });
+            // 3. Datacenter / Hosting / Commercial Proxy detection
+            const isVpn = Boolean(parsed.hosting || parsed.proxy || (!isGenuineThaiIsp && (parsed.hosting || parsed.proxy)));
+            vpnIpCache.set(ip, { isVpn, org: parsed.org || parsed.isp || '', checkedAt: Date.now() });
             resolve(isVpn);
           } catch {
             resolve(false);
@@ -366,6 +439,20 @@ async function ipBanMiddleware(req, res, next) {
         bannedAt: ipBanInfo.bannedAt,
         bannedUntil: ipBanInfo.bannedUntil,
         bannedBy: ipBanInfo.bannedBy,
+      });
+    }
+  }
+
+  // 5. If blockVpnEnabled is ON, check if client IP is a VPN / Datacenter / Cloudflare 1.1.1.1 WARP
+  if (blockVpnEnabled) {
+    const isVpn = await checkIpVpnStatus(ip);
+    if (isVpn) {
+      return res.status(403).json({
+        message: 'ตรวจพบการใช้งาน VPN หรือ Proxy (รวมถึง Cloudflare 1.1.1.1 WARP) กรุณาปิดโปรแกรม VPN ก่อนเข้าใช้งานเว็บไซต์',
+        banned: true,
+        banType: 'vpn',
+        bannedIp: ip,
+        reason: 'ตรวจพบการใช้งาน VPN หรือ Proxy กรุณาปิดโปรแกรม VPN ก่อนเข้าใช้งานเว็บไซต์',
       });
     }
   }
