@@ -874,6 +874,56 @@ export default function App() {
   const [purchaseProgress, setPurchaseProgress] = useState<number>(0);
   const [purchaseStatusText, setPurchaseStatusText] = useState<string>('');
 
+  // Global Realtime Save Action Progress States
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveProgress, setSaveProgress] = useState<number>(0);
+  const [saveTitle, setSaveTitle] = useState<string>('กำลังบันทึกข้อมูล...');
+  const [saveStatusText, setSaveStatusText] = useState<string>('กำลังประมวลผลข้อมูลและซิงค์กับระบบ...');
+
+  const executeWithSaveProgress = async <T,>(
+    title: string,
+    action: (update: (pct: number, status?: string) => void) => Promise<T>
+  ): Promise<T | undefined> => {
+    setIsSaving(true);
+    setSaveTitle(title);
+    setSaveProgress(15);
+    setSaveStatusText('กำลังเตรียมข้อมูลและเชื่อมต่อเซิร์ฟเวอร์...');
+
+    let current = 15;
+    const interval = setInterval(() => {
+      current += Math.floor(Math.random() * 10) + 8;
+      if (current > 88) current = 88;
+      setSaveProgress(current);
+      if (current >= 45 && current < 75) {
+        setSaveStatusText('กำลังประมวลผลและส่งข้อมูล...');
+      } else if (current >= 75) {
+        setSaveStatusText('กำลังบันทึกลงฐานข้อมูลและซิงค์ระบบ...');
+      }
+    }, 60);
+
+    try {
+      const result = await action((pct, status) => {
+        setSaveProgress(pct);
+        if (status) setSaveStatusText(status);
+      });
+      clearInterval(interval);
+      setSaveProgress(100);
+      setSaveStatusText('บันทึกข้อมูลเสร็จสิ้น 100%!');
+      await new Promise((r) => setTimeout(r, 220));
+      return result;
+    } catch (err: any) {
+      clearInterval(interval);
+      showToast('เกิดข้อผิดพลาดในการบันทึก: ' + (err.message || ''));
+      return undefined;
+    } finally {
+      clearInterval(interval);
+      setTimeout(() => {
+        setIsSaving(false);
+        setSaveProgress(0);
+      }, 150);
+    }
+  };
+
   const [selectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -2968,7 +3018,9 @@ export default function App() {
     e.preventDefault();
     if (!editingGameMeta) return;
 
-    let customMap: Record<string, { bannerImage?: string; image?: string; description?: string; availabilityStatus?: string; maintenanceNote?: string }> = {};
+    await executeWithSaveProgress('กำลังบันทึกรูปภาพ & ข้อมูลเกม...', async (updateProg) => {
+      updateProg(25, 'กำลังประมวลผลรูปภาพและจัดเตรียมข้อมูล...');
+      let customMap: Record<string, { bannerImage?: string; image?: string; description?: string; availabilityStatus?: string; maintenanceNote?: string }> = {};
     try {
       if ((siteSettings as any).hexsync_game_custom_images) {
         customMap = JSON.parse((siteSettings as any).hexsync_game_custom_images);
@@ -3039,6 +3091,7 @@ export default function App() {
     } catch {
       showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ');
     }
+    });
   };
 
   // Open bulk rental configuration modal with AI auto-detection
@@ -4998,31 +5051,34 @@ export default function App() {
 
   const handleSaveSiteSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ settings: siteSettings, adminUsername: user?.username })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.message || 'บันทึกการตั้งค่าไม่สำเร็จ');
-        return;
-      }
-      await fetch('/api/topup/config', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ phone: angpaoPhone, adminUsername: user?.username })
-      });
-      // Force instant title & favicon update
-      document.title = siteSettings.site_title || siteSettings.brand_name;
-      let fav = document.getElementById('app-favicon') as HTMLLinkElement;
-      if (fav && siteSettings.logo_url) fav.href = siteSettings.logo_url;
+    await executeWithSaveProgress('กำลังบันทึกการตั้งค่าเว็บไซต์ & ธีม...', async (updateProg) => {
+      updateProg(30, 'กำลังส่งข้อมูลการตั้งค่าไปยังเซิร์ฟเวอร์...');
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ settings: siteSettings, adminUsername: user?.username })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showToast(err.message || 'บันทึกการตั้งค่าไม่สำเร็จ');
+          return;
+        }
+        updateProg(75, 'กำลังอัปเดตระบบอั่งเปาและแท็บเบราว์เซอร์...');
+        await fetch('/api/topup/config', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ phone: angpaoPhone, adminUsername: user?.username })
+        });
+        document.title = siteSettings.site_title || siteSettings.brand_name;
+        let fav = document.getElementById('app-favicon') as HTMLLinkElement;
+        if (fav && siteSettings.logo_url) fav.href = siteSettings.logo_url;
 
-      showToast('บันทึกการตกแต่งสำเร็จ! ชื่อเว็บและโลโก้บนแท็บเบราว์เซอร์เปลี่ยนเรียบร้อย');
-    } catch {
-      showToast('บันทึกไม่สำเร็จ (กรุณาตรวจสอบเซิร์ฟเวอร์)');
-    }
+        showToast('บันทึกการตกแต่งสำเร็จ! ชื่อเว็บและโลโก้บนแท็บเบราว์เซอร์เปลี่ยนเรียบร้อย');
+      } catch {
+        showToast('บันทึกไม่สำเร็จ (กรุณาตรวจสอบเซิร์ฟเวอร์)');
+      }
+    });
   };
 
   // Emergency Unban Action (ปลดแบนฉุกเฉินสำหรับแอดมิน ทั้ง IP และเลขเครื่อง)
@@ -5943,6 +5999,65 @@ export default function App() {
 
             <div style={{ color: '#ffb3c1', fontSize: '0.88rem', fontWeight: 500 }}>
               {purchaseStatusText}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Realtime Save Progress Overlay Modal with Spinner & % Indicator */}
+      {isSaving && (
+        <div
+          className="modal-overlay"
+          style={{
+            zIndex: 99999999,
+            background: 'rgba(5, 2, 4, 0.88)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(160deg, #18080d 0%, #0d0407 100%)',
+              border: '1.5px solid rgba(255, 26, 64, 0.65)',
+              boxShadow: '0 0 50px rgba(255, 26, 64, 0.45), 0 20px 50px rgba(0,0,0,0.85)',
+              borderRadius: '24px',
+              padding: '2.5rem 2.25rem',
+              textAlign: 'center',
+              maxWidth: '430px',
+              width: '92%',
+              animation: 'fadeInScale 0.22s ease-out'
+            }}
+          >
+            {/* Spinning Double Rings with % inside */}
+            <div className="hexsync-spinner-box" style={{ margin: '0 auto 1.35rem', width: '88px', height: '88px' }}>
+              <div className="hexsync-spin-outer" />
+              <div className="hexsync-spin-inner" />
+              <div className="hexsync-spin-core" />
+              <div className="hexsync-loader-progress-inside">
+                <span style={{ fontSize: '1.15rem', fontWeight: 900 }}>{saveProgress}%</span>
+              </div>
+            </div>
+
+            <div style={{ color: '#fff', fontSize: '1.35rem', fontWeight: 900, marginBottom: '0.4rem', letterSpacing: '0.3px' }}>
+              {saveTitle}
+            </div>
+
+            <div className="hexsync-loader-percent-badge" style={{ margin: '0.3rem auto 0.75rem' }}>
+              <span className="hexsync-loader-percent-text">{saveProgress}%</span>
+            </div>
+
+            <div className="hexsync-loader-progress-bar-wrap" style={{ width: '100%', margin: '0 auto 0.95rem', height: '8px' }}>
+              <div
+                className="hexsync-loader-progress-bar-fill"
+                style={{ width: `${saveProgress}%`, transition: 'width 0.15s ease' }}
+              />
+            </div>
+
+            <div style={{ color: '#ffb3c1', fontSize: '0.9rem', fontWeight: 600 }}>
+              {saveStatusText}
             </div>
           </div>
         </div>
@@ -11006,8 +11121,26 @@ async function verifyLicense(key, hwid) {
                   </div>
                 </div>
 
-                <button type="submit" className="btn-primary" style={{ marginTop: '1rem', width: '100%', justifyContent: 'center' }}>
-                  บันทึกการตกแต่งทั้งหมด (อัปเดตโลโก้, จุดเด่น, เพลงในเว็บ, ข้อมูลธนาคาร และ SlipOK ทันที)
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="btn-primary"
+                  style={{
+                    marginTop: '1rem',
+                    width: '100%',
+                    justifyContent: 'center',
+                    opacity: isSaving ? 0.7 : 1,
+                    cursor: isSaving ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <IconRefreshCw size={16} className="spin-slow" />
+                      <span>กำลังบันทึกการตั้งค่า ({saveProgress}%)...</span>
+                    </>
+                  ) : (
+                    'บันทึกการตกแต่งทั้งหมด (อัปเดตโลโก้, จุดเด่น, เพลงในเว็บ, ข้อมูลธนาคาร และ SlipOK ทันที)'
+                  )}
                 </button>
               </form>
             </div>
@@ -13903,9 +14036,29 @@ async function verifyLicense(key, hwid) {
                 <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setEditingGameMeta(null)}>
                   ยกเลิก
                 </button>
-                <button type="submit" className="btn-primary" style={{ flex: 2, justifyContent: 'center', background: 'linear-gradient(135deg, #ff1a40, #d90429)' }}>
-                  <IconCheck size={16} />
-                  <span>บันทึกรูปภาพ & ข้อมูลเกม</span>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="btn-primary"
+                  style={{
+                    flex: 2,
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #ff1a40, #d90429)',
+                    opacity: isSaving ? 0.7 : 1,
+                    cursor: isSaving ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isSaving ? (
+                    <>
+                      <IconRefreshCw size={16} className="spin-slow" />
+                      <span>กำลังบันทึกข้อมูล ({saveProgress}%)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <IconCheck size={16} />
+                      <span>บันทึกรูปภาพ & ข้อมูลเกม</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -16124,6 +16277,7 @@ async function verifyLicense(key, hwid) {
                 </button>
                 <button
                   type="button"
+                  disabled={isSaving}
                   className="btn-primary"
                   onClick={handleSaveBulkRental}
                   style={{
@@ -16131,10 +16285,19 @@ async function verifyLicense(key, hwid) {
                     border: 'none',
                     fontWeight: 800,
                     padding: '8px 24px',
-                    boxShadow: '0 0 20px rgba(16, 185, 129, 0.5)'
+                    boxShadow: '0 0 20px rgba(16, 185, 129, 0.5)',
+                    opacity: isSaving ? 0.7 : 1,
+                    cursor: isSaving ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  💾 บันทึกการตั้งค่าทั้งหมด ({selectedBulkProductIds.length} รายการ)
+                  {isSaving ? (
+                    <>
+                      <IconRefreshCw size={16} className="spin-slow" />
+                      <span>กำลังบันทึกข้อมูล ({saveProgress}%)...</span>
+                    </>
+                  ) : (
+                    `💾 บันทึกการตั้งค่าทั้งหมด (${selectedBulkProductIds.length} รายการ)`
+                  )}
                 </button>
               </div>
             </div>
