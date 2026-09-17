@@ -36,19 +36,6 @@ async function refreshBannedIps() {
   try {
     const list = await BannedIP.findAll();
     bannedIpMap.clear();
-    
-  // VPN Block Check: If admin turned on block_vpn_proxy, reject VPN / Proxy traffic
-  if (blockVpnEnabled && !req.isAdmin) {
-    const isVpnDetected = isVpnOrProxy(req);
-    if (isVpnDetected) {
-      return res.status(403).json({
-        banned: true,
-        banType: 'vpn',
-        message: 'ไม่อนุญาตให้เข้าใช้งานผ่าน VPN หรือ Proxy กรุณาปิด VPN ก่อนเข้าใช้งานเว็บไซต์',
-        ip
-      });
-    }
-  }
 
   const now = new Date();
     for (const item of list) {
@@ -124,40 +111,28 @@ async function refreshVpnSetting() {
   }
 }
 
-// Check if incoming request is using a VPN or Proxy
+// Safe VPN & Proxy Detection (Does NOT flag Vercel, Cloudflare, or Thai residential ISPs)
+const THAI_ISPS = ['ais', 'true', 'dtac', '3bb', 'triple t', 'tot', 'cat telecom', 'national telecom', 'nt', 'awn'];
+
 function isVpnOrProxy(req) {
-  const headers = req.headers || {};
-
-  // 1. Direct Proxy Headers check
-  if (headers['via'] || headers['forwarded'] || headers['x-proxyuser-ip'] || headers['proxy-connection']) {
-    return true;
-  }
-
-  // 2. Multiple proxy hops in x-forwarded-for
-  const forwarded = headers['x-forwarded-for'];
-  if (forwarded && typeof forwarded === 'string' && forwarded.includes(',')) {
-    const ips = forwarded.split(',').map(s => s.trim());
-    if (ips.length > 1) {
-      return true; // Routed through multiple proxies
-    }
-  }
-
-  // 3. Cloudflare threat / bot detection headers
-  const cfScore = parseInt(headers['cf-threat-score'] || '0', 10);
-  if (cfScore > 30) return true;
-
-  // 4. In-memory IP cache check
+  // Never flag reverse proxy headers because Vercel/Cloudflare add x-forwarded-for and via!
   const ip = getClientIp(req);
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    return false;
+  }
   if (vpnIpCache.has(ip)) {
     return vpnIpCache.get(ip).isVpn;
   }
-
   return false;
 }
 
 // Background asynchronous IP intelligence lookup for Datacenter / Hosting / VPN
 async function checkIpVpnStatus(ip) {
-  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+    return false;
+  }
+  // Thai mobile and fiber IP ranges (e.g. 49.228-237.x.x is AIS Thailand)
+  if (ip.startsWith('49.22') || ip.startsWith('49.23') || ip.startsWith('58.') || ip.startsWith('171.') || ip.startsWith('124.')) {
     return false;
   }
   if (vpnIpCache.has(ip)) {
@@ -170,14 +145,23 @@ async function checkIpVpnStatus(ip) {
   try {
     const https = require('https');
     return new Promise((resolve) => {
-      const req = https.get(`https://ip-api.com/json/${ip}?fields=status,hosting,proxy,isp,org,as`, { timeout: 2500 }, (res) => {
+      const req = https.get(`https://ip-api.com/json/${ip}?fields=status,hosting,proxy,isp,org,as,countryCode`, { timeout: 2500 }, (res) => {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
           try {
             const parsed = JSON.parse(data);
-            const isVpn = Boolean(parsed.hosting || parsed.proxy);
-            vpnIpCache.set(ip, { isVpn, org: parsed.org || parsed.isp || '', checkedAt: Date.now() });
+            const orgLower = (parsed.org || parsed.isp || '').toLowerCase();
+            const isThaiIsp = THAI_ISPS.some(t => orgLower.includes(t)) || parsed.countryCode === 'TH';
+            
+            // If it's a genuine Thai ISP, it's NOT a VPN
+            if (isThaiIsp && !parsed.proxy) {
+              vpnIpCache.set(ip, { isVpn: false, org: parsed.org || '', checkedAt: Date.now() });
+              return resolve(false);
+            }
+
+            const isVpn = Boolean((parsed.hosting || parsed.proxy) && !isThaiIsp);
+            vpnIpCache.set(ip, { isVpn, org: parsed.org || '', checkedAt: Date.now() });
             resolve(isVpn);
           } catch {
             resolve(false);

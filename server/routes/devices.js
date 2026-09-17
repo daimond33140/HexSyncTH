@@ -59,24 +59,20 @@ router.get('/check-ban', async (req, res) => {
       });
     }
 
-    // C. Check VPN / Proxy if block_vpn_proxy setting is enabled
+    // C. Check VPN / Proxy ONLY if admin explicitly enabled block_vpn_proxy
     try {
       const vpnSetting = await Setting.findOne({ where: { key: 'block_vpn_proxy' } });
       const isVpnBlockOn = vpnSetting && vpnSetting.value === 'true';
       if (isVpnBlockOn) {
-        const hasProxyHeader = isVpnOrProxy(req);
-        let isHostingIp = false;
-        if (!hasProxyHeader) {
-          isHostingIp = await checkIpVpnStatus(clientIp);
-        }
-        if (hasProxyHeader || isHostingIp) {
+        const isDatacenterVpn = await checkIpVpnStatus(clientIp);
+        if (isDatacenterVpn) {
           return res.json({
             banned: true,
             banType: 'vpn',
             ip: clientIp,
             deviceId,
             hardwareHash,
-            reason: 'ตรวจพบการใช้งาน VPN หรือ Proxy กรุณาปิดโปรแกรม VPN ก่อนเข้าใช้งานเว็บไซต์',
+            reason: 'ตรวจพบการใช้งาน VPN หรือ Datacenter Proxy กรุณาปิด VPN ก่อนเข้าใช้งานเว็บไซต์',
           });
         }
       }
