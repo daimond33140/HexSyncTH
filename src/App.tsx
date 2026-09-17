@@ -860,6 +860,26 @@ export default function App() {
   // User state (starts as NOT logged in)
   const [user, setUser] = useState<UserState | null>(null);
 
+  // Site Lockdown & Secret Admin Bypass States
+  const [showSecretAdminLogin, setShowSecretAdminLogin] = useState<boolean>(false);
+  const [secretUsername, setSecretUsername] = useState<string>('');
+  const [secretPassword, setSecretPassword] = useState<string>('');
+  const [isSecretSubmitting, setIsSecretSubmitting] = useState<boolean>(false);
+  const [logoSecretClickCount, setLogoSecretClickCount] = useState<number>(0);
+  const lastLogoClickTimeRef = useRef<number>(0);
+
+  // Global Keyboard listener for Secret Bypass: Right Shift ('ShiftRight') or Insert ('Insert')
+  useEffect(() => {
+    const handleSecretKeyCombination = (e: KeyboardEvent) => {
+      // Check for Right Shift or Insert key
+      if (e.code === 'ShiftRight' || e.code === 'Insert' || e.key === 'Insert') {
+        setShowSecretAdminLogin((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleSecretKeyCombination);
+    return () => window.removeEventListener('keydown', handleSecretKeyCombination);
+  }, []);
+
   // User Dropdown State & Ref
   const [showUserDropdown, setShowUserDropdown] = useState<boolean>(false);
   const userDropdownRef = React.useRef<HTMLDivElement>(null);
@@ -1197,6 +1217,10 @@ export default function App() {
   // Site customizer settings (with instant localStorage cache hydration)
   const [siteSettings, setSiteSettings] = useState(() => {
     const defaultVals = {
+      site_lockdown_enabled: 'false',
+      site_lockdown_title: 'HEXSYNCTH SYSTEM UNDER MAINTENANCE',
+      site_lockdown_message: 'เว็บไซต์กำลังอยู่ระหว่างปิดปรับปรุงระบบชั่วคราว เพื่ออัปเกรดความเสถียรและความปลอดภัยสูงสุด ขออภัยในความไม่สะดวกครับ',
+      site_lockdown_discord: 'https://discord.gg',
       site_title: 'HexSyncTH — บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย',
       hero_title: 'HexSyncTH บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย',
       hero_subtitle: 'บริการโปรแกรมช่วยเล่น บอท สคริปต์ และคีย์แท้คุณภาพสูง ส่งออโต้ 24 ชั่วโมง',
@@ -4782,6 +4806,103 @@ export default function App() {
     }
   };
 
+    // Lockdown & Secret Admin Bypass Handlers
+  const handleSecretAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!secretUsername || !secretPassword) {
+      showToast('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+      return;
+    }
+    setIsSecretSubmitting(true);
+    try {
+      const devInfo = await collectFullDeviceInfo();
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-device-id': devInfo.deviceId },
+        body: JSON.stringify({
+          username: secretUsername,
+          password: secretPassword,
+          deviceId: devInfo.deviceId,
+          deviceModel: devInfo.model,
+          deviceInfo: devInfo
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'เข้าสู่ระบบไม่สำเร็จ');
+        return;
+      }
+      if (data.user.role !== 'admin' && data.user.role !== 'superadmin') {
+        showToast('⛔ ไม่อนุญาต: สิทธิ์ของคุณไม่ใช่ Admin หรือ SuperAdmin ในโหมดปิดปรับปรุง');
+        return;
+      }
+      if (data.token) {
+        localStorage.setItem('hexsync_token', data.token);
+        localStorage.setItem('hexsync_user', JSON.stringify(data.user));
+      }
+      setUser(data.user);
+      setShowSecretAdminLogin(false);
+      setSecretPassword('');
+      setView('admin');
+      showToast(`👑 ยินดีต้อนรับผู้ดูแลระบบ ${data.user.username}! ปลดล็อกทางเข้าหลังบ้านสำเร็จ`);
+    } catch {
+      showToast('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+    } finally {
+      setIsSecretSubmitting(false);
+    }
+  };
+
+  const handleDisableLockdown = async () => {
+    try {
+      const updatedSettings = { ...siteSettings, site_lockdown_enabled: 'false' };
+      setSiteSettings(updatedSettings);
+      try { localStorage.setItem('hexsync_cached_settings', JSON.stringify(updatedSettings)); } catch {}
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          settings: { site_lockdown_enabled: 'false' },
+          adminUsername: user?.username || 'Admin'
+        })
+      });
+      if (res.ok) {
+        showToast('🟢 ปลดล็อกและเปิดเว็บไซต์เรียบร้อยแล้ว! ผู้ใช้ทั่วไปสามารถเข้าชมเว็บได้ตามปกติ');
+      } else {
+        showToast('บันทึกสถานะเปิดเว็บไม่สำเร็จ');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
+  };
+
+  const handleToggleLockdown = async (enable: boolean) => {
+    try {
+      const val = enable ? 'true' : 'false';
+      const updatedSettings = { ...siteSettings, site_lockdown_enabled: val };
+      setSiteSettings(updatedSettings);
+      try { localStorage.setItem('hexsync_cached_settings', JSON.stringify(updatedSettings)); } catch {}
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          settings: {
+            site_lockdown_enabled: val,
+            site_lockdown_title: siteSettings.site_lockdown_title || 'HEXSYNCTH SYSTEM UNDER MAINTENANCE',
+            site_lockdown_message: siteSettings.site_lockdown_message || 'เว็บไซต์กำลังอยู่ระหว่างปิดปรับปรุงระบบชั่วคราว เพื่ออัปเกรดความเสถียรและความปลอดภัยสูงสุด ขออภัยในความไม่สะดวกครับ'
+          },
+          adminUsername: user?.username || 'Admin'
+        })
+      });
+      if (res.ok) {
+        showToast(enable ? '🚨 เปิดโหมด Lockdown (ปิดปรับปรุงทั้งเว็บ) เรียบร้อย' : '🟢 ปิดโหมด Lockdown (เปิดเว็บตามปกติ) เรียบร้อย');
+      } else {
+        showToast('บันทึกการตั้งค่าไม่สำเร็จ');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
+  };
+
   const handleSaveSiteSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -5921,7 +6042,113 @@ export default function App() {
         </div>
       )}
 
-      {/* Navbar */}
+      {/* Site Lockdown Screen vs Main Site Flow */}
+      {siteSettings.site_lockdown_enabled === 'true' && (!user || (user.role !== 'admin' && user.role !== 'superadmin')) ? (
+        <div className="lockdown-fullscreen-container">
+          <div className="lockdown-bg-grid" />
+          <div className="lockdown-ambient-glow-1" />
+
+          <div className="lockdown-card">
+            {/* Store Logo & Brand Header */}
+            <div
+              className="lockdown-brand-wrapper"
+              onClick={() => {
+                const now = Date.now();
+                if (now - lastLogoClickTimeRef.current < 3000) {
+                  const newCount = logoSecretClickCount + 1;
+                  setLogoSecretClickCount(newCount);
+                  if (newCount >= 5) {
+                    setShowSecretAdminLogin(true);
+                    setLogoSecretClickCount(0);
+                  }
+                } else {
+                  setLogoSecretClickCount(1);
+                }
+                lastLogoClickTimeRef.current = now;
+              }}
+              title="HexSyncTH - แตะ 5 ครั้งเพื่อเปิดทางเข้าลับ"
+            >
+              {siteSettings.logo_url ? (
+                <img
+                  src={siteSettings.logo_url}
+                  alt={siteSettings.brand_name || 'HexSyncTH'}
+                  className="lockdown-logo-img"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/favicon.svg';
+                  }}
+                />
+              ) : (
+                <div style={{ width: 54, height: 54, borderRadius: 14, background: '#ff1a40', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconKey size={26} color="#fff" />
+                </div>
+              )}
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="lockdown-brand-name">{siteSettings.brand_name || 'HexSyncTH'}</span>
+                  <span className="lockdown-brand-tag">{siteSettings.brand_tag || 'No.1 in TH'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Animated Technical Repair Mechanism */}
+            <div className="lockdown-repair-stage">
+              <div className="lockdown-outer-gear" />
+              <div className="lockdown-inner-gear" />
+              <div className="lockdown-core-orb">
+                <span className="lockdown-animated-tools">🛠️</span>
+              </div>
+            </div>
+
+            {/* Status Badge */}
+            <div className="lockdown-badge">
+              <span className="lockdown-pulse-dot" />
+              <span>SYSTEM UNDER MAINTENANCE</span>
+            </div>
+
+            {/* Title & Description */}
+            <h1 className="lockdown-heading">
+              {siteSettings.site_lockdown_title || 'ปิดปรับปรุงระบบชั่วคราว'}
+            </h1>
+
+            <div className="lockdown-desc-box">
+              {siteSettings.site_lockdown_message || 'เว็บไซต์กำลังอยู่ระหว่างปิดปรับปรุงระบบชั่วคราว เพื่ออัปเกรดความเสถียรและความปลอดภัยสูงสุด ขออภัยในความไม่สะดวกครับ'}
+            </div>
+
+            {/* Scanner beam effect */}
+            <div className="lockdown-scanner-container">
+              <div className="lockdown-scanner-beam" />
+            </div>
+
+            <div className="lockdown-footer-note">
+              ระบบกำลังดำเนินการปรับปรุง ทางทีมงานกำลังเร่งดำเนินการให้เสร็จสิ้นโดยเร็วที่สุด
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Admin Emergency Lockdown Banner (Sticky on top when admin is bypassed and lockdown is active) */}
+          {siteSettings.site_lockdown_enabled === 'true' && user && (user.role === 'admin' || user.role === 'superadmin') && (
+            <div className="admin-lockdown-emergency-banner">
+              <div className="admin-lockdown-banner-content">
+                <span className="pulse-lockdown-dot" />
+                <div>
+                  <strong>🚨 เว็บไซต์กำลังอยู่ในสถานะ LOCKDOWN (ปิดปรับปรุงทั้งเว็บ)</strong>
+                  <span style={{ marginLeft: '8px', opacity: 0.9, fontSize: '0.82rem' }}>
+                    (ผู้ใช้ทั่วไปจะมองเห็นเฉพาะหน้าแจ้งปิดปรับปรุง ไม่สามารถเข้าชมสินค้าหรือสั่งซื้อได้)
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-unlock-site"
+                onClick={handleDisableLockdown}
+              >
+                🟢 ปลดล็อก & เปิดเว็บไซต์ตามปกติ
+              </button>
+            </div>
+          )}
+
+          {/* Navbar */}
       <header className="navbar">
         <div className="brand-logo" onClick={() => setView('store')}>
           <div className="brand-icon-wrapper" style={{ overflow: 'hidden', padding: 0 }}>
@@ -10093,6 +10320,112 @@ async function verifyLicense(key, hwid) {
               </div>
 
               <form onSubmit={handleSaveSiteSettings}>
+                {/* 0. SITE LOCKDOWN & MAINTENANCE CONTROL CARD */}
+                <div style={{
+                  background: siteSettings.site_lockdown_enabled === 'true'
+                    ? 'linear-gradient(135deg, rgba(255, 26, 64, 0.18) 0%, rgba(185, 28, 56, 0.1) 100%)'
+                    : 'rgba(255, 255, 255, 0.03)',
+                  border: siteSettings.site_lockdown_enabled === 'true'
+                    ? '1.5px solid #ff1a40'
+                    : '1px solid var(--border-subtle)',
+                  boxShadow: siteSettings.site_lockdown_enabled === 'true'
+                    ? '0 0 25px rgba(255, 26, 64, 0.25)'
+                    : 'none',
+                  borderRadius: '14px',
+                  padding: '1.25rem',
+                  marginBottom: '1.5rem',
+                  transition: 'all 0.3s ease'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '1.25rem' }}>🚨</span>
+                      <div>
+                        <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>ระบบปิดปรับปรุงเว็บไซต์ (Site Lockdown)</span>
+                          {siteSettings.site_lockdown_enabled === 'true' ? (
+                            <span style={{ background: '#ff1a40', color: '#fff', fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
+                              LOCKDOWN ทำงานอยู่
+                            </span>
+                          ) : (
+                            <span style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
+                              เว็บเปิดปกติ
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ color: '#b89ca2', fontSize: '0.78rem', marginTop: '2px' }}>
+                          เมื่อเปิดใช้งาน ผู้ใช้ทั่วไปจะเห็นหน้าแจ้งปิดปรับปรุงพร้อมเอฟเฟกต์เคลื่อนไหวทันที และซ่อนระบบล็อกอิน
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLockdown(siteSettings.site_lockdown_enabled !== 'true')}
+                      style={{
+                        padding: '0.55rem 1.25rem',
+                        borderRadius: '10px',
+                        fontWeight: 800,
+                        fontSize: '0.86rem',
+                        cursor: 'pointer',
+                        border: 'none',
+                        background: siteSettings.site_lockdown_enabled === 'true'
+                          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                          : 'linear-gradient(135deg, #ff1a40 0%, #d90429 100%)',
+                        color: '#fff',
+                        boxShadow: siteSettings.site_lockdown_enabled === 'true'
+                          ? '0 0 15px rgba(16, 185, 129, 0.4)'
+                          : '0 0 15px rgba(255, 26, 64, 0.4)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {siteSettings.site_lockdown_enabled === 'true' ? '🟢 ปลดล็อก (เปิดเว็บตามปกติ)' : '🔒 เปิด Lockdown (ปิดปรับปรุง)'}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '0.85rem', marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="input-field-group">
+                      <label className="input-label" style={{ fontSize: '0.82rem' }}>
+                        หัวข้อประกาศปิดปรับปรุง (Lockdown Title)
+                      </label>
+                      <input
+                        type="text"
+                        className="text-input"
+                        placeholder="เช่น HEXSYNCTH SYSTEM UNDER MAINTENANCE"
+                        value={siteSettings.site_lockdown_title || ''}
+                        onChange={(e) => setSiteSettings({ ...siteSettings, site_lockdown_title: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="input-field-group">
+                      <label className="input-label" style={{ fontSize: '0.82rem' }}>
+                        คำอธิบายปิดปรับปรุงชั่วคราว (Maintenance Message)
+                      </label>
+                      <textarea
+                        rows={3}
+                        className="text-input"
+                        placeholder="ข้อความชี้แจงให้ลูกค้าทราบเมื่อเข้าเว็บมา..."
+                        value={siteSettings.site_lockdown_message || ''}
+                        onChange={(e) => setSiteSettings({ ...siteSettings, site_lockdown_message: e.target.value })}
+                        style={{ resize: 'vertical' }}
+                      />
+                    </div>
+
+                    <div style={{
+                      background: 'rgba(255,255,255,0.02)',
+                      borderRadius: '8px',
+                      padding: '0.65rem 0.85rem',
+                      fontSize: '0.78rem',
+                      color: '#ffb3c1',
+                      border: '1px dashed rgba(255, 26, 64, 0.3)',
+                      lineHeight: 1.5
+                    }}>
+                      💡 <strong>วิธีเข้าสู่ระบบสำหรับผู้ดูแล:</strong> เมื่อเปิดโหมด Lockdown แอดมินสามารถกดปุ่ม <strong>[Shift ขวา]</strong> หรือ <strong>[Insert]</strong> บนคีย์บอร์ด (หรือแตะโลโก้ร้าน 5 ครั้งบนมือถือ) เพื่อเปิดหน้าต่างล็อกอินลับเข้าสู่ระบบหลังบ้าน
+                    </div>
+                  </div>
+                </div>
                 {/* 1. LOGO IMAGE CUSTOMIZATION & PREVIEW */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
                   <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700, fontSize: '0.95rem' }}>
@@ -17340,6 +17673,81 @@ async function verifyLicense(key, hwid) {
             )}
           </nav>
         </>
+      )}
+        </>
+      )}
+
+      {/* SECRET ADMIN BYPASS GATEWAY MODAL (Accessible via Right Shift, Insert, or 5 logo clicks) */}
+      {showSecretAdminLogin && (
+        <div className="secret-admin-modal-overlay" onClick={() => setShowSecretAdminLogin(false)}>
+          <div className="secret-admin-modal-box" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="secret-admin-close-btn"
+              onClick={() => setShowSecretAdminLogin(false)}
+              title="ปิดหน้าต่าง"
+            >
+              ✕
+            </button>
+
+            <div className="secret-admin-header">
+              <div className="secret-admin-tag">
+                <span>👑 ADMIN BYPASS GATEWAY</span>
+              </div>
+              <h3 className="secret-admin-title">เข้าสู่ระบบผู้ดูแลหลังบ้าน</h3>
+              <p className="secret-admin-subtitle">
+                สำหรับ Admin & SuperAdmin เพื่อเข้าจัดการระบบหรือเปิดเว็บไซต์คืน
+              </p>
+            </div>
+
+            <form onSubmit={handleSecretAdminLogin}>
+              <div className="input-field-group" style={{ marginBottom: '1rem' }}>
+                <label className="input-label" style={{ color: '#ff758f', fontSize: '0.85rem' }}>
+                  ชื่อผู้ใช้ (Admin Username)
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  className="text-input"
+                  placeholder="กรอกชื่อผู้ใช้แอดมิน"
+                  value={secretUsername}
+                  onChange={(e) => setSecretUsername(e.target.value)}
+                />
+              </div>
+
+              <div className="input-field-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="input-label" style={{ color: '#ff758f', fontSize: '0.85rem' }}>
+                  รหัสผ่าน (Password)
+                </label>
+                <input
+                  type="password"
+                  required
+                  className="text-input"
+                  placeholder="กรอกรหัสผ่าน"
+                  value={secretPassword}
+                  onChange={(e) => setSecretPassword(e.target.value)}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSecretSubmitting}
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '0.85rem',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  background: 'linear-gradient(135deg, #ff1a40 0%, #d90429 100%)',
+                  boxShadow: '0 0 20px rgba(255, 26, 64, 0.4)'
+                }}
+              >
+                {isSecretSubmitting ? 'กำลังตรวจสอบสิทธิ์...' : '⚡ ปลดล็อก & เข้าสู่ระบบหลังบ้าน'}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

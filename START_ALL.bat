@@ -1,26 +1,26 @@
 @echo off
 chcp 65001 >nul
-title HexSyncTH - All Services Launcher v9.1.2
+title HexSyncTH - Local Server Launcher
 color 0b
 
-set "ROOT_DIR=%~dp0"
-if "%ROOT_DIR:~-1%"=="\" set "ROOT_DIR=%ROOT_DIR:~0,-1%"
-
 echo ========================================================
-echo       HexSyncTH Web Controller & Server Launcher
+echo       HexSyncTH Local Development Launcher
 echo ========================================================
 echo.
-echo [*] Project Root: %ROOT_DIR%
-echo [*] Starting Cloudflare Tunnel...
-start "" wscript.exe "%ROOT_DIR%\start_tunnel.vbs"
+
+echo [*] Checking and freeing ports 4000 and 5173...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :4000 ^| findstr LISTENING') do taskkill /F /PID %%a >nul 2>&1
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do taskkill /F /PID %%a >nul 2>&1
 
 echo [*] Starting Backend API Server (Port 4000)...
-start "HexSyncTH Backend (Port 4000)" cmd /k "cd /d "%ROOT_DIR%\server" && npm start"
+start "HexSyncTH Backend (Port 4000)" cmd /k "cd /d D:\wee\server && node index.js"
 
 echo [*] Starting Frontend Server (Port 5173)...
-start "HexSyncTH Frontend (Port 5173)" cmd /k "cd /d "%ROOT_DIR%" && node serve_dist.cjs"
+start "HexSyncTH Frontend (Port 5173)" cmd /k "cd /d D:\wee && node serve_dist.cjs"
 
 echo.
-echo [✓] All services initiated!
-timeout /t 3 >nul
+echo [OK] All services started successfully!
+echo [*] Opening browser http://localhost:5173 ...
+timeout /t 2 >nul
+start http://localhost:5173
 exit

@@ -5,6 +5,11 @@ const { requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 const DEFAULT_SETTINGS = {
+  // Site Lockdown / Maintenance mode
+  site_lockdown_enabled: 'false',
+  site_lockdown_title: 'HEXSYNCTH SYSTEM UNDER MAINTENANCE',
+  site_lockdown_message: 'เว็บไซต์กำลังอยู่ระหว่างปิดปรับปรุงระบบชั่วคราว เพื่ออัปเกรดความเสถียรและความปลอดภัยสูงสุด ขออภัยในความไม่สะดวกครับ',
+  site_lockdown_discord: 'https://discord.gg',
   site_title: 'HexSyncTH — บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย',
   hero_title: 'HexSyncTH บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย',
   hero_subtitle: 'บริการโปรแกรมช่วยเล่น บอท สคริปต์ และคีย์แท้คุณภาพสูง ส่งออโต้ 24 ชั่วโมง',
