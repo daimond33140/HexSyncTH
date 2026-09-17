@@ -5416,46 +5416,85 @@ export default function App() {
               : (userBannedInfo ? `บัญชีผู้ใช้ (@${userBannedInfo.username}) ถูกระงับการใช้งาน` : 'การเข้าถึงเว็บไซต์ถูกระงับ')}
           </h1>
 
-          {/* 🚨 IP EVASION AUTO-BAN DETECTED BANNER 🚨 */}
+          {/* 🚨 IP EVASION AUTO-BAN DETECTED BANNER (HexSyncTH Security MAX 2.0) 🚨 */}
           {(bannedInfo?.banType === 'ip_evasion' || (bannedInfo?.oldIp && bannedInfo?.newIp)) && (
             <div
               style={{
-                background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.25), rgba(255, 107, 0, 0.25))',
-                border: '2px solid #ff3355',
-                borderRadius: '16px',
-                padding: '1.35rem 1.5rem',
+                background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.2), rgba(15, 0, 5, 0.9), rgba(255, 107, 0, 0.2))',
+                border: '2px solid #ff2a4b',
+                borderRadius: '18px',
+                padding: '1.5rem 1.6rem',
                 marginBottom: '1.75rem',
-                boxShadow: '0 0 35px rgba(255, 26, 64, 0.35), inset 0 0 20px rgba(255, 107, 0, 0.25)',
-                textAlign: 'center'
+                boxShadow: '0 0 35px rgba(255, 26, 64, 0.35), inset 0 0 20px rgba(255, 42, 75, 0.15)',
+                textAlign: 'center',
+                position: 'relative',
+                overflow: 'hidden'
               }}
             >
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255, 26, 64, 0.35)', border: '1px solid #ff4444', padding: '5px 15px', borderRadius: '999px', fontSize: '0.84rem', fontWeight: 800, color: '#fff', marginBottom: '0.95rem' }}>
-                <span>🚨</span>
-                <span>ตรวจพบการพยายามเปลี่ยน IP เพื่อหลบเลี่ยงการระงับสิทธิ์</span>
+              {/* Line 1: 🚨 IP เก่า : [IP เดิม] ได้เปลี่ยนเป็น IP ใหม่ : [IP ใหม่] */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(255, 26, 64, 0.25)',
+                border: '1px solid rgba(255, 42, 75, 0.5)',
+                padding: '8px 18px',
+                borderRadius: '999px',
+                fontSize: '0.92rem',
+                fontWeight: 800,
+                color: '#fff',
+                marginBottom: '1rem',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                boxShadow: '0 0 15px rgba(255, 26, 64, 0.25)'
+              }}>
+                <span style={{ fontSize: '1.1rem' }}>🚨</span>
+                <span>IP เก่า : <span style={{ color: '#ffb3c1', fontFamily: 'monospace', textDecoration: 'line-through', background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: '4px' }}>{bannedInfo?.oldIp}</span></span>
+                <span style={{ color: '#ff4d6d', fontWeight: 900 }}>➔</span>
+                <span>ได้เปลี่ยนเป็น IP ใหม่ : <span style={{ color: '#00e676', fontFamily: 'monospace', fontWeight: 800, background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '4px', textShadow: '0 0 10px rgba(0,230,118,0.6)' }}>{bannedInfo?.newIp}</span></span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', margin: '0.4rem 0 1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '1.05rem', color: '#ffb3c1', fontWeight: 700 }}>
-                    IP เก่า : <span style={{ color: '#ffffff', fontFamily: 'monospace', textDecoration: 'line-through', opacity: 0.85, background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: '6px' }}>{bannedInfo?.oldIp}</span>
-                  </span>
-                  <span style={{ color: '#ff4d6d', fontSize: '1.25rem', fontWeight: 900 }}>➔</span>
-                  <span style={{ fontSize: '1.05rem', color: '#ffd166', fontWeight: 700 }}>
-                    ได้เปลี่ยนเป็น IP ใหม่ : <span style={{ color: '#00e676', fontFamily: 'monospace', fontWeight: 800, background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: '6px', textShadow: '0 0 12px rgba(0, 230, 118, 0.6)' }}>{bannedInfo?.newIp}</span>
-                  </span>
+              {/* Line 2: ระบบได้ทำการสแกน และแบนทั้งหมดเรียบร้อย */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.65)',
+                borderRadius: '12px',
+                padding: '0.9rem 1.25rem',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                marginBottom: '1rem'
+              }}>
+                <div style={{
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '1.08rem',
+                  lineHeight: 1.5,
+                  letterSpacing: '0.2px'
+                }}>
+                  ระบบได้ทำการสแกน และแบนทั้งหมดเรียบร้อย
                 </div>
-
                 {bannedInfo?.ipType && (
-                  <div style={{ fontSize: '0.83rem', color: '#e2cad0' }}>
-                    ประเภทเครือข่าย IP ใหม่: <span style={{ color: '#00d2ff', fontWeight: 700 }}>{bannedInfo.ipType}</span>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#00d2ff', fontWeight: 600 }}>
+                    🌐 ข้อมูลเครือข่าย IP ใหม่: {bannedInfo.ipType}
                   </div>
                 )}
               </div>
 
-              <div style={{ background: 'rgba(0, 0, 0, 0.55)', borderRadius: '10px', padding: '0.75rem 1.25rem', border: '1px solid rgba(255, 77, 109, 0.3)' }}>
-                <span style={{ color: '#ff4d6d', fontWeight: 800, fontSize: '1.02rem', letterSpacing: '0.3px' }}>
-                  🛡️ ระบบได้ทำการสแกน และแบนทั้งหมดเรียบร้อย
-                </span>
+              {/* Line 3: ตรวจสอบโดย : HexSyncTH Security MAX 2.0 */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.88rem',
+                fontWeight: 800,
+                color: '#00d2ff',
+                background: 'rgba(0, 210, 255, 0.1)',
+                border: '1px solid rgba(0, 210, 255, 0.35)',
+                padding: '6px 16px',
+                borderRadius: '10px',
+                boxShadow: '0 0 15px rgba(0, 210, 255, 0.2)'
+              }}>
+                <span style={{ fontSize: '1rem' }}>🛡️</span>
+                <span>ตรวจสอบโดย :</span>
+                <span style={{ color: '#ffffff', fontWeight: 900, textShadow: '0 0 12px rgba(0, 210, 255, 0.6)' }}>HexSyncTH Security MAX 2.0</span>
               </div>
             </div>
           )}

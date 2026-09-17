@@ -93,10 +93,10 @@ router.get('/check-ban', async (req, res) => {
           hardwareHash: devBan.hardwareHash || hardwareHash,
           stealthFlag: currentFlag,
           ipType: ipIntel.ipType,
-          reason: `IP เก่า : ${previousBannedIp} ได้เปลี่ยนเป็น IP ใหม่ : ${clientIp} ระบบได้ทำการสแกน และแบนทั้งหมดเรียบร้อย`,
+          reason: `🚨 IP เก่า : ${previousBannedIp} ได้เปลี่ยนเป็น IP ใหม่ : ${clientIp}\nระบบได้ทำการสแกน และแบนทั้งหมดเรียบร้อย\n\nตรวจสอบโดย : HexSyncTH Security MAX 2.0`,
           bannedAt: devBan.bannedAt || new Date(),
           bannedUntil: devBan.bannedUntil,
-          bannedBy: devBan.bannedBy || 'ผู้ดูแลระบบ (Admin)'
+          bannedBy: 'HexSyncTH Security MAX 2.0'
         });
       }
 
