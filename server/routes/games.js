@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { Setting, Purchase, User } = require('../models');
-const { requireAdmin, verifyToken } = require('../middleware/auth');
+const { requireAdmin } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const https = require('https');
 const http = require('http');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c';
 
 const DEFAULT_GAMES = [
   {
@@ -127,7 +129,6 @@ function streamFileFromUrl(targetUrl, res, filename, cookies = '', redirectCount
             return streamFileFromUrl(confirmUrl, res, filename, newCookies, redirectCount + 1);
           }
 
-          // Fallback if not confirmable: send attachment
           res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
           res.setHeader('Content-Type', 'application/octet-stream');
           res.send(body);
@@ -135,7 +136,7 @@ function streamFileFromUrl(targetUrl, res, filename, cookies = '', redirectCount
         return;
       }
 
-      // We have the download stream! Set direct download headers
+      // Extract filename from remote headers if available, or use fallback
       let finalFilename = filename;
       if (remoteRes.headers['content-disposition']) {
         const match = remoteRes.headers['content-disposition'].match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/);
@@ -157,7 +158,6 @@ function streamFileFromUrl(targetUrl, res, filename, cookies = '', redirectCount
 
     req.on('error', (err) => {
       console.error('Download stream error:', err);
-      // Fallback redirect if streaming fails
       res.redirect(targetUrl);
     });
 
@@ -193,6 +193,67 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/games/:id/download-check - Verifies user download permission before initiating download
+router.get('/:id/download-check', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const games = await getGamesList();
+    const game = games.find(g => g.id === id);
+
+    if (!game) {
+      return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลเกมที่ต้องการดาวน์โหลด' });
+    }
+
+    if (!game.isDownloadEnabled) {
+      return res.status(403).json({ success: false, message: 'เกมนี้ถูกปิดการดาวน์โหลดชั่วคราว' });
+    }
+
+    if (game.isFree) {
+      return res.json({ success: true, isFree: true, title: game.title });
+    }
+
+    let token = req.query.token;
+    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'กรุณาเข้าสู่ระบบก่อนดาวน์โหลดเกมนี้' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'เซสชันของคุณหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่' });
+    }
+
+    const isAdmin = decoded.role === 'admin' || decoded.role === 'superadmin';
+    if (isAdmin) {
+      return res.json({ success: true, isAdmin: true, title: game.title });
+    }
+
+    const activeLicense = await Purchase.findOne({
+      where: {
+        userId: decoded.id,
+        linkedGameId: game.id,
+        expiresAt: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!activeLicense) {
+      return res.status(403).json({
+        success: false,
+        message: `🔒 คุณยังไม่มีสิทธิ์เช่าเกม "${game.title}" หรือเวลาเช่าของคุณหมดอายุแล้ว กรุณาเช่าเกมในร้านค้าก่อนดาวน์โหลด`
+      });
+    }
+
+    return res.json({ success: true, isFree: false, title: game.title, expiresAt: activeLicense.expiresAt });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์: ' + err.message });
+  }
+});
+
 // GET /api/games/:id/download - Direct proxy download (hides Google Drive URL, triggers native download)
 router.get('/:id/download', async (req, res) => {
   try {
@@ -221,7 +282,7 @@ router.get('/:id/download', async (req, res) => {
 
       let decoded;
       try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET || 'hexsync_jwt_secret_key_2026_super_secure');
+        decoded = jwt.verify(token, JWT_SECRET);
       } catch (err) {
         return res.status(401).send('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
       }
