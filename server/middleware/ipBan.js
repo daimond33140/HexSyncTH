@@ -1,10 +1,13 @@
 // server/middleware/ipBan.js
 const jwt = require('jsonwebtoken');
-const { BannedIP, BannedDevice, WhitelistedIP } = require('../models');
+const { BannedIP, BannedDevice, WhitelistedIP, Setting, User } = require('../models');
 
 // Fast in-memory maps for 0ms lookup per request
 const bannedIpMap = new Map();
 const bannedDeviceMap = new Map();
+const bannedHardwareMap = new Map();
+const vpnIpCache = new Map(); // ip -> { isVpn, org, checkedAt }
+let blockVpnEnabled = false;
 const whitelistedIpMap = new Map();
 let isInitialized = false;
 
@@ -33,7 +36,21 @@ async function refreshBannedIps() {
   try {
     const list = await BannedIP.findAll();
     bannedIpMap.clear();
-    const now = new Date();
+    
+  // VPN Block Check: If admin turned on block_vpn_proxy, reject VPN / Proxy traffic
+  if (blockVpnEnabled && !req.isAdmin) {
+    const isVpnDetected = isVpnOrProxy(req);
+    if (isVpnDetected) {
+      return res.status(403).json({
+        banned: true,
+        banType: 'vpn',
+        message: 'ไม่อนุญาตให้เข้าใช้งานผ่าน VPN หรือ Proxy กรุณาปิด VPN ก่อนเข้าใช้งานเว็บไซต์',
+        ip
+      });
+    }
+  }
+
+  const now = new Date();
     for (const item of list) {
       if (item.ip) {
         // If ban has expired, auto-remove
@@ -60,6 +77,7 @@ async function refreshBannedDevices() {
   try {
     const list = await BannedDevice.findAll();
     bannedDeviceMap.clear();
+    bannedHardwareMap.clear();
     const now = new Date();
     for (const item of list) {
       if (item.deviceId) {
@@ -76,6 +94,17 @@ async function refreshBannedDevices() {
           bannedUntil: item.bannedUntil,
           bannedBy: item.bannedBy || 'Admin',
         });
+        if (item.hardwareHash && item.hardwareHash.trim().length > 0) {
+          bannedHardwareMap.set(item.hardwareHash.trim(), {
+            deviceId: item.deviceId.trim(),
+            hardwareHash: item.hardwareHash.trim(),
+            deviceModel: item.deviceModel,
+            reason: item.reason || 'ระงับการเข้าถึงถาวรระดับฮาร์ดแวร์ (Hardware Ban)',
+            bannedAt: item.bannedAt,
+            bannedUntil: item.bannedUntil,
+            bannedBy: item.bannedBy || 'Admin',
+          });
+        }
       }
     }
     console.log(`[Security Firewall] Synced ${bannedDeviceMap.size} banned Device(s) into memory cache.`);
@@ -84,8 +113,87 @@ async function refreshBannedDevices() {
   }
 }
 
+
+// Refresh VPN blocking configuration from settings
+async function refreshVpnSetting() {
+  try {
+    const s = await Setting.findOne({ where: { key: 'block_vpn_proxy' } });
+    blockVpnEnabled = s ? s.value === 'true' : false;
+  } catch (err) {
+    blockVpnEnabled = false;
+  }
+}
+
+// Check if incoming request is using a VPN or Proxy
+function isVpnOrProxy(req) {
+  const headers = req.headers || {};
+
+  // 1. Direct Proxy Headers check
+  if (headers['via'] || headers['forwarded'] || headers['x-proxyuser-ip'] || headers['proxy-connection']) {
+    return true;
+  }
+
+  // 2. Multiple proxy hops in x-forwarded-for
+  const forwarded = headers['x-forwarded-for'];
+  if (forwarded && typeof forwarded === 'string' && forwarded.includes(',')) {
+    const ips = forwarded.split(',').map(s => s.trim());
+    if (ips.length > 1) {
+      return true; // Routed through multiple proxies
+    }
+  }
+
+  // 3. Cloudflare threat / bot detection headers
+  const cfScore = parseInt(headers['cf-threat-score'] || '0', 10);
+  if (cfScore > 30) return true;
+
+  // 4. In-memory IP cache check
+  const ip = getClientIp(req);
+  if (vpnIpCache.has(ip)) {
+    return vpnIpCache.get(ip).isVpn;
+  }
+
+  return false;
+}
+
+// Background asynchronous IP intelligence lookup for Datacenter / Hosting / VPN
+async function checkIpVpnStatus(ip) {
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    return false;
+  }
+  if (vpnIpCache.has(ip)) {
+    const entry = vpnIpCache.get(ip);
+    if (Date.now() - entry.checkedAt < 24 * 3600 * 1000) {
+      return entry.isVpn;
+    }
+  }
+
+  try {
+    const https = require('https');
+    return new Promise((resolve) => {
+      const req = https.get(`https://ip-api.com/json/${ip}?fields=status,hosting,proxy,isp,org,as`, { timeout: 2500 }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            const isVpn = Boolean(parsed.hosting || parsed.proxy);
+            vpnIpCache.set(ip, { isVpn, org: parsed.org || parsed.isp || '', checkedAt: Date.now() });
+            resolve(isVpn);
+          } catch {
+            resolve(false);
+          }
+        });
+      });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+    });
+  } catch {
+    return false;
+  }
+}
+
 async function refreshAllBans() {
-  await Promise.all([refreshBannedIps(), refreshBannedDevices(), refreshWhitelistedIps()]);
+  await Promise.all([refreshBannedIps(), refreshBannedDevices(), refreshWhitelistedIps(), refreshVpnSetting()]);
   isInitialized = true;
 }
 
@@ -109,14 +217,20 @@ function getIpBanInfo(ip) {
   return bannedIpMap.get(ip.trim()) || null;
 }
 
-function isDeviceBanned(deviceId) {
-  if (!deviceId) return false;
-  return bannedDeviceMap.has(deviceId.trim());
+function isDeviceBanned(deviceId, hardwareHash) {
+  if (deviceId && bannedDeviceMap.has(deviceId.trim())) return true;
+  if (hardwareHash && bannedHardwareMap.has(hardwareHash.trim())) return true;
+  return false;
 }
 
-function getDeviceBanInfo(deviceId) {
-  if (!deviceId) return null;
-  return bannedDeviceMap.get(deviceId.trim()) || null;
+function getDeviceBanInfo(deviceId, hardwareHash) {
+  if (deviceId && bannedDeviceMap.has(deviceId.trim())) {
+    return bannedDeviceMap.get(deviceId.trim());
+  }
+  if (hardwareHash && bannedHardwareMap.has(hardwareHash.trim())) {
+    return bannedHardwareMap.get(hardwareHash.trim());
+  }
+  return null;
 }
 
 // Robust client IP extraction supporting Cloudflare, Nginx, Proxies, and Direct connection
@@ -147,7 +261,9 @@ async function ipBanMiddleware(req, res, next) {
   req.clientIp = ip;
 
   const deviceId = (req.headers['x-device-id'] || req.query.deviceId || '').toString().trim();
+  const hardwareHash = (req.headers['x-hardware-hash'] || req.query.hardwareHash || '').toString().trim();
   req.deviceId = deviceId;
+  req.hardwareHash = hardwareHash;
 
   if (!isInitialized) {
     await refreshAllBans();
@@ -189,7 +305,7 @@ async function ipBanMiddleware(req, res, next) {
   const now = new Date();
 
   // 3. Check if Device ID is in the banned devices map (Hardware Lock)
-  let devBanInfo = deviceId ? bannedDeviceMap.get(deviceId) : null;
+  let devBanInfo = (deviceId ? bannedDeviceMap.get(deviceId) : null) || (hardwareHash ? bannedHardwareMap.get(hardwareHash) : null);
   if (deviceId && !devBanInfo) {
     try {
       const dbDev = await BannedDevice.findOne({ where: { deviceId } });
@@ -359,6 +475,10 @@ async function banDeviceImmediately(deviceId, reason = 'ละเมิดคว
 }
 
 module.exports = {
+  isVpnOrProxy,
+  checkIpVpnStatus,
+  refreshVpnSetting,
+  bannedHardwareMap,
   ipBanMiddleware,
   getClientIp,
   refreshBannedIps,

@@ -493,6 +493,10 @@ const BannedDevice = sequelize.define('BannedDevice', {
     allowNull: false,
     unique: true,
   },
+  hardwareHash: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   deviceModel: {
     type: DataTypes.STRING,
     defaultValue: 'ไม่ทราบรุ่น (Unknown Device)',
@@ -670,7 +674,89 @@ const LicenseKey = sequelize.define('LicenseKey', {
   }
 });
 
+
+// UserDevice Model (Complete Device Login & Access History per User)
+const UserDevice = sequelize.define('UserDevice', {
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  deviceId: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  hardwareHash: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  deviceModel: {
+    type: DataTypes.STRING,
+    defaultValue: 'Unknown Device',
+  },
+  deviceType: {
+    type: DataTypes.STRING,
+    defaultValue: 'desktop',
+  },
+  os: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  browser: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  gpuRenderer: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  screenResolution: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  lastIp: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  ipLocation: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  isVpn: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  isBanned: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  bannedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  banReason: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  bannedBy: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  firstSeen: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+  },
+  lastSeen: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+  },
+});
+
 module.exports = {
+  UserDevice,
   sequelize,
   User,
   Product,

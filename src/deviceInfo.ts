@@ -3,6 +3,7 @@
 
 export interface DeviceInfoData {
   deviceId: string; // Persistent Hardware UUID / UDID (e.g. HEX-DID-...)
+  hardwareHash: string; // Deterministic Canvas & WebGL Hardware Fingerprint (e.g. HEX-HW-...)
   brand: string; // e.g. Apple, Samsung, Xiaomi, Windows, Google
   model: string; // e.g. iPhone 15 Pro Max, Galaxy S24, Windows 11 PC
   deviceType: 'mobile' | 'tablet' | 'desktop';
@@ -19,6 +20,87 @@ export interface DeviceInfoData {
   language: string; // e.g. th-TH
   connectionType: string; // e.g. 4g, wifi
   capturedAt: string;
+}
+
+
+// Simple fast 32-bit FNV-1a hash function for strings
+function fnv1aHash(str: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return (hash >>> 0).toString(16).toUpperCase().padStart(8, '0');
+}
+
+// Deterministic Canvas 2D Graphics Fingerprint
+function getCanvasFingerprint(): string {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 240;
+    canvas.height = 60;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return 'NO_2D_CANVAS';
+
+    // Canvas drawing with geometric shapes, text, gradient, and emoji
+    ctx.textBaseline = 'top';
+    ctx.font = '14px "Arial", "Helvetica", sans-serif';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(125, 1, 62, 20);
+
+    ctx.fillStyle = '#069';
+    ctx.fillText('HexSyncTH🔒HW-BAN🛡️', 2, 15);
+    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+    ctx.fillText('Anti-VPN-Proxy-Pass!@#', 4, 35);
+
+    const grad = ctx.createLinearGradient(0, 0, 240, 0);
+    grad.addColorStop(0, '#ff1a40');
+    grad.addColorStop(0.5, '#00d2ff');
+    grad.addColorStop(1, '#ffdf00');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(10, 5, 220, 48);
+
+    return fnv1aHash(canvas.toDataURL());
+  } catch {
+    return 'CANVAS_ERR';
+  }
+}
+
+// Compute Deterministic Hardware Fingerprint (Persists across Incognito, VPN, and Cache clears)
+export function getHardwareFingerprint(): string {
+  if (typeof window === 'undefined') return 'HEX-HW-SERVER';
+
+  try {
+    const canvasHash = getCanvasFingerprint();
+    const gpu = getWebGlGpuInfo();
+    const screenRes = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth || 24}x${window.devicePixelRatio || 1}`;
+    const cpuCores = (navigator as any).hardwareConcurrency || 4;
+    const ramGb = (navigator as any).deviceMemory || 8;
+    const platform = navigator.platform || 'Unknown';
+    const touchPoints = navigator.maxTouchPoints || 0;
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
+
+    const rawHardwareSignature = [
+      canvasHash,
+      gpu.renderer,
+      gpu.vendor,
+      screenRes,
+      cpuCores,
+      ramGb,
+      platform,
+      touchPoints,
+      timezone
+    ].join('###');
+
+    const hash1 = fnv1aHash(rawHardwareSignature);
+    const hash2 = fnv1aHash(rawHardwareSignature.split('').reverse().join(''));
+
+    return `HEX-HW-${hash1}-${hash2}`;
+  } catch {
+    return 'HEX-HW-FALLBACK';
+  }
 }
 
 // Generate or retrieve persistent Device ID (UDID) stored in localStorage and cookies
@@ -354,6 +436,7 @@ export async function collectFullDeviceInfo(): Promise<DeviceInfoData> {
 
   return {
     deviceId,
+    hardwareHash: getHardwareFingerprint(),
     brand: brandAndModel.brand,
     model: brandAndModel.model,
     deviceType: brandAndModel.deviceType,

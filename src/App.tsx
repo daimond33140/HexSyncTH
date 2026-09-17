@@ -216,6 +216,7 @@ interface WhitelistedIpItem {
 interface BannedDeviceItem {
   id: number;
   deviceId: string;
+  hardwareHash?: string;
   deviceModel: string;
   os?: string;
   browser?: string;
@@ -1189,7 +1190,9 @@ export default function App() {
   const [newBanDeviceReasonInput, setNewBanDeviceReasonInput] = useState('');
   const [isBanningDevice, setIsBanningDevice] = useState(false);
   const [myDeviceInfo, setMyDeviceInfo] = useState<DeviceInfoData | null>(null);
-  const [viewingUserDevice, setViewingUserDevice] = useState<{ user: any; info: DeviceInfoData | null } | null>(null);
+  const [viewingUserDevice, setViewingUserDevice] = useState<{ user: any; info: DeviceInfoData | null; devicesList?: any[] } | null>(null);
+  const [loadingUserDevices, setLoadingUserDevices] = useState<boolean>(false);
+  const [blockVpnSetting, setBlockVpnSetting] = useState<boolean>(false);
   const [viewingUserMap, setViewingUserMap] = useState<any | null>(null);
   const [showCreatorModal, setShowCreatorModal] = useState(false);
   const [blacklistSubTab, setBlacklistSubTab] = useState<'ips' | 'devices' | 'whitelist' | 'ddosJail'>('ips');
@@ -4729,7 +4732,7 @@ export default function App() {
   };
 
   // Open User Device Info Modal (Admin)
-  const handleOpenUserDeviceModal = (targetUser: any) => {
+  const handleOpenUserDeviceModal = async (targetUser: any) => {
     let parsedInfo: DeviceInfoData | null = null;
     if (targetUser.deviceInfo) {
       try {
@@ -4738,8 +4741,79 @@ export default function App() {
     }
     setViewingUserDevice({
       user: targetUser,
-      info: parsedInfo
+      info: parsedInfo,
+      devicesList: []
     });
+    setLoadingUserDevices(true);
+    try {
+      const res = await fetch(`/api/devices/user-devices/${encodeURIComponent(targetUser.username)}`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setViewingUserDevice(prev => prev ? { ...prev, devicesList: data.devices || [] } : null);
+      }
+    } catch { }
+    setLoadingUserDevices(false);
+  };
+
+  // Nuclear Ban: Ban All Devices of a User
+  const handleBanAllUserDevices = async (targetUser: any) => {
+    const confirmBan = window.confirm(
+      `🚨 ยืนยันการแบนอุปกรณ์ทั้งหมด (Ban All Devices) ของ @${targetUser.username} หรือไม่?\n\n- ทุกอุปกรณ์ที่ผู้ใช้นี้เคยใช้งานจะถูกบล็อกระดับฮาร์ดแวร์\n- บัญชีผู้ใช้จะถูกระงับ\n- ทุก IP ที่ผู้ใช้นี้เคยใช้จะถูกแบนด้วย\n\nผู้ใช้จะไม่สามารถเข้าเว็บได้อีกต่อไป ไม่ว่าจะเปลี่ยน IP หรือใช้อุปกรณ์เดิมเครื่องไหน`
+    );
+    if (!confirmBan) return;
+
+    try {
+      const res = await fetch('/api/devices/ban-all-user-devices', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          username: targetUser.username,
+          reason: `แบนอุปกรณ์ทั้งหมดและระงับบัญชี @${targetUser.username}`
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'แบนอุปกรณ์ทั้งหมดสำเร็จ');
+        fetchAdminData();
+        fetchBannedDevices();
+        setViewingUserDevice(null);
+      } else {
+        showToast(data.message || 'ไม่สามารถแบนอุปกรณ์ทั้งหมดได้');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    }
+  };
+
+  // Fetch VPN Blocking Status
+  const fetchVpnStatus = async () => {
+    try {
+      const res = await fetch('/api/devices/vpn-status', { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setBlockVpnSetting(data.blockVpn);
+      }
+    } catch { }
+  };
+
+  // Toggle VPN Blocking on/off
+  const handleToggleVpnBlock = async () => {
+    const nextVal = !blockVpnSetting;
+    try {
+      const res = await fetch('/api/devices/toggle-vpn-block', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ enabled: nextVal })
+      });
+      if (res.ok) {
+        setBlockVpnSetting(nextVal);
+        showToast(nextVal ? '🛡️ เปิดระบบบล็อก VPN & Proxy ทั้งระบบแล้ว' : 'ปิดการบล็อก VPN & Proxy แล้ว');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า VPN');
+    }
   };
 
   // Ban Device ID (Hardware Ban)
@@ -7234,7 +7308,7 @@ export default function App() {
                 const tab = e.target.value as any;
                 setAdminTab(tab);
                 if (tab === 'categories') fetchCategories();
-                if (tab === 'bannedIps') { fetchBannedIps(); fetchBannedDevices(); }
+                if (tab === 'bannedIps') { fetchBannedIps(); fetchBannedDevices(); fetchVpnStatus(); }
                 if (tab === 'stats') fetchStats();
                 if (tab === 'giftcodes') fetchGiftCodes();
                 if (tab === 'coupons') fetchCoupons();
@@ -9599,6 +9673,82 @@ async function verifyLicense(key, hwid) {
               {/* SUB-TAB 2: BANNED DEVICES (HARDWARE BAN) */}
               {blacklistSubTab === 'devices' && (
                 <div>
+                  {/* Anti-VPN & Proxy Shield Banner */}
+                  <div style={{
+                    background: blockVpnSetting
+                      ? 'linear-gradient(135deg, rgba(255, 26, 64, 0.15), rgba(180, 0, 36, 0.25))'
+                      : 'rgba(255, 255, 255, 0.03)',
+                    border: blockVpnSetting ? '2px solid #ff1a40' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '16px',
+                    padding: '1.25rem 1.5rem',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                    boxShadow: blockVpnSetting ? '0 0 25px rgba(255, 26, 64, 0.25)' : 'none'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '12px',
+                        background: blockVpnSetting ? 'rgba(255, 26, 64, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                        border: blockVpnSetting ? '1.5px solid #ff1a40' : '1px solid rgba(255, 255, 255, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.5rem'
+                      }}>
+                        🛡️
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                            ระบบบล็อก VPN & Proxy ทั้งระบบ (Anti-VPN Firewall)
+                          </h3>
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            background: blockVpnSetting ? '#ff1a40' : 'rgba(255, 255, 255, 0.1)',
+                            color: '#fff'
+                          }}>
+                            {blockVpnSetting ? 'เปิดใช้งาน (ACTIVE)' : 'ปิดอยู่ (OFF)'}
+                          </span>
+                        </div>
+                        <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#b89ca2' }}>
+                          บล็อกการมุดผ่าน VPN, Proxy และ Cloud Datacenter IP ทันที ป้องกันผู้ใช้ที่โดนแบนเปลี่ยน IP แล้วมุดกลับเข้ามา
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleToggleVpnBlock}
+                      style={{
+                        padding: '0.65rem 1.4rem',
+                        borderRadius: '10px',
+                        fontWeight: 800,
+                        fontSize: '0.88rem',
+                        cursor: 'pointer',
+                        border: 'none',
+                        background: blockVpnSetting
+                          ? 'linear-gradient(135deg, #10b981, #059669)'
+                          : 'linear-gradient(135deg, #ff1a40, #b91c1c)',
+                        color: '#fff',
+                        boxShadow: blockVpnSetting ? '0 0 15px rgba(16, 185, 129, 0.4)' : '0 0 15px rgba(255, 26, 64, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {blockVpnSetting ? '✓ เปิดบล็อก VPN อยู่ (คลิกเพื่อปิด)' : '⚡ เปิดบล็อก VPN ทันที'}
+                    </button>
+                  </div>
                   {/* Form to ban new Device manually */}
                   <div style={{ background: 'rgba(0, 210, 255, 0.04)', border: '1px solid rgba(0, 210, 255, 0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.75rem' }}>
                     <h4 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -17165,18 +17315,18 @@ async function verifyLicense(key, hwid) {
         <div className="modal-overlay" onClick={() => setViewingUserDevice(null)}>
           <div
             className="modal-content"
-            style={{ maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto' }}
+            style={{ maxWidth: '780px', width: '95%', maxHeight: '92vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <div className="modal-title">
-                <IconLaptop color="#00d2ff" size={22} />
+                <IconLaptop color="#00d2ff" size={24} />
                 <div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>
-                    ข้อมูลอุปกรณ์ & สเปกเครื่อง (Device Info & Hardware)
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                    ประวัติอุปกรณ์ทั้งหมด & อัตลักษณ์ฮาร์ดแวร์ (Device History & Hardware Ban)
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#b89ca2', fontWeight: 400 }}>
-                    สมาชิก: <strong style={{ color: '#fff' }}>@{viewingUserDevice.user.username}</strong> (ID: #{viewingUserDevice.user.id})
+                  <div style={{ fontSize: '0.82rem', color: '#b89ca2', fontWeight: 500, marginTop: '2px' }}>
+                    ผู้ใช้งาน: <strong style={{ color: '#00d2ff' }}>@{viewingUserDevice.user.username}</strong> (ID: #{viewingUserDevice.user.id})
                   </div>
                 </div>
               </div>
@@ -17186,226 +17336,237 @@ async function verifyLicense(key, hwid) {
             </div>
 
             <div className="modal-body">
-              {/* Highlight Card: Model & UDID */}
+              {/* Nuclear Action Banner: Ban All Devices */}
               <div
                 style={{
-                  background: 'linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(120, 0, 255, 0.08))',
-                  border: '1px solid rgba(0, 210, 255, 0.3)',
+                  background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.15), rgba(150, 0, 30, 0.25))',
+                  border: '2px solid rgba(255, 26, 64, 0.5)',
                   borderRadius: '14px',
-                  padding: '1.25rem',
-                  marginBottom: '1.25rem'
+                  padding: '1.1rem 1.25rem',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                  boxShadow: '0 0 25px rgba(255, 26, 64, 0.2)'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.85rem' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: '#b89ca2', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      รุ่นอุปกรณ์ที่เข้าใช้งานล่าสุด
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🚨</span>
+                    <span style={{ fontWeight: 800, color: '#fff', fontSize: '1rem' }}>
+                      แบนอุปกรณ์ทั้งหมดของ @{viewingUserDevice.user.username}
                     </span>
-                    <h3 style={{ fontSize: '1.35rem', color: '#00d2ff', fontWeight: 800, margin: '0.2rem 0' }}>
-                      {viewingUserDevice.info?.deviceType === 'mobile' ? '📱' : viewingUserDevice.info?.deviceType === 'tablet' ? '📟' : '💻'}{' '}
-                      {viewingUserDevice.info?.model || viewingUserDevice.user.lastDeviceModel || 'ไม่ทราบรุ่นอุปกรณ์'}
-                    </h3>
-                    <div style={{ fontSize: '0.8rem', color: '#998387' }}>
-                      แบรนด์: <strong style={{ color: '#fff' }}>{viewingUserDevice.info?.brand || 'ตรวจจับตามระบบ'}</strong> • ประเภท:{' '}
-                      <span style={{ textTransform: 'capitalize', color: '#ff758f' }}>
-                        {viewingUserDevice.info?.deviceType || 'คอมพิวเตอร์ / โน้ตบุ๊ก'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#b89ca2', display: 'block' }}>IP ล่าสุด:</span>
-                    <span className="ip-badge" style={{ color: '#ff4d6d', fontWeight: 700 }}>
-                      {viewingUserDevice.user.lastIp || '127.0.0.1'}
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      background: 'rgba(255, 26, 64, 0.25)',
+                      border: '1px solid #ff1a40',
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                      color: '#ff758f'
+                    }}>
+                      พบ {viewingUserDevice.devicesList?.length || 1} เครื่อง
                     </span>
                   </div>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#ffd6df' }}>
+                    บล็อกรหัสฮาร์ดแวร์ทุกเครื่องที่ยูสเซอร์คนนี้เคยใช้ + แบน IP ทั้งหมด ป้องกันการเปิด VPN มุดกลับมา 100%
+                  </p>
                 </div>
 
-                {/* Persistent UDID / Device ID Box */}
-                <div
+                <button
+                  type="button"
+                  onClick={() => handleBanAllUserDevices(viewingUserDevice.user)}
                   style={{
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'linear-gradient(135deg, #b91c1c, #dc2626)',
+                    border: '1.5px solid #ef4444',
+                    color: '#fff',
+                    padding: '0.55rem 1.25rem',
                     borderRadius: '10px',
-                    padding: '0.75rem 1rem',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '0.5rem',
-                    flexWrap: 'wrap'
-                  }}
-                >
-                  <div style={{ minWidth: '200px' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#b89ca2', marginBottom: '2px' }}>
-                      🔑 เลขประจำเครื่อง / Hardware Fingerprint (UDID):
-                    </div>
-                    <code
-                      style={{
-                        fontFamily: 'monospace',
-                        color: '#00e676',
-                        fontSize: '0.85rem',
-                        fontWeight: 700,
-                        wordBreak: 'break-all'
-                      }}
-                    >
-                      {viewingUserDevice.info?.deviceId || viewingUserDevice.user.deviceFingerprint || 'ยังไม่มีรหัส UDID บันทึกไว้'}
-                    </code>
-                  </div>
-
-                  {(viewingUserDevice.info?.deviceId || viewingUserDevice.user.deviceFingerprint) && (
-                    <button
-                      type="button"
-                      className="btn-outline"
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
-                      onClick={() => {
-                        const did = viewingUserDevice.info?.deviceId || viewingUserDevice.user.deviceFingerprint;
-                        navigator.clipboard.writeText(did);
-                        showToast(`คัดลอกรหัสเครื่อง ${did} เรียบร้อยแล้ว`);
-                      }}
-                    >
-                      <IconCopy size={13} />
-                      <span>คัดลอกเลขเครื่อง</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Hardware & Environment Specs Grid */}
-              <div style={{ marginBottom: '1.25rem' }}>
-                <h4 style={{ fontSize: '0.9rem', color: '#ff4d6d', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <IconZap size={16} color="#ff1a40" />
-                  <span>สเปกเครื่อง & สิ่งแวดล้อมระบบ (Deep Hardware Specs)</span>
-                </h4>
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                    gap: '0.65rem'
-                  }}
-                >
-                  {/* OS */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>ระบบปฏิบัติการ (OS)</div>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.88rem', marginTop: '2px' }}>
-                      🖥️ {viewingUserDevice.info?.os || 'ไม่ระบุ'}
-                    </div>
-                  </div>
-
-                  {/* Browser */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>เบราว์เซอร์ (Browser)</div>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.88rem', marginTop: '2px' }}>
-                      🌐 {viewingUserDevice.info?.browser || 'ไม่ระบุ'}
-                    </div>
-                  </div>
-
-                  {/* GPU Renderer */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem', gridColumn: 'span 2' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>การ์ดจอ / ชิปประมวลผลกราฟิก (GPU Renderer & Vendor)</div>
-                    <div style={{ fontWeight: 600, color: '#00d2ff', fontSize: '0.88rem', marginTop: '2px' }}>
-                      🎮 {viewingUserDevice.info?.gpuRenderer || 'ไม่ระบุ'}
-                      {viewingUserDevice.info?.gpuVendor && viewingUserDevice.info?.gpuVendor !== viewingUserDevice.info?.gpuRenderer && (
-                        <span style={{ color: '#b89ca2', fontSize: '0.78rem', marginLeft: '6px' }}>
-                          ({viewingUserDevice.info.gpuVendor})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Screen */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>ความละเอียดหน้าจอ (Screen Resolution)</div>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.88rem', marginTop: '2px' }}>
-                      📐 {viewingUserDevice.info?.screenResolution || 'ไม่ระบุ'}
-                      {viewingUserDevice.info?.colorDepth && (
-                        <span style={{ color: '#888', fontSize: '0.75rem', marginLeft: '4px' }}>
-                          ({viewingUserDevice.info.colorDepth})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* CPU Cores & RAM */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>สเปก CPU & RAM</div>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.88rem', marginTop: '2px' }}>
-                      ⚡ {viewingUserDevice.info?.cpuCores ? `${viewingUserDevice.info.cpuCores} Cores` : 'ไม่ระบุ'} • RAM:{' '}
-                      <span style={{ color: '#00e676' }}>{viewingUserDevice.info?.ramGb || 'ไม่ระบุ'}</span>
-                    </div>
-                  </div>
-
-                  {/* Touch Points */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>จุดสัมผัสหน้าจอ (Touch Points)</div>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.88rem', marginTop: '2px' }}>
-                      👆 {viewingUserDevice.info?.touchPoints !== undefined ? `${viewingUserDevice.info.touchPoints} จุด` : '0 จุด (เมาส์)'}
-                    </div>
-                  </div>
-
-                  {/* Timezone & Language */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>โซนเวลา & ภาษา (Timezone & Lang)</div>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.88rem', marginTop: '2px' }}>
-                      🌍 {viewingUserDevice.info?.timezone || 'ไม่ระบุ'} ({viewingUserDevice.info?.language || 'th-TH'})
-                    </div>
-                  </div>
-
-                  {/* Connection */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>ประเภทอินเทอร์เน็ต (Connection)</div>
-                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.88rem', marginTop: '2px' }}>
-                      📶 {viewingUserDevice.info?.connectionType || 'Broadband / Wi-Fi'}
-                    </div>
-                  </div>
-
-                  {/* Captured At */}
-                  <div style={{ background: 'rgba(25, 7, 12, 0.7)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '0.75rem' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#888' }}>บันทึกสเปกล่าสุดเมื่อ</div>
-                    <div style={{ fontWeight: 600, color: '#b89ca2', fontSize: '0.82rem', marginTop: '2px' }}>
-                      ⏰ {viewingUserDevice.info?.capturedAt ? new Date(viewingUserDevice.info.capturedAt).toLocaleString('th-TH') : 'บันทึกพร้อมประวัติบัญชี'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons: Hardware Ban & Close */}
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <button
-                  type="button"
-                  className="btn-outline"
-                  style={{ flex: 1, justifyContent: 'center' }}
-                  onClick={() => setViewingUserDevice(null)}
-                >
-                  ปิดหน้าต่าง
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-primary"
-                  style={{
-                    flex: 1.5,
-                    justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #b91c1c, #dc2626)',
-                    borderColor: '#ef4444'
-                  }}
-                  onClick={() => {
-                    const targetDid = viewingUserDevice.info?.deviceId || viewingUserDevice.user.deviceFingerprint;
-                    if (!targetDid) {
-                      showToast('ผู้ใช้รายนี้ยังไม่มีรหัสเครื่องที่สามารถสั่งแบนได้');
-                      return;
-                    }
-                    const modelName = viewingUserDevice.info?.model || viewingUserDevice.user.lastDeviceModel || 'Unknown Device';
-                    const confirmBan = window.confirm(
-                      `⚠️ ยืนยันการสั่งแบนเลขเครื่อง (Hardware Ban) นี้ใช่หรือไม่?\n\n- เลขเครื่อง: ${targetDid}\n- รุ่นอุปกรณ์: ${modelName}\n- ผู้ใช้: @${viewingUserDevice.user.username}\n\nเมื่อแบนแล้ว อุปกรณ์เครื่องนี้จะไม่สามารถเข้าสู่เว็บไซต์ได้ทุกบัญชี`
-                    );
-                    if (!confirmBan) return;
-                    handleBanDevice(targetDid, modelName, `แบนเลขเครื่องจากผู้ใช้ @${viewingUserDevice.user.username}`);
-                    setViewingUserDevice(null);
+                    gap: '6px',
+                    boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)'
                   }}
                 >
                   <IconLock size={15} />
-                  <span>🚫 สั่งแบนเลขเครื่องนี้ (Hardware Ban)</span>
+                  <span>แบนอุปกรณ์ทั้งหมดทันที</span>
+                </button>
+              </div>
+
+              {/* Devices List */}
+              <div style={{ marginBottom: '1rem' }}>
+                <h4 style={{ fontSize: '0.92rem', color: '#00d2ff', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <IconZap size={16} color="#00d2ff" />
+                  <span>รายการอุปกรณ์ที่เคยเข้าใช้งาน ({viewingUserDevice.devicesList?.length || 1} รายการ)</span>
+                </h4>
+
+                {loadingUserDevices && (
+                  <div style={{ textAlign: 'center', padding: '1.5rem', color: '#b89ca2' }}>
+                    <div className="spinner" style={{ width: '24px', height: '24px', margin: '0 auto 8px' }}></div>
+                    กำลังโหลดข้อมูลอุปกรณ์...
+                  </div>
+                )}
+
+                {/* Render Multiple Connected Devices */}
+                {viewingUserDevice.devicesList && viewingUserDevice.devicesList.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {viewingUserDevice.devicesList.map((dev: any, idx: number) => {
+                      const isDevBanned = dev.isBanned || bannedDevicesList.some(b => b.deviceId === dev.deviceId || (dev.hardwareHash && b.hardwareHash === dev.hardwareHash));
+                      return (
+                        <div
+                          key={dev.id || idx}
+                          style={{
+                            background: isDevBanned ? 'rgba(40, 10, 16, 0.85)' : 'rgba(25, 7, 14, 0.75)',
+                            border: isDevBanned ? '1.5px solid #ff1a40' : '1px solid rgba(0, 210, 255, 0.3)',
+                            borderRadius: '14px',
+                            padding: '1.15rem',
+                            position: 'relative'
+                          }}
+                        >
+                          {/* Device Header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span style={{ fontSize: '1.5rem' }}>
+                                {dev.deviceType === 'mobile' ? '📱' : dev.deviceType === 'tablet' ? '📟' : '💻'}
+                              </span>
+                              <div>
+                                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: isDevBanned ? '#ff4d6d' : '#00d2ff' }}>
+                                  #{idx + 1} {dev.deviceModel || 'Unknown Device'}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#b89ca2' }}>
+                                  OS: <strong style={{ color: '#fff' }}>{dev.os || 'Unknown OS'}</strong> • Browser: <strong style={{ color: '#fff' }}>{dev.browser || 'Unknown'}</strong>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {isDevBanned ? (
+                                <span style={{
+                                  background: 'rgba(255, 26, 64, 0.25)',
+                                  border: '1px solid #ff1a40',
+                                  color: '#ff4d6d',
+                                  padding: '3px 10px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 800
+                                }}>
+                                  🚫 ถูกแบนแล้ว
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleBanDevice(dev.deviceId, dev.deviceModel || 'Unknown', `แบนอุปกรณ์ของ @${viewingUserDevice.user.username}`)}
+                                  style={{
+                                    background: 'rgba(255, 26, 64, 0.15)',
+                                    border: '1px solid #ff1a40',
+                                    color: '#ff4d6d',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  แบนเฉพาะเครื่องนี้
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Hardware & ID Details Grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.5rem', background: 'rgba(0,0,0,0.4)', padding: '0.75rem', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.7rem', color: '#888', display: 'block' }}>Device ID (UDID):</span>
+                              <code style={{ fontSize: '0.78rem', color: '#00e676', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                {dev.deviceId || 'N/A'}
+                              </code>
+                            </div>
+                            {dev.hardwareHash && (
+                              <div>
+                                <span style={{ fontSize: '0.7rem', color: '#888', display: 'block' }}>Hardware Hash (Canvas/GPU):</span>
+                                <code style={{ fontSize: '0.78rem', color: '#ffdf00', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                  {dev.hardwareHash}
+                                </code>
+                              </div>
+                            )}
+                            <div>
+                              <span style={{ fontSize: '0.7rem', color: '#888', display: 'block' }}>IP ล่าสุด:</span>
+                              <span className="ip-badge" style={{ color: '#ff4d6d', fontSize: '0.78rem' }}>
+                                {dev.lastIp || '127.0.0.1'}
+                              </span>
+                              {dev.isVpn && (
+                                <span style={{ marginLeft: '4px', fontSize: '0.68rem', background: '#ff1a40', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>
+                                  VPN/Proxy
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.7rem', color: '#888', display: 'block' }}>เข้าใช้งานล่าสุด:</span>
+                              <span style={{ fontSize: '0.75rem', color: '#fff' }}>
+                                {dev.lastSeen ? new Date(dev.lastSeen).toLocaleString('th-TH') : 'ไม่ทราบ'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {dev.gpuRenderer && (
+                            <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '4px' }}>
+                              GPU: <strong style={{ color: '#00d2ff' }}>{dev.gpuRenderer}</strong> • จอภาพ: <strong style={{ color: '#fff' }}>{dev.screenResolution || 'N/A'}</strong>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Single device fallback if no history */
+                  <div style={{ background: 'rgba(25, 7, 14, 0.75)', border: '1px solid rgba(0, 210, 255, 0.3)', borderRadius: '14px', padding: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#00d2ff' }}>
+                        {viewingUserDevice.info?.model || viewingUserDevice.user.lastDeviceModel || 'Unknown Device'}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const did = viewingUserDevice.info?.deviceId || viewingUserDevice.user.deviceFingerprint;
+                          if (did) handleBanDevice(did, viewingUserDevice.info?.model || 'Unknown', `แบนอุปกรณ์ของ @${viewingUserDevice.user.username}`);
+                        }}
+                        style={{
+                          background: 'rgba(255, 26, 64, 0.15)',
+                          border: '1px solid #ff1a40',
+                          color: '#ff4d6d',
+                          padding: '4px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        แบนอุปกรณ์นี้
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#ccc' }}>
+                      Device ID: <code style={{ color: '#00e676', fontFamily: 'monospace' }}>{viewingUserDevice.info?.deviceId || viewingUserDevice.user.deviceFingerprint || 'N/A'}</code>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '4px' }}>
+                      IP ล่าสุด: <strong style={{ color: '#ff4d6d' }}>{viewingUserDevice.user.lastIp || '127.0.0.1'}</strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => setViewingUserDevice(null)}
+                >
+                  ปิดหน้าต่าง
                 </button>
               </div>
             </div>

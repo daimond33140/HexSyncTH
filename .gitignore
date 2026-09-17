@@ -42,3 +42,6 @@ bin/
 *.exe
 
 site_config.json
+
+Payload/
+ai/

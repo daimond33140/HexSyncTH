@@ -225,7 +225,7 @@ router.put('/:id', async (req, res) => {
 router.put('/:id/ban', async (req, res) => {
   try {
     const { id } = req.params;
-    const { isBanned, banReason, banIpAlso, adminUsername, bannedUntil } = req.body;
+    const { isBanned, banReason, banIpAlso, banAllDevicesAlso, adminUsername, bannedUntil } = req.body;
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ message: 'ไม่พบผู้ใช้นี้' });
 
@@ -244,6 +244,49 @@ router.put('/:id/ban', async (req, res) => {
 
     let extraMsg = '';
     // If admin requested banning user's IP as well
+    
+    // If admin requested banning all devices of the user as well
+    if (isBanned && banAllDevicesAlso) {
+      try {
+        const { UserDevice, BannedDevice } = require('../models');
+        const { refreshBannedDevices } = require('../middleware/ipBan');
+        const userDevs = await UserDevice.findAll({ where: { username: user.username } });
+        
+        if (user.deviceFingerprint) {
+          await BannedDevice.findOrCreate({
+            where: { deviceId: user.deviceFingerprint },
+            defaults: {
+              deviceId: user.deviceFingerprint,
+              deviceModel: user.lastDeviceModel || 'Unknown Device',
+              reason: banReason || 'แบนอุปกรณ์ทั้งหมดพร้อมกับบัญชีผู้ใช้',
+              bannedBy: adminUsername || 'Admin',
+              bannedAt: new Date()
+            }
+          });
+        }
+
+        for (const ud of userDevs) {
+          if (ud.deviceId) {
+            await BannedDevice.findOrCreate({
+              where: { deviceId: ud.deviceId },
+              defaults: {
+                deviceId: ud.deviceId,
+                hardwareHash: ud.hardwareHash || null,
+                deviceModel: ud.deviceModel || 'Unknown Device',
+                reason: banReason || 'แบนอุปกรณ์ทั้งหมดพร้อมกับบัญชีผู้ใช้',
+                bannedBy: adminUsername || 'Admin',
+                bannedAt: new Date()
+              }
+            });
+          }
+        }
+        await UserDevice.update({ isBanned: true, banReason }, { where: { username: user.username } });
+        await refreshBannedDevices();
+      } catch (err) {
+        console.error('Error auto-banning user devices:', err.message);
+      }
+    }
+
     if (isBanned && banIpAlso) {
       const ipsToBan = new Set();
       if (user.lastIp && user.lastIp !== '127.0.0.1') ipsToBan.add(user.lastIp);
