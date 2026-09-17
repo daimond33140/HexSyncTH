@@ -79,6 +79,8 @@ router.post('/redeem', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'กรุณากรอกรหัสโค้ดและเข้าสู่ระบบ' });
     }
 
+    const cleanCode = code.trim().toUpperCase();
+
     if (req.user && req.user.username !== username && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: '❌ สิทธิ์การเข้าถึงถูกปฏิเสธ ไม่อนุญาตให้แลกรับโค้ดแทนบัญชีผู้อื่น' });
     }

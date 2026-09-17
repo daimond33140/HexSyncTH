@@ -280,6 +280,10 @@ router.post('/', requireAdmin, async (req, res) => {
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({ message: 'ไม่พบสินค้านี้ในระบบ' });
+    }
     const { name, categoryId, price, originalPrice, downloadUrl, description, image, badge, active, isFeatured } = req.body;
     const safeUpdates = {};
     if (name !== undefined) safeUpdates.name = name;
@@ -307,7 +311,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     invalidateProductCache();
     res.json(product);
   } catch (err) {
-    res.status(500).json({ message: 'อัปเดตสินค้าไม่สำเร็จ' });
+    res.status(500).json({ message: 'อัปเดตสินค้าไม่สำเร็จ: ' + err.message });
   }
 });
 
