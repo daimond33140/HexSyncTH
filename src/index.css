@@ -166,3 +166,36 @@ input, select, textarea {
 .animate-float {
   animation: floatAnim 4s ease-in-out infinite;
 }
+
+/* Universal High-Priority Dark Theme Form & Select Styling */
+:root {
+  color-scheme: dark;
+}
+html, body {
+  color-scheme: dark;
+}
+
+select {
+  color-scheme: dark !important;
+  background-color: #14070a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 30, 60, 0.3) !important;
+}
+
+select option,
+select optgroup {
+  background-color: #16070b !important;
+  background: #16070b !important;
+  color: #ffffff !important;
+  font-size: 0.95rem !important;
+  padding: 8px 12px !important;
+}
+
+select option:checked,
+select option:hover,
+select option:focus,
+select option:active {
+  background-color: #ff1a40 !important;
+  background: #ff1a40 !important;
+  color: #ffffff !important;
+}

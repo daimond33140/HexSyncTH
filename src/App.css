@@ -4385,3 +4385,24 @@ html, body, #root, .app-container {
   border-radius: 10px;
   transition: width 0.1s ease-out;
 }
+
+/* Dropdown and Select Dark Mode Enforcement */
+select, select.text-input {
+  color-scheme: dark !important;
+  background-color: #14070a !important;
+  color: #fff !important;
+}
+
+select option, select.text-input option, optgroup {
+  color-scheme: dark !important;
+  background-color: #17070c !important;
+  background: #17070c !important;
+  color: #fff !important;
+  padding: 10px 14px !important;
+}
+
+select option:checked, select.text-input option:checked {
+  background-color: #ff1a40 !important;
+  background: #ff1a40 !important;
+  color: #fff !important;
+}
