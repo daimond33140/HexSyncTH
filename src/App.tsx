@@ -826,7 +826,7 @@ export default function App() {
   const [purchaseProgress, setPurchaseProgress] = useState<number>(0);
   const [purchaseStatusText, setPurchaseStatusText] = useState<string>('');
 
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Category management states
@@ -2062,25 +2062,6 @@ export default function App() {
   };
 
   // Delete category (Admin)
-  const handleDeleteCategory = async (cat: CategoryItem) => {
-    if (!window.confirm(`คุณต้องการลบหมวดหมู่ "${cat.name}" หรือไม่?`)) return;
-    try {
-      const res = await fetch(`/api/categories/${cat.id}?adminUsername=${encodeURIComponent(user?.username || 'Admin')}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        showToast(`ลบหมวดหมู่ "${cat.name}" เรียบร้อยแล้ว`);
-        fetchCategories();
-        if (selectedCategory === cat.slug) setSelectedCategory('all');
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.message || 'ลบหมวดหมู่ไม่สำเร็จ');
-      }
-    } catch {
-      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ');
-    }
-  };
 
   // Fetch purchases
   const fetchPurchases = async () => {
@@ -2928,7 +2909,8 @@ export default function App() {
         showToast('บันทึกรูปภาพและข้อมูลเกมสำเร็จแล้ว');
         setEditingGameMeta(null);
       } else {
-        showToast('บันทึกไม่สำเร็จ');
+        const data = await res.json().catch(() => ({}));
+        showToast(data.message || 'บันทึกไม่สำเร็จ: กรุณาลองใหม่อีกครั้ง');
       }
     } catch {
       showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ');
@@ -6672,7 +6654,6 @@ export default function App() {
             >
               <optgroup label="📦 1. สินค้า & สต็อกคีย์">
                 <option value="products">จัดการสินค้า & สต็อกคีย์</option>
-                <option value="categories">หมวดหมู่เกม & แบนเนอร์ ({categories.length})</option>
                 <option value="licenseKeys">🔑 ตัวสร้างคีย์ & API License ({adminLicenses.length})</option>
               </optgroup>
               <optgroup label="👥 2. สมาชิก & สิทธิ์ระบบ">
@@ -6705,7 +6686,7 @@ export default function App() {
             {/* GROUP 1: PRODUCTS & STOCK */}
             <button
               type="button"
-              className={`admin-tab-btn ${['products', 'categories', 'licenseKeys'].includes(adminTab) ? 'active' : ''}`}
+              className={`admin-tab-btn ${['products', 'licenseKeys'].includes(adminTab) ? 'active' : ''}`}
               onClick={() => setAdminTab('products')}
               style={{ justifyContent: 'center', padding: '0.65rem 0.85rem' }}
             >
@@ -7384,109 +7365,6 @@ export default function App() {
             </div>
           )}
 
-          {adminTab === 'categories' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.2rem', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-                <div>
-                  <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <IconGamepad size={20} color="#ff1a40" />
-                    <span>จัดการหมวดหมู่เกม & แบนเนอร์ (Game Categories)</span>
-                  </h3>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#b89ca2' }}>
-                    สร้างหมวดหมู่เกม แต่งแบนเนอร์เองได้ ใส่รูป Banner สวยงาม เมื่อลูกค้ากด Banner หน้าร้านจะเข้าสู่หมวดหมู่นั้นทันที
-                  </p>
-                </div>
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    setNewCategoryBanner('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&auto=format&fit=crop&q=80');
-                    setShowAddCategoryModal(true);
-                  }}
-                >
-                  <IconPlusCircle size={16} />
-                  <span>เพิ่มหมวดหมู่เกมใหม่</span>
-                </button>
-              </div>
-
-              <div className="admin-table-container">
-              <div className="mobile-table-tip">👈 เลื่อนซ้าย-ขวาเพื่อดูตารางทั้งหมด 👉</div>
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>รูปแบนเนอร์</th>
-                      <th>ชื่อหมวดหมู่</th>
-                      <th>รหัส Slug</th>
-                      <th>คำอธิบาย</th>
-                      <th>สินค้าในหมวด</th>
-                      <th>ลำดับ</th>
-                      <th>การจัดการ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {categories.map((cat) => (
-                      <tr key={cat.id}>
-                        <td>
-                          <img
-                            src={cat.bannerImage || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200'}
-                            alt={cat.name}
-                            className="cat-admin-banner-thumb"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200';
-                            }}
-                          />
-                        </td>
-                        <td style={{ fontWeight: 700, color: '#fff' }}>{cat.name}</td>
-                        <td>
-                          <code style={{ background: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.45rem', borderRadius: 4, color: '#ff4d6d' }}>
-                            {cat.slug}
-                          </code>
-                        </td>
-                        <td style={{ fontSize: '0.83rem', color: '#cbd5e1', maxWidth: 220 }}>
-                          {cat.description || '-'}
-                        </td>
-                        <td>
-                          <span style={{ padding: '0.25rem 0.6rem', borderRadius: 6, background: 'rgba(16,185,129,0.15)', color: '#10b981', fontWeight: 700, fontSize: '0.85rem' }}>
-                            {cat.productCount || 0} ชิ้น
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 600 }}>{cat.displayOrder || 0}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.4rem' }}>
-                            <button
-                              className="btn-outline"
-                              style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }}
-                              onClick={() => setEditingCategory(cat)}
-                            >
-                              <IconEdit size={13} />
-                              <span>แก้ไขรูป/ข้อมูล</span>
-                            </button>
-                            <button
-                              className="btn-outline"
-                              style={{
-                                padding: '0.35rem 0.65rem',
-                                fontSize: '0.78rem',
-                                color: '#ff3333',
-                                borderColor: 'rgba(255, 51, 51, 0.35)',
-                                background: 'rgba(255, 51, 51, 0.08)'
-                              }}
-                              onClick={() => handleDeleteCategory(cat)}
-                              title={`ลบหมวดหมู่ ${cat.name}`}
-                            >
-                              <IconTrash size={13} />
-                              <span>ลบ</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-
-          {/* TAB: LICENSE KEY ENGINE & CUSTOM API KEYS */}
           {adminTab === 'licenseKeys' && (
             <div style={{ maxWidth: '1100px' }}>
               {/* Header Title & Action Buttons */}

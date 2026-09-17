@@ -155,7 +155,7 @@ router.get('/stats', async (req, res) => {
 router.post('/', requireAdmin, async (req, res) => {
   try {
     const { settings, adminUsername } = req.body;
-    if (!settings) return res.status(400).json({ message: 'ไม่มีข้อมูลการตั้งค่า' });
+    if (!settings) return res.status(400).json({ success: false, message: 'ไม่มีข้อมูลการตั้งค่า' });
 
     for (const [key, value] of Object.entries(settings)) {
       const [setting] = await Setting.findOrCreate({
@@ -166,16 +166,21 @@ router.post('/', requireAdmin, async (req, res) => {
       await setting.save();
     }
 
-    await Log.create({
-      action: 'ADMIN_UPDATE_THEME',
-      detail: `ปรับแต่งธีม สถิติ และการตั้งค่าเว็บไซต์โดย ${adminUsername || 'Admin'}`,
-      username: adminUsername || 'Admin',
-    });
+    try {
+      await Log.create({
+        action: 'ADMIN_UPDATE_THEME',
+        detail: `ปรับแต่งธีม สถิติ และการตั้งค่าเว็บไซต์โดย ${adminUsername || 'Admin'}`,
+        username: adminUsername || 'Admin',
+      });
+    } catch (logErr) {
+      console.warn('Non-fatal error logging admin update:', logErr.message);
+    }
 
     invalidateSettingsCache();
-    res.json({ message: 'บันทึกการตั้งค่าตกแต่งเว็บไซต์สำเร็จ' });
+    res.json({ success: true, message: 'บันทึกการตั้งค่าตกแต่งเว็บไซต์สำเร็จ' });
   } catch (err) {
-    res.status(500).json({ message: 'บันทึกการตั้งค่าไม่สำเร็จ: ' + err.message });
+    console.error('Error saving settings:', err);
+    res.status(500).json({ success: false, message: 'บันทึกการตั้งค่าไม่สำเร็จ: ' + err.message });
   }
 });
 

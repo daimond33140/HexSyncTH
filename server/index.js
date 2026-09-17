@@ -53,13 +53,15 @@ app.use(cors({ origin: true, credentials: true }));
 
 // Payload Bomb Protection: General API requests capped at 1MB
 // Specific upload endpoints are allowed up to 30MB below
-app.use('/api/topup/slip', express.json({ limit: '30mb' }));
-app.use('/api/products', express.json({ limit: '30mb' }));
-app.use('/api/games', express.json({ limit: '30mb' }));
-app.use('/api/categories', express.json({ limit: '30mb' }));
-app.use('/api/security/report-threat', express.json({ limit: '15mb' })); // Allow base64 screenshots
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ limit: '1mb', extended: true }));
+// Allow up to 50MB for settings, banners, animated GIFs, slips, and products
+app.use('/api/settings', express.json({ limit: '50mb' }));
+app.use('/api/topup/slip', express.json({ limit: '50mb' }));
+app.use('/api/products', express.json({ limit: '50mb' }));
+app.use('/api/games', express.json({ limit: '50mb' }));
+app.use('/api/categories', express.json({ limit: '50mb' }));
+app.use('/api/security/report-threat', express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // 2. IP & Device Ban Enforcement Middleware
 app.use(ipBanMiddleware);
