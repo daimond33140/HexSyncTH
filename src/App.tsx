@@ -1454,7 +1454,7 @@ export default function App() {
     };
 
     checkUserAccountBan();
-    const interval = setInterval(checkUserAccountBan, 15000);
+    const interval = setInterval(checkUserAccountBan, 45000);
     return () => clearInterval(interval);
   }, [user?.username]);
 
@@ -1554,7 +1554,7 @@ export default function App() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Heartbeat check every 30 seconds
-    const interval = setInterval(checkClientBanStatus, 30000);
+    const interval = setInterval(checkClientBanStatus, 60000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -6277,7 +6277,7 @@ export default function App() {
           <div className="admin-mobile-tab-selector-wrap">
             <label className="admin-mobile-tab-label">
               <IconSettings size={14} color="#ff1a40" />
-              <span>เลือกหมวดหมู่การจัดการหลังบ้าน:</span>
+              <span>เลือกศูนย์การจัดการหลังบ้าน:</span>
             </label>
             <select
               className="admin-mobile-tab-select"
@@ -6291,181 +6291,411 @@ export default function App() {
                 if (tab === 'giftcodes') fetchGiftCodes();
                 if (tab === 'coupons') fetchCoupons();
                 if (tab === 'slips') fetchAdminSlips();
+                if (tab === 'threatLogs') fetchThreatLogs();
+                if (tab === 'banManager') fetchActiveBans();
+                if (tab === 'superadmin') fetchSuperAdminAccounts();
               }}
             >
-              <option value="products">🛍️ จัดการสินค้า & สต็อกคีย์</option>
-              <option value="categories">🎮 หมวดหมู่เกม & แบนเนอร์ ({categories.length})</option>
-              <option value="users">👥 จัดการสมาชิก & ยศ ({adminUsers.length})</option>
-              <option value="bannedIps">🛡️ รายชื่อ IP & อุปกรณ์ที่ถูกแบน ({bannedIpsList.length + bannedDevicesList.length})</option>
-              <option value="stats">📊 สถิติยอดขาย & ยอดสั่งซื้อ</option>
-              <option value="giftcodes">🎁 ซองของขวัญ / Gift Codes</option>
-              <option value="coupons">🎟️ โค้ดส่วนลด / คูปอง</option>
-              <option value="theme">🎨 ตกแต่งธีม & โลโก้ร้านค้า</option>
-              <option value="slips">🧾 ตรวจสอบสลิปโอนเงิน</option>
-              <option value="topups">💰 สรุปประวัติการเติมเงิน</option>
-              <option value="logs">📜 บันทึกประวัติการทำงาน (Logs)</option>
-              <option value="threatLogs">🚨 รายงานภัยคุกคาม (Security Threats)</option>
-              <option value="banManager">⛔ เครื่องมือจัดการแบนด่วน</option>
-              {user?.role === 'superadmin' && <option value="superadmin">👑 SuperAdmin Dashboard</option>}
+              <optgroup label="📦 1. สินค้า & สต็อกคีย์">
+                <option value="products">จัดการสินค้า & สต็อกคีย์</option>
+                <option value="categories">หมวดหมู่เกม & แบนเนอร์ ({categories.length})</option>
+              </optgroup>
+              <optgroup label="👥 2. สมาชิก & สิทธิ์ระบบ">
+                <option value="users">จัดการสมาชิก & ยศ ({adminUsers.length})</option>
+                {user?.role === 'superadmin' && <option value="superadmin">👑 SuperAdmin Dashboard ({superAdminAccounts.length})</option>}
+              </optgroup>
+              <optgroup label="💳 3. การเงิน & ตรวจสลิป">
+                <option value="slips">ตรวจสอบสลิปโอนเงิน ({adminSlips.length})</option>
+                <option value="topups">สรุปประวัติการเติมเงิน {adminTopupSummary?.totalRecords ? `(${adminTopupSummary.totalRecords})` : ''}</option>
+              </optgroup>
+              <optgroup label="🎟️ 4. โปรโมชั่น & โค้ด">
+                <option value="giftcodes">โค้ดแจกเครดิตฟรี (Gift Codes)</option>
+                <option value="coupons">คูปองส่วนลดสินค้า (Coupons)</option>
+              </optgroup>
+              <optgroup label="🛡️ 5. ศูนย์ความปลอดภัย & จัดการแบน (Security)">
+                <option value="bannedIps">แบน IP & เครื่อง ({bannedIpsList.length + bannedDevicesList.length})</option>
+                <option value="banManager">จัดการปลดแบน 3-Strikes</option>
+                <option value="threatLogs">บันทึกภัยคุกคาม & โจมตี</option>
+              </optgroup>
+              <optgroup label="⚙️ 6. ตั้งค่าร้านค้า & สถิติ">
+                <option value="theme">โลโก้, ธีม & ข้อมูลร้าน</option>
+                <option value="stats">แดชบอร์ดสถิติ & ยอดขาย</option>
+                <option value="logs">บันทึกประวัติการทำงาน (Audit Logs)</option>
+              </optgroup>
             </select>
           </div>
 
-          {/* Admin Navigation Tabs */}
-          <div className="admin-tabs">
+          {/* Consolidated 6-Pill Main Navigation Bar */}
+          <div className="admin-tabs" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', marginBottom: '0.85rem' }}>
+            {/* GROUP 1: PRODUCTS & STOCK */}
             <button
-              className={`admin-tab-btn ${adminTab === 'products' ? 'active' : ''}`}
+              type="button"
+              className={`admin-tab-btn ${['products', 'categories'].includes(adminTab) ? 'active' : ''}`}
               onClick={() => setAdminTab('products')}
+              style={{ justifyContent: 'center', padding: '0.65rem 0.85rem' }}
             >
-              <IconShoppingBag size={16} />
-              <span>จัดการสินค้า & สต็อกคีย์</span>
+              <IconShoppingBag size={18} />
+              <span>📦 สินค้า & สต็อก</span>
             </button>
+
+            {/* GROUP 2: USERS & ROLES */}
             <button
-              className={`admin-tab-btn ${adminTab === 'categories' ? 'active' : ''}`}
-              onClick={() => { setAdminTab('categories'); fetchCategories(); }}
-            >
-              <IconGamepad size={16} />
-              <span>หมวดหมู่เกม & แบนเนอร์ ({categories.length})</span>
-            </button>
-            <button
-              className={`admin-tab-btn ${adminTab === 'users' ? 'active' : ''}`}
+              type="button"
+              className={`admin-tab-btn ${['users', 'superadmin'].includes(adminTab) ? 'active' : ''}`}
               onClick={() => setAdminTab('users')}
+              style={{ justifyContent: 'center', padding: '0.65rem 0.85rem' }}
             >
-              <IconUserCheck size={16} />
-              <span>จัดการสมาชิก & ยศ</span>
+              <IconUserCheck size={18} />
+              <span>👥 สมาชิก & ยศ</span>
             </button>
+
+            {/* GROUP 3: FINANCE & SLIPS */}
             <button
-              className={`admin-tab-btn ${adminTab === 'bannedIps' ? 'active' : ''}`}
-              onClick={() => { setAdminTab('bannedIps'); fetchBannedIps(); fetchBannedDevices(); }}
-              style={bannedIpsList.length + bannedDevicesList.length > 0 ? { borderColor: 'rgba(255, 26, 64, 0.6)' } : {}}
-            >
-              <IconShield size={16} color="#ff1a40" />
-              <span>แบน IP & เครื่อง ({bannedIpsList.length + bannedDevicesList.length})</span>
-            </button>
-            <button
-              className={`admin-tab-btn ${adminTab === 'stats' ? 'active' : ''}`}
-              onClick={() => { setAdminTab('stats'); fetchStats(); }}
-            >
-              <IconBarChart size={16} />
-              <span>แดชบอร์ดสถิติ & ยอดขาย</span>
-            </button>
-            <button
-              className={`admin-tab-btn ${adminTab === 'giftcodes' ? 'active' : ''}`}
-              onClick={() => { setAdminTab('giftcodes'); fetchGiftCodes(); }}
-            >
-              <IconGift size={16} />
-              <span>โค้ดแจกเครดิตฟรี</span>
-            </button>
-            <button
-              className={`admin-tab-btn ${adminTab === 'coupons' ? 'active' : ''}`}
-              onClick={() => { setAdminTab('coupons'); fetchCoupons(); }}
-            >
-              <IconTag size={16} />
-              <span>คูปองส่วนลด</span>
-            </button>
-            <button
-              className={`admin-tab-btn ${adminTab === 'theme' ? 'active' : ''}`}
-              onClick={() => setAdminTab('theme')}
-            >
-              <IconEdit size={16} />
-              <span>โลโก้, จุดเด่น & ธนาคาร</span>
-            </button>
-            <button
-              className={`admin-tab-btn ${adminTab === 'slips' ? 'active' : ''}`}
+              type="button"
+              className={`admin-tab-btn ${['slips', 'topups'].includes(adminTab) ? 'active' : ''}`}
               onClick={() => { setAdminTab('slips'); fetchAdminSlips(); }}
+              style={{ justifyContent: 'center', padding: '0.65rem 0.85rem' }}
             >
-              <IconCheck size={16} />
-              <span>สลิปเติมเงิน ({adminSlips.length})</span>
+              <IconCreditCard size={18} />
+              <span>💳 การเงิน & สลิป</span>
             </button>
+
+            {/* GROUP 4: PROMOTIONS */}
             <button
-              className={`admin-tab-btn ${adminTab === 'topups' ? 'active' : ''}`}
-              onClick={() => {
-                setAdminTab('topups');
-                fetchAdminTopupHistory();
-              }}
+              type="button"
+              className={`admin-tab-btn ${['giftcodes', 'coupons'].includes(adminTab) ? 'active' : ''}`}
+              onClick={() => { setAdminTab('giftcodes'); fetchGiftCodes(); }}
+              style={{ justifyContent: 'center', padding: '0.65rem 0.85rem' }}
+            >
+              <IconGift size={18} />
+              <span>🎟️ โปรโมชั่น</span>
+            </button>
+
+            {/* GROUP 5: SECURITY & BANS (CONSOLIDATED) */}
+            <button
+              type="button"
+              className={`admin-tab-btn ${['bannedIps', 'banManager', 'threatLogs'].includes(adminTab) ? 'active' : ''}`}
+              onClick={() => { setAdminTab('bannedIps'); fetchBannedIps(); fetchBannedDevices(); }}
               style={{
-                borderColor: adminTab === 'topups' ? '#10b981' : 'rgba(16, 185, 129, 0.4)',
-                background: adminTab === 'topups' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.25))' : 'rgba(16, 185, 129, 0.08)',
-                color: adminTab === 'topups' ? '#10b981' : '#a7f3d0'
+                justifyContent: 'center',
+                padding: '0.65rem 0.85rem',
+                borderColor: ['bannedIps', 'banManager', 'threatLogs'].includes(adminTab) ? '#ff1a40' : 'rgba(255, 26, 64, 0.45)',
+                background: ['bannedIps', 'banManager', 'threatLogs'].includes(adminTab) ? 'linear-gradient(135deg, rgba(255, 26, 64, 0.35), rgba(200, 10, 40, 0.25))' : 'rgba(255, 26, 64, 0.08)'
               }}
             >
-              <IconCreditCard size={16} color="#10b981" />
-              <span>ประวัติการเติมเงิน {adminTopupSummary?.totalRecords ? `(${adminTopupSummary.totalRecords})` : ''}</span>
+              <IconShield size={18} color="#ff1a40" />
+              <span>🛡️ ศูนย์ความปลอดภัย & แบน</span>
             </button>
+
+            {/* GROUP 6: SETTINGS & STATS */}
             <button
-              className={`admin-tab-btn ${adminTab === 'logs' ? 'active' : ''}`}
-              onClick={() => setAdminTab('logs')}
+              type="button"
+              className={`admin-tab-btn ${['theme', 'stats', 'logs'].includes(adminTab) ? 'active' : ''}`}
+              onClick={() => setAdminTab('theme')}
+              style={{ justifyContent: 'center', padding: '0.65rem 0.85rem' }}
             >
-              <IconFileText size={16} />
-              <span>ประวัติการทำงาน (Logs)</span>
+              <IconSettings size={18} />
+              <span>⚙️ ตั้งค่า & สถิติ</span>
             </button>
-            <button
-              className={`admin-tab-btn ${adminTab === 'threatLogs' ? 'active' : ''}`}
-              onClick={() => {
-                setAdminTab('threatLogs');
-                if (user?.role === 'superadmin' || isPasscodeUnlocked) {
-                  fetchThreatLogs();
-                }
-              }}
-              style={{
-                borderColor: 'rgba(255, 26, 64, 0.7)',
-                background: adminTab === 'threatLogs' ? 'rgba(255, 26, 64, 0.25)' : 'rgba(255, 26, 64, 0.08)'
-              }}
-            >
-              <IconAlertCircle size={16} color="#ff4d6d" />
-              <span>บันทึกสุ่มเสี่ยง & ถอดรหัส {threatLogsList.length > 0 ? `(${threatLogsList.length})` : ''} 🔒</span>
-            </button>
-            <button
-              className={`admin-tab-btn ${adminTab === 'banManager' ? 'active' : ''}`}
-              onClick={() => {
-                setAdminTab('banManager');
-                if (user?.role === 'superadmin' || isPasscodeUnlocked) {
-                  fetchActiveBans();
-                }
-              }}
-              style={{
-                borderColor: 'rgba(255, 170, 0, 0.7)',
-                background: adminTab === 'banManager' ? 'rgba(255, 170, 0, 0.25)' : 'rgba(255, 170, 0, 0.08)'
-              }}
-            >
-              <IconShield size={16} color="#ffaa00" />
-              <span>จัดการระยะเวลาปลดแบน 🔒</span>
-            </button>
-            {user?.role === 'superadmin' && (
-              <button
-                className={`admin-tab-btn ${adminTab === 'superadmin' ? 'active' : ''}`}
-                onClick={() => {
-                  setAdminTab('superadmin');
-                  fetchSuperAdminAccounts();
-                }}
-                style={{
-                  borderColor: 'rgba(255, 215, 0, 0.9)',
-                  background: adminTab === 'superadmin' ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.35), rgba(217, 119, 6, 0.25))' : 'rgba(255, 215, 0, 0.1)',
-                  boxShadow: adminTab === 'superadmin' ? '0 0 15px rgba(255, 215, 0, 0.5)' : 'none'
-                }}
-              >
-                <span style={{ fontSize: '1.05rem' }}>👑</span>
-                <span style={{ color: '#ffd700', fontWeight: 800 }}>จัดการ SuperAdmin</span>
-              </button>
+          </div>
+
+          {/* DYNAMIC SECONDARY SUB-TAB SELECTOR (PILL BADGES) */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexWrap: 'wrap',
+            marginBottom: '1.25rem',
+            padding: '0.65rem 0.95rem',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.09)'
+          }}>
+            <span style={{ fontSize: '0.78rem', color: '#9ca3af', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <IconArrowRight size={14} /> เมนูย่อย:
+            </span>
+
+            {/* SUB-TABS FOR PRODUCTS */}
+            {['products', 'categories'].includes(adminTab) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('products')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'products' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  📦 จัดการสินค้า & สต็อกคีย์
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('categories'); fetchCategories(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'categories' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  🎮 หมวดหมู่เกม & แบนเนอร์ ({categories.length})
+                </button>
+              </>
             )}
-            {user?.role === 'admin' && (
-              <button
-                className={`admin-tab-btn ${adminTab === 'superadmin' ? 'active' : ''}`}
-                onClick={() => {
-                  setAdminTab('superadmin');
-                  if (isSuperAdminUnlocked) {
-                    fetchSuperAdminAccounts();
-                  }
-                }}
-                style={{
-                  borderColor: 'rgba(239, 68, 68, 0.8)',
-                  background: adminTab === 'superadmin' ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(185, 28, 28, 0.2))' : 'rgba(239, 68, 68, 0.08)',
-                  boxShadow: adminTab === 'superadmin' ? '0 0 15px rgba(239, 68, 68, 0.4)' : 'none'
-                }}
-                title="สำหรับกรณี SuperAdmin ลืมรหัสผ่าน (ปลดล็อกด้วยรหัสลับ Master Secret)"
-              >
-                <span style={{ fontSize: '1.05rem' }}>🔑</span>
-                <span style={{ color: '#fca5a5', fontWeight: 700 }}>กู้คืน SuperAdmin (รหัสลับ)</span>
-              </button>
+
+            {/* SUB-TABS FOR USERS */}
+            {['users', 'superadmin'].includes(adminTab) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('users')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'users' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  👥 รายชื่อสมาชิก & สิทธิ์ ({adminUsers.length})
+                </button>
+                {user?.role === 'superadmin' && (
+                  <button
+                    type="button"
+                    onClick={() => { setAdminTab('superadmin'); fetchSuperAdminAccounts(); }}
+                    style={{
+                      padding: '0.35rem 0.85rem',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: adminTab === 'superadmin' ? 'linear-gradient(135deg, #ffd700, #d97706)' : 'rgba(255,215,0,0.15)',
+                      color: adminTab === 'superadmin' ? '#000' : '#ffd700'
+                    }}
+                  >
+                    👑 SuperAdmin Dashboard ({superAdminAccounts.length})
+                  </button>
+                )}
+                {user?.role !== 'superadmin' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminTab('superadmin');
+                      if (isSuperAdminUnlocked) fetchSuperAdminAccounts();
+                    }}
+                    style={{
+                      padding: '0.35rem 0.85rem',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#fca5a5'
+                    }}
+                  >
+                    🔑 กู้คืน SuperAdmin (รหัสลับ)
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* SUB-TABS FOR FINANCE */}
+            {['slips', 'topups'].includes(adminTab) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('slips'); fetchAdminSlips(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'slips' ? '#10b981' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  🧾 ตรวจสอบสลิป SlipOK ({adminSlips.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('topups'); fetchAdminTopupHistory(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'topups' ? '#10b981' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  💰 สรุปประวัติการเติมเงินรวม
+                </button>
+              </>
+            )}
+
+            {/* SUB-TABS FOR PROMOTIONS */}
+            {['giftcodes', 'coupons'].includes(adminTab) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('giftcodes'); fetchGiftCodes(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'giftcodes' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  🎁 ซองของขวัญ / Gift Codes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('coupons'); fetchCoupons(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'coupons' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  🎟️ คูปองส่วนลดสินค้า
+                </button>
+              </>
+            )}
+
+            {/* SUB-TABS FOR SECURITY (UNIFIED) */}
+            {['bannedIps', 'banManager', 'threatLogs'].includes(adminTab) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('bannedIps'); fetchBannedIps(); fetchBannedDevices(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'bannedIps' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  🚫 แบน IP & อุปกรณ์ ({bannedIpsList.length + bannedDevicesList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('banManager'); fetchActiveBans(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'banManager' ? '#ffaa00' : 'rgba(255,170,0,0.15)',
+                    color: adminTab === 'banManager' ? '#000' : '#ffaa00'
+                  }}
+                >
+                  ⛔ จัดการปลดแบนสมาชิก (3-Strikes)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('threatLogs'); fetchThreatLogs(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'threatLogs' ? '#ef4444' : 'rgba(239,68,68,0.15)',
+                    color: '#fff'
+                  }}
+                >
+                  🚨 บันทึกภัยคุกคาม & โจมตี (Threat Logs)
+                </button>
+              </>
+            )}
+
+            {/* SUB-TABS FOR SETTINGS & STATS */}
+            {['theme', 'stats', 'logs'].includes(adminTab) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('theme')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'theme' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  🎨 ธีม, เพลง & ข้อมูลร้าน
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('stats'); fetchStats(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'stats' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  📊 สถิติยอดขาย & ออเดอร์
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('logs')}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'logs' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    color: '#fff'
+                  }}
+                >
+                  📜 บันทึกระบบ (Audit Logs)
+                </button>
+              </>
             )}
           </div>
 
