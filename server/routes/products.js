@@ -362,5 +362,54 @@ router.delete('/:id', requireAdmin, async (req, res) => {
   }
 });
 
+
+// POST /api/products/bulk-rental - Bulk configure rental duration and multiple linked games
+router.post('/bulk-rental', requireAdmin, async (req, res) => {
+  try {
+    const { updates, adminUsername } = req.body;
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ success: false, message: 'ไม่มีข้อมูลสินค้าที่ต้องการตั้งค่า' });
+    }
+
+    let updatedCount = 0;
+    for (const item of updates) {
+      if (!item.id) continue;
+      const product = await Product.findByPk(item.id);
+      if (product) {
+        const patch = {};
+        if (item.linkedGameId !== undefined) {
+          if (Array.isArray(item.linkedGameId)) {
+            patch.linkedGameId = item.linkedGameId.filter(Boolean).join(',') || null;
+          } else {
+            patch.linkedGameId = item.linkedGameId ? String(item.linkedGameId).trim() : null;
+          }
+        }
+        if (item.durationDays !== undefined) {
+          patch.durationDays = Number(item.durationDays);
+          patch.durationHours = item.durationHours !== undefined 
+            ? Number(item.durationHours) 
+            : (patch.durationDays ? Math.round(patch.durationDays * 24) : 0);
+        }
+        await product.update(patch);
+        updatedCount++;
+      }
+    }
+
+    try {
+      await Log.create({
+        action: 'ADMIN_BULK_UPDATE_RENTAL',
+        detail: `ตั้งค่าสิทธิ์เช่าและปลดล็อกเกมแบบกลุ่ม (Bulk Rental) จำนวน ${updatedCount} รายการ โดย ${adminUsername || 'Admin'}`,
+        username: adminUsername || 'Admin',
+      });
+    } catch {}
+
+    invalidateProductCache();
+    res.json({ success: true, message: `ตั้งค่าสำเร็จ ${updatedCount} รายการ`, updatedCount });
+  } catch (err) {
+    console.error('Error bulk updating rental:', err);
+    res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตั้งค่า: ' + err.message });
+  }
+});
+
 module.exports = router;
 module.exports.invalidateProductCache = invalidateProductCache;

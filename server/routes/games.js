@@ -253,7 +253,10 @@ router.get('/:id/download-check', async (req, res) => {
     const activeLicense = await Purchase.findOne({
       where: {
         userId: decoded.id,
-        linkedGameId: game.id,
+        [Op.or]: [
+          { linkedGameId: game.id },
+          { linkedGameId: { [Op.like]: `%${game.id}%` } }
+        ],
         expiresAt: { [Op.gt]: new Date() }
       }
     });
@@ -310,7 +313,10 @@ router.get('/:id/download', async (req, res) => {
         const activeLicense = await Purchase.findOne({
           where: {
             userId: decoded.id,
-            linkedGameId: game.id,
+            [Op.or]: [
+              { linkedGameId: game.id },
+              { linkedGameId: { [Op.like]: `%${game.id}%` } }
+            ],
             expiresAt: { [Op.gt]: new Date() }
           }
         });

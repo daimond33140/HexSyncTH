@@ -180,23 +180,28 @@ router.post('/checkout', verifyToken, async (req, res) => {
 
           // User Rule: If renting again while time remains, use whichever time is GREATER (do not stack)
           // เช่น เช่า 1 วัน เหลือ 10 ชม. แล้วไปเช่า 3 วัน ก็จะนับถอยหลัง 3 วันเลย ไม่เอาเวลาเก่ามารวม
+          // Multi-Game Rental Linkage: Supports single ID or comma-separated IDs (e.g. "game-rov,game-pubg")
           if (p.linkedGameId) {
-            const activePrev = await Purchase.findOne({
-              where: {
-                userId: user.id,
-                linkedGameId: p.linkedGameId,
-                expiresAt: { [Op.gt]: new Date() }
-              },
-              order: [['expiresAt', 'DESC']],
-              transaction: t
-            });
+            const linkedIds = p.linkedGameId.split(',').map(s => s.trim()).filter(Boolean);
+            if (linkedIds.length > 0) {
+              const activePrev = await Purchase.findOne({
+                where: {
+                  userId: user.id,
+                  [Op.or]: [
+                    { linkedGameId: linkedIds[0] },
+                    { linkedGameId: { [Op.like]: `%${linkedIds[0]}%` } }
+                  ],
+                  expiresAt: { [Op.gt]: new Date() }
+                },
+                order: [['expiresAt', 'DESC']],
+                transaction: t
+              });
 
-            if (activePrev && activePrev.expiresAt) {
-              const prevExpiry = new Date(activePrev.expiresAt);
-              if (prevExpiry > newExpiresAt) {
-                finalExpiresAt = prevExpiry;
-              } else {
-                finalExpiresAt = newExpiresAt;
+              if (activePrev && activePrev.expiresAt) {
+                const prevExpiry = new Date(activePrev.expiresAt);
+                if (prevExpiry > newExpiresAt) {
+                  finalExpiresAt = prevExpiry;
+                }
               }
             }
           }

@@ -1,3 +1,4 @@
+import { parseProductRentalAI, formatLinkedGamesSummary } from './rentalAiParser';
 ﻿import { GameStatusView } from './GameStatusView';
 import { ShieldCheck } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
@@ -641,6 +642,12 @@ export default function App() {
   });
   
   // Game Packages Storefront & Admin States
+  const [selectedBulkProductIds, setSelectedBulkProductIds] = useState<number[]>([]);
+  const [showBulkRentalModal, setShowBulkRentalModal] = useState<boolean>(false);
+  const [bulkDrafts, setBulkDrafts] = useState<Record<number, { linkedGameIds: string[]; durationDays: number; durationHours: number; detectedLabel?: string }>>({});
+  const [newProductLinkedGameIds, setNewProductLinkedGameIds] = useState<string[]>([]);
+  const [newProductDurationDays, setNewProductDurationDays] = useState<number>(1);
+
   const [selectedGameGroup, setSelectedGameGroup] = useState<GameGroup | null>(null);
   const [selectedPackageTier, setSelectedPackageTier] = useState<Product | null>(null);
   const [packageQty, setPackageQty] = useState<number>(1);
@@ -2911,6 +2918,136 @@ export default function App() {
       } else {
         const data = await res.json().catch(() => ({}));
         showToast(data.message || 'บันทึกไม่สำเร็จ: กรุณาลองใหม่อีกครั้ง');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
+
+  // Open bulk rental configuration modal with AI auto-detection
+  const handleOpenBulkRentalForIds = (ids: number[], preselectedGameId?: string) => {
+    setSelectedBulkProductIds(ids);
+    const drafts: Record<number, { linkedGameIds: string[]; durationDays: number; durationHours: number; detectedLabel?: string }> = {};
+
+    ids.forEach(id => {
+      const p = products.find(prod => prod.id === id);
+      if (p) {
+        const parsed = parseProductRentalAI(p.name, availableGames);
+        let gameIds: string[] = [];
+        if (preselectedGameId) {
+          gameIds = [preselectedGameId];
+        } else if (p.linkedGameId) {
+          gameIds = p.linkedGameId.split(',').map(s => s.trim()).filter(Boolean);
+        } else if (parsed.matchedGameIds.length > 0) {
+          gameIds = parsed.matchedGameIds;
+        }
+
+        drafts[id] = {
+          linkedGameIds: gameIds,
+          durationDays: parsed.durationDays,
+          durationHours: parsed.durationHours,
+          detectedLabel: parsed.durationLabel
+        };
+      }
+    });
+
+    setBulkDrafts(drafts);
+    setShowBulkRentalModal(true);
+  };
+
+  // Re-run AI analysis for all currently selected bulk products
+  const handleRunAiForAllBulk = () => {
+    const nextDrafts = { ...bulkDrafts };
+    selectedBulkProductIds.forEach(id => {
+      const p = products.find(prod => prod.id === id);
+      if (p) {
+        const parsed = parseProductRentalAI(p.name, availableGames);
+        nextDrafts[id] = {
+          linkedGameIds: parsed.matchedGameIds.length > 0 ? parsed.matchedGameIds : (nextDrafts[id]?.linkedGameIds || []),
+          durationDays: parsed.durationDays,
+          durationHours: parsed.durationHours,
+          detectedLabel: parsed.durationLabel
+        };
+      }
+    });
+    setBulkDrafts(nextDrafts);
+    showToast(`✨ AI วิเคราะห์ชื่อสินค้าสำเร็จทั้ง ${selectedBulkProductIds.length} รายการ!`);
+  };
+
+  // Apply uniform game(s) to all selected bulk products
+  const handleApplyGameToAllBulk = (gameId: string) => {
+    const nextDrafts = { ...bulkDrafts };
+    selectedBulkProductIds.forEach(id => {
+      const cur = nextDrafts[id] || { linkedGameIds: [], durationDays: 1, durationHours: 24 };
+      let gIds = [...cur.linkedGameIds];
+      if (gIds.includes(gameId)) {
+        gIds = gIds.filter(x => x !== gameId);
+      } else {
+        gIds.push(gameId);
+      }
+      nextDrafts[id] = { ...cur, linkedGameIds: gIds };
+    });
+    setBulkDrafts(nextDrafts);
+  };
+
+  // Apply uniform duration to all selected bulk products
+  const handleApplyDurationToAllBulk = (days: number) => {
+    const nextDrafts = { ...bulkDrafts };
+    selectedBulkProductIds.forEach(id => {
+      const cur = nextDrafts[id] || { linkedGameIds: [], durationDays: 1, durationHours: 24 };
+      nextDrafts[id] = {
+        ...cur,
+        durationDays: days,
+        durationHours: days ? days * 24 : 0,
+        detectedLabel: days === 0 ? 'ถาวร (ตลอดชีพ)' : `${days} วัน (${days * 24} ชม.)`
+      };
+    });
+    setBulkDrafts(nextDrafts);
+    showToast(days === 0 ? 'กำหนดเป็นถาวรให้ทุกรายการแล้ว' : `กำหนดเป็น ${days} วันให้ทุกรายการแล้ว`);
+  };
+
+  // Save all bulk rental configurations to backend
+  const handleSaveBulkRental = async () => {
+    if (selectedBulkProductIds.length === 0) return;
+
+    const updates = selectedBulkProductIds.map(id => {
+      const draft = bulkDrafts[id] || { linkedGameIds: [], durationDays: 1, durationHours: 24 };
+      return {
+        id,
+        linkedGameId: draft.linkedGameIds.length > 0 ? draft.linkedGameIds.join(',') : null,
+        durationDays: draft.durationDays,
+        durationHours: draft.durationHours
+      };
+    });
+
+    try {
+      const res = await fetch('/api/products/bulk-rental', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ updates, adminUsername: user?.username })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        // Update local products state
+        setProducts(prev => prev.map(p => {
+          const u = updates.find(x => x.id === p.id);
+          if (u) {
+            return {
+              ...p,
+              linkedGameId: u.linkedGameId,
+              durationDays: u.durationDays,
+              durationHours: u.durationHours
+            };
+          }
+          return p;
+        }));
+
+        showToast(`✅ บันทึกสิทธิ์เช่าสำเร็จ ${updates.length} รายการแล้ว!`);
+        setShowBulkRentalModal(false);
+        setSelectedBulkProductIds([]);
+      } else {
+        showToast(data.message || 'บันทึกการตั้งค่าไม่สำเร็จ');
       }
     } catch {
       showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ');
@@ -7115,6 +7252,66 @@ export default function App() {
                 </div>
               </div>
 
+              {/* BULK RENTAL SELECTION & ACTION BAR */}
+              <div className="bulk-actions-bar">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className={`btn-outline ${selectedBulkProductIds.length > 0 ? 'active' : ''}`}
+                    onClick={() => {
+                      if (selectedBulkProductIds.length === products.length) {
+                        setSelectedBulkProductIds([]);
+                      } else {
+                        setSelectedBulkProductIds(products.map(p => p.id));
+                      }
+                    }}
+                    style={{ fontSize: '0.82rem', padding: '6px 14px', borderRadius: '8px' }}
+                  >
+                    {selectedBulkProductIds.length === products.length && products.length > 0
+                      ? '☑️ ยกเลิกการเลือกทั้งหมด'
+                      : `⬜ เลือกสินค้าทั้งหมด (${products.length})`}
+                  </button>
+
+                  {selectedBulkProductIds.length > 0 && (
+                    <>
+                      <span style={{ fontSize: '0.88rem', color: '#10b981', fontWeight: 800 }}>
+                        ✓ เลือกอยู่ {selectedBulkProductIds.length} รายการ
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => handleOpenBulkRentalForIds(selectedBulkProductIds)}
+                        style={{
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          fontSize: '0.85rem',
+                          padding: '6px 16px',
+                          fontWeight: 800,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 0 16px rgba(16, 185, 129, 0.4)'
+                        }}
+                      >
+                        <IconSparkles size={16} />
+                        <span>⚡ ตั้งค่าสิทธิ์เช่า & ปลดล็อกเกมพร้อมกัน ด้วย AI ({selectedBulkProductIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        onClick={() => setSelectedBulkProductIds([])}
+                        style={{ fontSize: '0.78rem', padding: '4px 10px', color: '#a89498' }}
+                      >
+                        ล้างการเลือก
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+                  💡 ติ๊กเลือกสินค้า หรือกดปุ่ม <strong>"⚡ ตั้งค่าสิทธิ์ทั้งกลุ่ม"</strong> ที่แต่ละเกม เพื่อเปิดระบบ AI คำนวณวันและเกมให้อัตโนมัติ
+                </div>
+              </div>
+
               {/* GAME BASED VIEW (fahbtc.online style) */}
               {adminProductViewMode === 'game' && (
                 <div className="admin-game-grid">
@@ -7245,6 +7442,7 @@ export default function App() {
                   <table className="admin-table">
                     <thead>
                       <tr>
+                        <th style={{ width: 40 }}>เลือก</th>
                         <th>รูปสินค้า</th>
                         <th>ชื่อสินค้า</th>
                         <th>หมวดหมู่</th>
@@ -14979,33 +15177,104 @@ async function verifyLicense(key, hwid) {
                   />
                 </div>
 
-                {/* GAME RENTAL LINKAGE & DURATION (ADMIN) */}
-                <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '12px', padding: '1rem', margin: '1rem 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#10b981', fontWeight: 700, fontSize: '0.92rem' }}>
-                    <IconGamepad size={18} />
-                    <span>🎮 กำหนดสิทธิ์เช่าเกม & ปลดล็อกดาวน์โหลด (Rental System)</span>
+                {/* GAME RENTAL LINKAGE & DURATION (ADMIN) - MULTI-GAME & AI POWERED */}
+                <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '14px', padding: '1.25rem', margin: '1rem 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontWeight: 800, fontSize: '0.95rem' }}>
+                      <IconGamepad size={20} />
+                      <span>🎮 กำหนดสิทธิ์เช่าเกม & ปลดล็อกดาวน์โหลด (Rental System)</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="ai-btn-sparkle"
+                      onClick={() => {
+                        const parsed = parseProductRentalAI(editingProduct.name, availableGames);
+                        const curGameIds = (editingProduct.linkedGameId || '').split(',').map(s => s.trim()).filter(Boolean);
+                        const finalGameIds = curGameIds.length > 0 ? curGameIds : parsed.matchedGameIds;
+                        setEditingProduct({
+                          ...editingProduct,
+                          durationDays: parsed.durationDays,
+                          durationHours: parsed.durationHours,
+                          linkedGameId: finalGameIds.length > 0 ? finalGameIds.join(',') : null
+                        });
+                        showToast(`✨ AI วิเคราะห์ชื่อสินค้า: ${parsed.detectedPattern} (${parsed.durationLabel})`);
+                      }}
+                      title="กดเพื่อให้ AI อ่านชื่อสินค้าและคำนวณวันเช่าและเกมให้อัตโนมัติ"
+                    >
+                      <IconSparkles size={14} />
+                      <span>✨ AI วิเคราะห์จากชื่อสินค้า</span>
+                    </button>
+                  </div>
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label className="input-label" style={{ marginBottom: '6px', color: '#e2d2d6', fontWeight: 700 }}>
+                      เกมที่ต้องการปลดล็อกในหน้าเช็คสถานะ (เลือกได้มากกว่า 1 เกม):
+                    </label>
+
+                    {/* Multi-Game Selector Pills */}
+                    <div className="game-multi-select-wrap">
+                      {availableGames.map((g) => {
+                        const currentIds = (editingProduct.linkedGameId || '').split(',').map(s => s.trim()).filter(Boolean);
+                        const isSelected = currentIds.includes(g.id);
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            className={`game-select-pill ${isSelected ? 'active' : ''}`}
+                            onClick={() => {
+                              let nextIds: string[];
+                              if (isSelected) {
+                                nextIds = currentIds.filter(id => id !== g.id);
+                              } else {
+                                nextIds = [...currentIds, g.id];
+                              }
+                              setEditingProduct({
+                                ...editingProduct,
+                                linkedGameId: nextIds.length > 0 ? nextIds.join(',') : null
+                              });
+                            }}
+                          >
+                            <span>{isSelected ? '✅' : '🎮'}</span>
+                            <span>{g.title}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Quick helper buttons */}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0' }}>
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                        onClick={() => {
+                          const allIds = availableGames.map(g => g.id).join(',');
+                          setEditingProduct({ ...editingProduct, linkedGameId: allIds });
+                        }}
+                      >
+                        + เลือกทุกเกม ({availableGames.length})
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        style={{ fontSize: '0.75rem', padding: '3px 8px', color: '#ff6b8b' }}
+                        onClick={() => {
+                          setEditingProduct({ ...editingProduct, linkedGameId: null });
+                        }}
+                      >
+                        ล้างการเลือก (ไม่ผูกเกม)
+                      </button>
+                    </div>
+
+                    <span style={{ fontSize: '0.78rem', color: editingProduct.linkedGameId ? '#10b981' : '#7a6368', display: 'block' }}>
+                      {editingProduct.linkedGameId
+                        ? `🎉 ปลดล็อกดาวน์โหลด ${editingProduct.linkedGameId.split(',').filter(Boolean).length} เกม: ${formatLinkedGamesSummary(editingProduct.linkedGameId, availableGames).map(g => g.title).join(', ')}`
+                        : 'ℹ️ ยังไม่ได้เลือกเกม (เป็นสินค้าทั่วไปที่ไม่ปลดล็อกดาวน์โหลด)'}
+                    </span>
                   </div>
 
                   <div className="responsive-grid-2col">
-                    <div className="input-field-group">
-                      <label className="input-label">เกมที่ต้องการปลดล็อกในหน้าเช็คสถานะ</label>
-                      <select
-                        className="text-input"
-                        value={editingProduct.linkedGameId || ''}
-                        onChange={(e) => setEditingProduct({ ...editingProduct, linkedGameId: e.target.value || null })}
-                      >
-                        <option value="">-- ไม่ผูกกับเกม (สินค้าทั่วไป) --</option>
-                        {availableGames.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            🎮 {g.title} ({g.id})
-                          </option>
-                        ))}
-                      </select>
-                      <span style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '4px', display: 'block' }}>
-                        เมื่อลูกค้าซื้อ จะปลดล็อกปุ่มดาวน์โหลดของเกมนี้ในหน้าเช็คสถานะเกม
-                      </span>
-                    </div>
-
                     <div className="input-field-group">
                       <label className="input-label">ระยะเวลาเช่า (จำนวนวัน)</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -15026,7 +15295,7 @@ async function verifyLicense(key, hwid) {
                         />
                         <select
                           className="text-input"
-                          style={{ width: '130px' }}
+                          style={{ width: '140px' }}
                           value={editingProduct.durationDays !== undefined && editingProduct.durationDays !== null ? editingProduct.durationDays : ''}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -15044,11 +15313,35 @@ async function verifyLicense(key, hwid) {
                           <option value="7">7 วัน (1 สัปดาห์)</option>
                           <option value="15">15 วัน</option>
                           <option value="30">30 วัน (1 เดือน)</option>
+                          <option value="60">60 วัน (2 เดือน)</option>
+                          <option value="90">90 วัน (3 เดือน)</option>
+                          <option value="365">365 วัน (1 ปี)</option>
                           <option value="0">ถาวร (ตลอดชีพ)</option>
                         </select>
                       </div>
+                      <span style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', display: 'block' }}>
+                        {editingProduct.durationDays ? ('⏳ นับถอยหลัง ' + editingProduct.durationDays + ' วัน (' + (editingProduct.durationDays * 24) + ' ชม.) หลังซื้อ') : '♾️ ถาวร (ตลอดชีพ ไม่จำกัดเวลา)'}
+                      </span>
+                    </div>
+
+                    <div className="input-field-group">
+                      <label className="input-label">คำนวณเป็นชั่วโมง (Duration Hours)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="text-input"
+                        value={editingProduct.durationHours || 0}
+                        onChange={(e) => {
+                          const hrs = Number(e.target.value) || 0;
+                          setEditingProduct({
+                            ...editingProduct,
+                            durationHours: hrs,
+                            durationDays: parseFloat((hrs / 24).toFixed(2))
+                          });
+                        }}
+                      />
                       <span style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '4px', display: 'block' }}>
-                        {editingProduct.durationDays ? ('⏳ นับถอยหลัง ' + editingProduct.durationDays + ' วัน (' + (editingProduct.durationDays * 24) + ' ชม.) หลังซื้อ') : 'ถาวร (ไม่จำกัดเวลา)'}
+                        ปรับแต่งชั่วโมงได้อิสระ เช่น 3 ชม., 6 ชม., 12 ชม.
                       </span>
                     </div>
                   </div>
@@ -15173,6 +15466,249 @@ async function verifyLicense(key, hwid) {
                       <span>ยืนยันลบสินค้า</span>
                     </>
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. BULK RENTAL & AI SMART CONFIGURE MODAL */}
+      {showBulkRentalModal && (
+        <div className="profile-modal-overlay" onClick={() => setShowBulkRentalModal(false)}>
+          <div className="profile-modal-box" style={{ maxWidth: '960px', width: '96vw', maxHeight: '92dvh' }} onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="profile-modal-header" style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))', borderColor: 'rgba(16, 185, 129, 0.35)' }}>
+              <div className="profile-header-left">
+                <div style={{ fontSize: '1.8rem', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16, 185, 129, 0.2)', border: '1.5px solid #10b981', borderRadius: '12px' }}>
+                  ⚡
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
+                    ตั้งค่าสิทธิ์เช่าและปลดล็อกดาวน์โหลดหลายรายการ ({selectedBulkProductIds.length} รายการ)
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#10b981' }}>
+                    🤖 รองรับการปลดล็อกมากกว่า 1 เกม และมี AI ตรวจสอบระยะเวลาจากชื่อสินค้าให้อัตโนมัติ
+                  </p>
+                </div>
+              </div>
+
+              <button className="profile-btn-close" onClick={() => setShowBulkRentalModal(false)} title="ปิดหน้าต่าง">
+                <IconX size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem', overflowY: 'auto', flex: 1 }}>
+              {/* AI Auto-Detect Banner */}
+              <div style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(16, 185, 129, 0.1))', border: '1.5px solid rgba(168, 85, 247, 0.4)', borderRadius: '14px', padding: '1rem', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '1.8rem' }}>🤖</span>
+                    <div>
+                      <strong style={{ color: '#fff', fontSize: '0.95rem' }}>ระบบ AI วิเคราะห์ชื่อสินค้าอัตโนมัติ (Smart Name Analyzer)</strong>
+                      <p style={{ margin: '2px 0 0', color: '#d8b4fe', fontSize: '0.78rem' }}>
+                        AI จะสแกนชื่อสินค้าแต่ละรายการ เช่น "ROV 7 วัน" ➔ กำหนด 7 วัน, "ROV ถาวร" ➔ กำหนดถาวร และจับคู่เกมให้อัตโนมัติ!
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="ai-btn-sparkle"
+                    style={{ padding: '8px 18px', fontSize: '0.88rem' }}
+                    onClick={handleRunAiForAllBulk}
+                  >
+                    <IconSparkles size={16} />
+                    <span>✨ รัน AI วิเคราะห์ชื่อสินค้าทั้งหมดใหม่</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Batch Overrides (Apply to All Selected) */}
+              <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '1rem', marginBottom: '1.25rem' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.88rem', color: '#e2d2d6', fontWeight: 800 }}>
+                  🛠️ เครื่องมือสั่งการพร้อมกันทุกรายการ (Batch Override Tools):
+                </h4>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '6px' }}>
+                      1. เลือกเกมที่ต้องการปลดล็อกพร้อมกันให้ทุกสินค้า (คลิกเพื่อเปิด/ปิด):
+                    </span>
+                    <div className="game-multi-select-wrap">
+                      {availableGames.map((g) => {
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            className="game-select-pill"
+                            onClick={() => handleApplyGameToAllBulk(g.id)}
+                            style={{ fontSize: '0.78rem' }}
+                          >
+                            <span>🎮</span>
+                            <span>+ สลับเกม {g.title}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '6px' }}>
+                      2. กำหนดระยะเวลาเช่าเท่ากันทั้งหมด (หากไม่ใช้ AI แยกรายชื่อ):
+                    </span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {[
+                        { days: 1, label: '1 วัน' },
+                        { days: 3, label: '3 วัน' },
+                        { days: 7, label: '7 วัน' },
+                        { days: 15, label: '15 วัน' },
+                        { days: 30, label: '30 วัน' },
+                        { days: 60, label: '60 วัน' },
+                        { days: 90, label: '90 วัน' },
+                        { days: 365, label: '1 ปี' },
+                        { days: 0, label: 'ถาวร (ตลอดชีพ)' }
+                      ].map(preset => (
+                        <button
+                          key={preset.days}
+                          type="button"
+                          className="btn-outline"
+                          style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+                          onClick={() => handleApplyDurationToAllBulk(preset.days)}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Editable Live Preview Table */}
+              <div style={{ width: '100%', overflowX: 'auto', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <table className="profile-custom-table" style={{ minWidth: 680 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '30%' }}>สินค้าที่เลือก ({selectedBulkProductIds.length})</th>
+                      <th style={{ width: '45%' }}>เกมที่ปลดล็อก (เลือกได้มากกว่า 1)</th>
+                      <th style={{ width: '25%' }}>ระยะเวลาปลดล็อก (วัน)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedBulkProductIds.map(id => {
+                      const p = products.find(prod => prod.id === id);
+                      if (!p) return null;
+                      const draft = bulkDrafts[id] || { linkedGameIds: [], durationDays: 1, durationHours: 24 };
+
+                      return (
+                        <tr key={id}>
+                          <td>
+                            <strong style={{ color: '#fff', fontSize: '0.9rem', display: 'block' }}>{p.name}</strong>
+                            <span style={{ fontSize: '0.75rem', color: '#10b981' }}>฿{p.price?.toLocaleString()}</span>
+                            {draft.detectedLabel && (
+                              <span style={{ display: 'inline-block', marginLeft: '6px', fontSize: '0.7rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                                🤖 AI: {draft.detectedLabel}
+                              </span>
+                            )}
+                          </td>
+
+                          <td>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {availableGames.map(g => {
+                                const isSel = draft.linkedGameIds.includes(g.id);
+                                return (
+                                  <button
+                                    key={g.id}
+                                    type="button"
+                                    className={`game-select-pill ${isSel ? 'active' : ''}`}
+                                    style={{ fontSize: '0.72rem', padding: '3px 8px' }}
+                                    onClick={() => {
+                                      let nextGIds = [...draft.linkedGameIds];
+                                      if (isSel) {
+                                        nextGIds = nextGIds.filter(x => x !== g.id);
+                                      } else {
+                                        nextGIds.push(g.id);
+                                      }
+                                      setBulkDrafts(prev => ({
+                                        ...prev,
+                                        [id]: { ...draft, linkedGameIds: nextGIds }
+                                      }));
+                                    }}
+                                  >
+                                    <span>{isSel ? '✅' : '🎮'}</span>
+                                    <span>{g.title}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <span style={{ fontSize: '0.72rem', color: draft.linkedGameIds.length > 0 ? '#10b981' : '#7a6368', marginTop: '4px', display: 'block' }}>
+                              {draft.linkedGameIds.length > 0
+                                ? `ปลดล็อก ${draft.linkedGameIds.length} เกม`
+                                : 'ยังไม่ได้เลือกเกม'}
+                            </span>
+                          </td>
+
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <input
+                                type="number"
+                                min="0"
+                                className="text-input"
+                                style={{ width: '80px', padding: '6px 8px', fontSize: '0.85rem' }}
+                                value={draft.durationDays}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 0;
+                                  setBulkDrafts(prev => ({
+                                    ...prev,
+                                    [id]: {
+                                      ...draft,
+                                      durationDays: val,
+                                      durationHours: val ? val * 24 : 0,
+                                      detectedLabel: undefined
+                                    }
+                                  }));
+                                }}
+                              />
+                              <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 700 }}>
+                                {draft.durationDays === 0 ? '♾️ ถาวร' : `${draft.durationDays} วัน`}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', background: 'rgba(0, 0, 0, 0.4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#a89498' }}>
+                รวมทั้งหมด <strong style={{ color: '#fff' }}>{selectedBulkProductIds.length}</strong> สินค้าที่จะอัปเดตสิทธิ์เช่าพร้อมกัน
+              </span>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => setShowBulkRentalModal(false)}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleSaveBulkRental}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    fontWeight: 800,
+                    padding: '8px 24px',
+                    boxShadow: '0 0 20px rgba(16, 185, 129, 0.5)'
+                  }}
+                >
+                  💾 บันทึกการตั้งค่าทั้งหมด ({selectedBulkProductIds.length} รายการ)
                 </button>
               </div>
             </div>
@@ -15306,41 +15842,105 @@ async function verifyLicense(key, hwid) {
                   <input name="downloadUrl" type="text" required className="text-input" defaultValue="https://rov.in.th" />
                 </div>
 
-                {/* GAME RENTAL LINKAGE & DURATION (ADMIN) */}
+                {/* GAME RENTAL LINKAGE & DURATION (ADMIN) - MULTI-GAME & AI */}
                 <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '12px', padding: '1rem', margin: '0.85rem 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#10b981', fontWeight: 700, fontSize: '0.92rem' }}>
-                    <IconGamepad size={18} />
-                    <span>🎮 กำหนดสิทธิ์เช่าเกม & ปลดล็อกดาวน์โหลด (Rental System)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', fontWeight: 700, fontSize: '0.92rem' }}>
+                      <IconGamepad size={18} />
+                      <span>🎮 กำหนดสิทธิ์เช่าเกม & ปลดล็อกดาวน์โหลด (Rental System)</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="ai-btn-sparkle"
+                      onClick={(e) => {
+                        const form = (e.target as HTMLElement).closest('form');
+                        const nameInput = form?.querySelector('input[name="name"]') as HTMLInputElement;
+                        const pName = nameInput ? nameInput.value : '';
+                        const parsed = parseProductRentalAI(pName, availableGames);
+                        setNewProductDurationDays(parsed.durationDays);
+                        if (parsed.matchedGameIds.length > 0) {
+                          setNewProductLinkedGameIds(parsed.matchedGameIds);
+                        }
+                        showToast(`✨ AI วิเคราะห์: ${parsed.detectedPattern} (${parsed.durationLabel})`);
+                      }}
+                      title="กดเพื่อให้ AI อ่านชื่อสินค้าและคำนวณวันเช่าและเกมให้อัตโนมัติ"
+                    >
+                      <IconSparkles size={14} />
+                      <span>✨ AI วิเคราะห์จากชื่อสินค้า</span>
+                    </button>
+                  </div>
+
+                  <div style={{ marginBottom: '0.85rem' }}>
+                    <label className="input-label" style={{ marginBottom: '6px' }}>
+                      เกมที่ต้องการปลดล็อกในหน้าเช็คสถานะ (เลือกได้มากกว่า 1 เกม):
+                    </label>
+                    <div className="game-multi-select-wrap">
+                      {availableGames.map((g) => {
+                        const isSelected = newProductLinkedGameIds.includes(g.id);
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            className={`game-select-pill ${isSelected ? 'active' : ''}`}
+                            onClick={() => {
+                              if (isSelected) {
+                                setNewProductLinkedGameIds(prev => prev.filter(x => x !== g.id));
+                              } else {
+                                setNewProductLinkedGameIds(prev => [...prev, g.id]);
+                              }
+                            }}
+                          >
+                            <span>{isSelected ? '✅' : '🎮'}</span>
+                            <span>{g.title}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <input type="hidden" name="linkedGameId" value={newProductLinkedGameIds.join(',')} />
                   </div>
 
                   <div className="responsive-grid-2col">
                     <div className="input-field-group">
-                      <label className="input-label">เกมที่ต้องการปลดล็อกในหน้าเช็คสถานะ</label>
-                      <select name="linkedGameId" className="text-input">
-                        <option value="">-- ไม่ผูกกับเกม (สินค้าทั่วไป) --</option>
-                        {availableGames.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            🎮 {g.title} ({g.id})
-                          </option>
-                        ))}
-                      </select>
-                      <span style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '4px', display: 'block' }}>
-                        เมื่อลูกค้าซื้อ จะปลดล็อกปุ่มดาวน์โหลดของเกมนี้ในหน้าเช็คสถานะเกม
-                      </span>
+                      <label className="input-label">ระยะเวลาเช่า (จำนวนวัน)</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input
+                          type="number"
+                          name="durationDays"
+                          min="0"
+                          className="text-input"
+                          value={newProductDurationDays}
+                          onChange={(e) => setNewProductDurationDays(Number(e.target.value) || 0)}
+                        />
+                        <select
+                          className="text-input"
+                          style={{ width: '130px' }}
+                          value={newProductDurationDays}
+                          onChange={(e) => setNewProductDurationDays(Number(e.target.value) || 0)}
+                        >
+                          <option value="1">1 วัน</option>
+                          <option value="3">3 วัน</option>
+                          <option value="7">7 วัน</option>
+                          <option value="15">15 วัน</option>
+                          <option value="30">30 วัน</option>
+                          <option value="60">60 วัน</option>
+                          <option value="90">90 วัน</option>
+                          <option value="0">ถาวร</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div className="input-field-group">
-                      <label className="input-label">ระยะเวลาเช่า (จำนวนวัน)</label>
-                      <select name="durationDays" className="text-input" defaultValue="1">
-                        <option value="1">1 วัน (24 ชั่วโมง)</option>
-                        <option value="3">3 วัน (72 ชั่วโมง)</option>
-                        <option value="7">7 วัน (1 สัปดาห์)</option>
-                        <option value="15">15 วัน</option>
-                        <option value="30">30 วัน (1 เดือน)</option>
-                        <option value="0">ถาวร (ตลอดชีพ / ไม่จำกัดเวลา)</option>
-                      </select>
-                      <span style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '4px', display: 'block' }}>
-                        ระบบจะเริ่มนับถอยหลังทันทีเมื่อลูกค้าทำรายการสั่งซื้อสำเร็จ
+                      <label className="input-label">คำนวณเป็นชั่วโมง</label>
+                      <input
+                        type="number"
+                        className="text-input"
+                        readOnly
+                        value={newProductDurationDays ? newProductDurationDays * 24 : 0}
+                        style={{ opacity: 0.8 }}
+                      />
+                      <span style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', display: 'block' }}>
+                        {newProductDurationDays ? `⏳ นับถอยหลัง ${newProductDurationDays} วัน (${newProductDurationDays * 24} ชม.)` : '♾️ ถาวร (ตลอดชีพ)'}
                       </span>
                     </div>
                   </div>
