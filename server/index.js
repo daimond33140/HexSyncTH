@@ -29,6 +29,7 @@ const securityRoutes = require('./routes/security');
 const superadminRoutes = require('./routes/superadmin');
 const updateRoutes = require('./routes/updates');
 const gamesRoutes = require('./routes/games');
+const licenseRoutes = require('./routes/license');
 const { ipBanMiddleware, getClientIp, isIpWhitelisted } = require('./middleware/ipBan');
 const { antiFloodMiddleware } = require('./middleware/antiFlood');
 const { wafSecurityMiddleware } = require('./middleware/wafSecurity');
@@ -120,6 +121,7 @@ app.use('/api/security', securityRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/system', updateRoutes);
 app.use('/api/games', gamesRoutes);
+app.use('/api/license', licenseRoutes);
 
 const PORT = process.env.PORT || 4000;
 const isSqlite = sequelize.getDialect() === 'sqlite';

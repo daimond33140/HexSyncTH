@@ -611,6 +611,65 @@ const SecurityThreatLog = sequelize.define('SecurityThreatLog', {
   }
 });
 
+// LicenseKey Model for Custom API Key & Expiration System
+const LicenseKey = sequelize.define('LicenseKey', {
+  key: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false,
+  },
+  appName: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'General App',
+  },
+  gameId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  productId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  durationHours: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 24,
+  },
+  isLifetime: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: 'unused', // 'unused', 'active', 'expired', 'banned'
+  },
+  hwid: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  maxDevices: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+  },
+  activatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  expiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  note: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  createdBy: {
+    type: DataTypes.STRING,
+    defaultValue: 'Admin',
+  }
+});
+
 module.exports = {
   sequelize,
   User,
@@ -628,5 +687,6 @@ module.exports = {
   WhitelistedIP,
   SecurityThreatLog,
   Category,
+  LicenseKey,
 };
 

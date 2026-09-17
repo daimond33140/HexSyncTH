@@ -644,6 +644,180 @@ export default function App() {
   const [adminProductViewMode, setAdminProductViewMode] = useState<'game' | 'flat'>('game');
   const [managingKeysGameGroup, setManagingKeysGameGroup] = useState<GameGroup | null>(null);
 
+  // License Keys & Custom API Management States
+  interface LicenseItem {
+    id: number;
+    key: string;
+    appName: string;
+    gameId?: string | null;
+    productId?: number | null;
+    durationHours: number;
+    isLifetime: boolean;
+    status: 'unused' | 'active' | 'expired' | 'banned';
+    hwid?: string | null;
+    activatedAt?: string | null;
+    expiresAt?: string | null;
+    remainingFormatted?: string;
+    note?: string | null;
+    createdBy?: string;
+    createdAt: string;
+  }
+
+  const [adminLicenses, setAdminLicenses] = useState<LicenseItem[]>([]);
+  const [isLoadingLicenses, setIsLoadingLicenses] = useState<boolean>(false);
+  const [licenseSearchQuery, setLicenseSearchQuery] = useState<string>('');
+  const [licenseFilterStatus, setLicenseFilterStatus] = useState<string>('all');
+  const [showCreateLicenseModal, setShowCreateLicenseModal] = useState<boolean>(false);
+  const [showAddTimeModal, setShowAddTimeModal] = useState<LicenseItem | null>(null);
+  const [addTimeHours, setAddTimeHours] = useState<number>(24);
+  const [apiDocLang, setApiDocLang] = useState<'cpp' | 'csharp' | 'python' | 'nodejs'>('cpp');
+
+  // License form state
+  const [licenseFormKeyType, setLicenseFormKeyType] = useState<'auto' | 'custom'>('auto');
+  const [licenseFormCustomKey, setLicenseFormCustomKey] = useState<string>('');
+  const [licenseFormPrefix, setLicenseFormPrefix] = useState<string>('HEX-');
+  const [licenseFormCount, setLicenseFormCount] = useState<number>(1);
+  const [licenseFormAppName, setLicenseFormAppName] = useState<string>('PubgM VIP');
+  const [licenseFormDurationHours, setLicenseFormDurationHours] = useState<number>(24);
+  const [licenseFormIsLifetime, setLicenseFormIsLifetime] = useState<boolean>(false);
+  const [licenseFormNote, setLicenseFormNote] = useState<string>('');
+  const [licenseFormAddToStock, setLicenseFormAddToStock] = useState<boolean>(false);
+  const [licenseFormProductId, setLicenseFormProductId] = useState<string>('');
+
+  const fetchAdminLicenses = async () => {
+    try {
+      setIsLoadingLicenses(true);
+      const res = await fetch('/api/license/admin/list', {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.licenses) {
+          setAdminLicenses(data.licenses);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch licenses:', err);
+    } finally {
+      setIsLoadingLicenses(false);
+    }
+  };
+
+  const handleCreateLicense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/license/admin/create', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          keyType: licenseFormKeyType,
+          customKey: licenseFormCustomKey,
+          prefix: licenseFormPrefix,
+          count: licenseFormCount,
+          appName: licenseFormAppName,
+          durationHours: licenseFormIsLifetime ? 0 : licenseFormDurationHours,
+          isLifetime: licenseFormIsLifetime,
+          note: licenseFormNote,
+          addToProductStock: licenseFormAddToStock,
+          productId: licenseFormProductId ? parseInt(licenseFormProductId) : null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'ไม่สามารถสร้างคีย์ได้');
+        return;
+      }
+      showToast(data.message || 'สร้างคีย์สำเร็จ');
+      setShowCreateLicenseModal(false);
+      setLicenseFormCustomKey('');
+      setLicenseFormNote('');
+      fetchAdminLicenses();
+      if (licenseFormAddToStock) fetchProducts();
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
+  const handleResetHwid = async (id: number) => {
+    if (!window.confirm('คุณต้องการรีเซ็ต HWID (ปลดล็อกเครื่อง) ของคีย์นี้หรือไม่?')) return;
+    try {
+      const res = await fetch('/api/license/admin/reset-hwid', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ id })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'รีเซ็ต HWID สำเร็จ');
+        setAdminLicenses(prev => prev.map(item => item.id === id ? { ...item, hwid: null } : item));
+      } else {
+        showToast(data.message || 'รีเซ็ต HWID ไม่สำเร็จ');
+      }
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
+  const handleAddTimeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showAddTimeModal) return;
+    try {
+      const res = await fetch('/api/license/admin/add-time', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ id: showAddTimeModal.id, addHours: addTimeHours })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'เพิ่มเวลาสำเร็จ');
+        setShowAddTimeModal(null);
+        fetchAdminLicenses();
+      } else {
+        showToast(data.message || 'เพิ่มเวลาไม่สำเร็จ');
+      }
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
+  const handleToggleBanLicense = async (id: number) => {
+    try {
+      const res = await fetch('/api/license/admin/toggle-ban', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ id })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message);
+        setAdminLicenses(prev => prev.map(item => item.id === id ? { ...item, status: data.status } : item));
+      } else {
+        showToast(data.message || 'เกิดข้อผิดพลาด');
+      }
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
+  const handleDeleteLicense = async (id: number) => {
+    if (!window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบคีย์นี้ออกจากระบบถาวร?')) return;
+    try {
+      const res = await fetch(`/api/license/admin/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'ลบคีย์สำเร็จ');
+        setAdminLicenses(prev => prev.filter(item => item.id !== id));
+      } else {
+        showToast(data.message || 'ลบคีย์ไม่สำเร็จ');
+      }
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
   // Purchase Realtime Animated Progress States
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
   const [purchaseProgress, setPurchaseProgress] = useState<number>(0);
@@ -830,7 +1004,7 @@ export default function App() {
   const [couponMsg, setCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Admin Dashboard states
-  const [adminTab, setAdminTab] = useState<'products' | 'categories' | 'users' | 'bannedIps' | 'stats' | 'giftcodes' | 'coupons' | 'theme' | 'slips' | 'logs' | 'threatLogs' | 'banManager' | 'superadmin' | 'topups'>('products');
+  const [adminTab, setAdminTab] = useState<'products' | 'categories' | 'licenseKeys' | 'users' | 'bannedIps' | 'stats' | 'giftcodes' | 'coupons' | 'theme' | 'slips' | 'logs' | 'threatLogs' | 'banManager' | 'superadmin' | 'topups'>('products');
   // SuperAdmin Account Management & Secret Recovery States
   const [superAdminAccounts, setSuperAdminAccounts] = useState<any[]>([]);
   const [isSuperAdminUnlocked, setIsSuperAdminUnlocked] = useState<boolean>(() => {
@@ -6299,6 +6473,7 @@ export default function App() {
               <optgroup label="📦 1. สินค้า & สต็อกคีย์">
                 <option value="products">จัดการสินค้า & สต็อกคีย์</option>
                 <option value="categories">หมวดหมู่เกม & แบนเนอร์ ({categories.length})</option>
+                <option value="licenseKeys">🔑 ตัวสร้างคีย์ & API License ({adminLicenses.length})</option>
               </optgroup>
               <optgroup label="👥 2. สมาชิก & สิทธิ์ระบบ">
                 <option value="users">จัดการสมาชิก & ยศ ({adminUsers.length})</option>
@@ -6330,7 +6505,7 @@ export default function App() {
             {/* GROUP 1: PRODUCTS & STOCK */}
             <button
               type="button"
-              className={`admin-tab-btn ${['products', 'categories'].includes(adminTab) ? 'active' : ''}`}
+              className={`admin-tab-btn ${['products', 'categories', 'licenseKeys'].includes(adminTab) ? 'active' : ''}`}
               onClick={() => setAdminTab('products')}
               style={{ justifyContent: 'center', padding: '0.65rem 0.85rem' }}
             >
@@ -6416,7 +6591,7 @@ export default function App() {
             </span>
 
             {/* SUB-TABS FOR PRODUCTS */}
-            {['products', 'categories'].includes(adminTab) && (
+            {['products', 'categories', 'licenseKeys'].includes(adminTab) && (
               <>
                 <button
                   type="button"
@@ -6449,6 +6624,22 @@ export default function App() {
                   }}
                 >
                   🎮 หมวดหมู่เกม & แบนเนอร์ ({categories.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('licenseKeys'); fetchAdminLicenses(); }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: adminTab === 'licenseKeys' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'rgba(16, 185, 129, 0.15)',
+                    color: adminTab === 'licenseKeys' ? '#fff' : '#a7f3d0'
+                  }}
+                >
+                  🔑 ตัวสร้างคีย์ & API License ({adminLicenses.length})
                 </button>
               </>
             )}
@@ -7093,6 +7284,690 @@ export default function App() {
               </div>
             </div>
           )}
+
+
+          {/* TAB: LICENSE KEY ENGINE & CUSTOM API KEYS */}
+          {adminTab === 'licenseKeys' && (
+            <div style={{ maxWidth: '1100px' }}>
+              {/* Header Title & Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <h3 style={{ margin: 0, color: '#fff', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+                    <IconKey size={22} color="#10b981" />
+                    <span>ระบบสร้างคีย์กำหนดเวลา & Custom API Verification</span>
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', color: '#9ca3af', fontSize: '0.82rem' }}>
+                    สร้างคีย์สำหรับแอปพลิเคชัน/เกม กำหนดวันหมดอายุอัตโนมัติ ล็อกเครื่อง HWID และเชื่อมต่อด้วย REST API จริง
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={fetchAdminLicenses}
+                    style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
+                  >
+                    <IconRefreshCw size={15} />
+                    <span>รีเฟรช</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => setShowCreateLicenseModal(true)}
+                    style={{
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      border: 'none',
+                      fontSize: '0.85rem',
+                      padding: '0.45rem 1.1rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <IconPlusCircle size={16} />
+                    <span>+ สร้างคีย์ใหม่ (Gen / Custom Key)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Statistics Overview Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', marginBottom: '1.25rem' }}>
+                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '0.9rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>คีย์ทั้งหมดในระบบ</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>{adminLicenses.length} คีย์</div>
+                </div>
+                <div style={{ background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '12px', padding: '0.9rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#a7f3d0' }}>กำลังใช้งานอยู่ (Active)</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+                    {adminLicenses.filter(k => k.status === 'active').length} คีย์
+                  </div>
+                </div>
+                <div style={{ background: 'rgba(255, 183, 3, 0.06)', border: '1px solid rgba(255, 183, 3, 0.25)', borderRadius: '12px', padding: '0.9rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#fde68a' }}>ยังไม่เปิดใช้ (Unused)</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffb703', marginTop: '2px' }}>
+                    {adminLicenses.filter(k => k.status === 'unused').length} คีย์
+                  </div>
+                </div>
+                <div style={{ background: 'rgba(255, 26, 64, 0.06)', border: '1px solid rgba(255, 26, 64, 0.25)', borderRadius: '12px', padding: '0.9rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#fca5a5' }}>หมดอายุ / ถูกระงับ</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ff4d6d', marginTop: '2px' }}>
+                    {adminLicenses.filter(k => k.status === 'expired' || k.status === 'banned').length} คีย์
+                  </div>
+                </div>
+              </div>
+
+              {/* Search & Filter Bar */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  className="text-input"
+                  placeholder="🔍 ค้นหารหัสคีย์, ชื่อแอป, HWID หรือหมายเหตุ..."
+                  value={licenseSearchQuery}
+                  onChange={(e) => setLicenseSearchQuery(e.target.value)}
+                  style={{ flex: 1, minWidth: '220px' }}
+                />
+                <select
+                  className="text-input"
+                  value={licenseFilterStatus}
+                  onChange={(e) => setLicenseFilterStatus(e.target.value)}
+                  style={{ width: 'auto', minWidth: '150px' }}
+                >
+                  <option value="all">ทุกสถานะ ({adminLicenses.length})</option>
+                  <option value="active">กำลังใช้งาน (Active)</option>
+                  <option value="unused">ยังไม่เปิดใช้ (Unused)</option>
+                  <option value="expired">หมดอายุ (Expired)</option>
+                  <option value="banned">ถูกระงับ (Banned)</option>
+                </select>
+              </div>
+
+              {/* License Keys Table */}
+              <div className="admin-table-container" style={{ overflowX: 'auto', marginBottom: '2rem' }}>
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>รหัสคีย์ (License Key)</th>
+                      <th>แอปพลิเคชัน / เกม</th>
+                      <th>ระยะเวลา</th>
+                      <th>สถานะ</th>
+                      <th>เวลาคงเหลือ</th>
+                      <th>รหัสเครื่อง (HWID)</th>
+                      <th style={{ textAlign: 'right' }}>จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminLicenses
+                      .filter(item => {
+                        if (licenseFilterStatus !== 'all' && item.status !== licenseFilterStatus) return false;
+                        if (!licenseSearchQuery) return true;
+                        const q = licenseSearchQuery.toLowerCase();
+                        return (
+                          item.key.toLowerCase().includes(q) ||
+                          item.appName.toLowerCase().includes(q) ||
+                          (item.hwid && item.hwid.toLowerCase().includes(q)) ||
+                          (item.note && item.note.toLowerCase().includes(q))
+                        );
+                      })
+                      .map(item => {
+                        const isExpired = item.status === 'expired';
+                        const isBanned = item.status === 'banned';
+                        const isActive = item.status === 'active';
+                        return (
+                          <tr key={item.id}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: '0.88rem' }}>
+                                  {item.key}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{ padding: '2px 6px', fontSize: '0.72rem' }}
+                                  onClick={() => handleCopyKey(item.key)}
+                                  title="คัดลอกคีย์"
+                                >
+                                  {copiedKey === item.key ? '✓' : 'คัดลอก'}
+                                </button>
+                              </div>
+                              {item.note && (
+                                <div style={{ fontSize: '0.72rem', color: '#ffb703', marginTop: '2px' }}>
+                                  📝 {item.note}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.84rem', color: '#e5e7eb', fontWeight: 600 }}>{item.appName}</span>
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.82rem', color: '#9ca3af' }}>
+                                {item.isLifetime ? 'ถาวร (Lifetime)' : `${item.durationHours} ชม. (${Math.round(item.durationHours / 24)} วัน)`}
+                              </span>
+                            </td>
+                            <td>
+                              {isBanned ? (
+                                <span style={{ background: 'rgba(147, 51, 234, 0.2)', color: '#c084fc', border: '1px solid rgba(147, 51, 234, 0.4)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 700 }}>
+                                  ⛔ ถูกระงับ
+                                </span>
+                              ) : isExpired ? (
+                                <span style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.35)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 700 }}>
+                                  ✖ หมดอายุ
+                                </span>
+                              ) : isActive ? (
+                                <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.35)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 700 }}>
+                                  ● กำลังใช้งาน
+                                </span>
+                              ) : (
+                                <span style={{ background: 'rgba(255, 183, 3, 0.15)', color: '#fde047', border: '1px solid rgba(255, 183, 3, 0.35)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 700 }}>
+                                  ⏳ ยังไม่เปิดใช้
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <span style={{ fontSize: '0.82rem', color: isActive ? '#10b981' : (isExpired ? '#ef4444' : '#9ca3af'), fontWeight: 600 }}>
+                                {item.remainingFormatted || '-'}
+                              </span>
+                            </td>
+                            <td>
+                              {item.hwid ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontFamily: 'monospace', fontSize: '0.76rem', color: '#cbd5e1' }} title={item.hwid}>
+                                    {item.hwid.length > 14 ? item.hwid.substring(0, 14) + '...' : item.hwid}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="btn-outline"
+                                    style={{ padding: '2px 6px', fontSize: '0.7rem', color: '#ffaa00', borderColor: 'rgba(255,170,0,0.4)' }}
+                                    onClick={() => handleResetHwid(item.id)}
+                                    title="รีเซ็ต HWID (ปลดล็อกเครื่องเพื่อให้ลูกค้าย้ายเครื่องใหม่ได้)"
+                                  >
+                                    🔄 ปลดเครื่อง
+                                  </button>
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>ยังไม่ผูกเครื่อง</span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{ padding: '3px 8px', fontSize: '0.74rem', color: '#10b981', borderColor: 'rgba(16,185,129,0.4)' }}
+                                  onClick={() => setShowAddTimeModal(item)}
+                                  title="เพิ่มเวลาให้คีย์"
+                                >
+                                  ⏱️ +เวลา
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{
+                                    padding: '3px 8px',
+                                    fontSize: '0.74rem',
+                                    color: isBanned ? '#10b981' : '#c084fc',
+                                    borderColor: isBanned ? 'rgba(16,185,129,0.4)' : 'rgba(192,132,252,0.4)'
+                                  }}
+                                  onClick={() => handleToggleBanLicense(item.id)}
+                                  title={isBanned ? 'ปลดระงับคีย์' : 'ระงับคีย์นี้'}
+                                >
+                                  {isBanned ? 'ปลดแบน' : 'ระงับ'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-outline"
+                                  style={{ padding: '3px 8px', fontSize: '0.74rem', color: '#ef4444', borderColor: 'rgba(239,68,68,0.4)' }}
+                                  onClick={() => handleDeleteLicense(item.id)}
+                                  title="ลบคีย์ถาวร"
+                                >
+                                  ลบ
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    {adminLicenses.length === 0 && !isLoadingLicenses && (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>
+                          ยังไม่มี License Key ในระบบ คลิกปุ่ม "+ สร้างคีย์ใหม่" ด้านบนเพื่อเริ่มสร้างคีย์
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Developer Real Integration API Documentation & Snippets */}
+              <div style={{
+                background: 'linear-gradient(160deg, #11070b 0%, #0a0406 100%)',
+                border: '1px solid rgba(255, 26, 64, 0.3)',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                boxShadow: '0 4px 25px rgba(0, 0, 0, 0.5)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div>
+                    <h4 style={{ margin: 0, color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+                      <IconExternalLink size={18} color="#ff1a40" />
+                      <span>คู่มือการเชื่อมต่อ API ไปยังโปรแกรมของคุณ (REST API Documentation)</span>
+                    </h4>
+                    <p style={{ margin: '4px 0 0', color: '#9ca3af', fontSize: '0.8rem' }}>
+                      นำ Endpoint นี้ไปใส่ใน C++, C#, Python, หรือ APK เพื่อตรวจสอบคีย์และป้องกันการแชร์เครื่องได้ทันที
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {(['cpp', 'csharp', 'python', 'nodejs'] as const).map(lang => (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => setApiDocLang(lang)}
+                        style={{
+                          padding: '0.3rem 0.75rem',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: apiDocLang === lang ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                          color: '#fff',
+                          textTransform: 'uppercase'
+                        }}
+                      >
+                        {lang === 'cpp' ? 'C++' : (lang === 'csharp' ? 'C# (.NET)' : (lang === 'python' ? 'Python' : 'Node.js'))}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.6)', padding: '0.8rem 1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#ffb703', fontWeight: 700, marginBottom: '4px' }}>VERIFY ENDPOINT (POST / GET):</div>
+                  <code style={{ color: '#38bdf8', fontSize: '0.88rem', wordBreak: 'break-all' }}>
+                    {typeof window !== 'undefined' ? window.location.origin : 'https://hexsyncth.site'}/api/license/verify
+                  </code>
+                </div>
+
+                {/* Code Snippet Box */}
+                <div style={{ position: 'relative' }}>
+                  <pre style={{
+                    background: '#040203',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '10px',
+                    padding: '1.2rem',
+                    color: '#e2e8f0',
+                    fontSize: '0.82rem',
+                    fontFamily: 'Consolas, Monaco, monospace',
+                    overflowX: 'auto',
+                    lineHeight: 1.5
+                  }}>
+                    {apiDocLang === 'cpp' && `// C++ WinINet License Verification Example
+#include <iostream>
+#include <string>
+#include <windows.h>
+#include <wininet.h>
+#pragma comment(lib, "wininet.lib")
+
+bool VerifyLicense(const std::string& key, const std::string& hwid) {
+    HINTERNET hInternet = InternetOpenA("HexSyncVerify", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+    if (!hInternet) return false;
+
+    std::string url = "${typeof window !== 'undefined' ? window.location.origin : 'https://hexsyncth.site'}/api/license/verify?key=" + key + "&hwid=" + hwid;
+    HINTERNET hConnect = InternetOpenUrlA(hInternet, url.c_str(), NULL, 0, INTERNET_FLAG_RELOAD | INTERNET_FLAG_SECURE, 0);
+    if (!hConnect) { InternetCloseHandle(hInternet); return false; }
+
+    char buffer[4096];
+    DWORD bytesRead = 0;
+    std::string response = "";
+    while (InternetReadFile(hConnect, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
+        buffer[bytesRead] = '\\0';
+        response += buffer;
+    }
+    InternetCloseHandle(hConnect);
+    InternetCloseHandle(hInternet);
+
+    // Verify if response contains status active
+    return (response.find("\\"status\\":\\"active\\"") != std::string::npos);
+}`}
+
+                    {apiDocLang === 'csharp' && `// C# .NET HttpClient License Verification Example
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+
+public class LicenseChecker
+{
+    private static readonly HttpClient client = new HttpClient();
+
+    public static async Task<bool> CheckLicense(string key, string hwid)
+    {
+        var payload = new { key = key, hwid = hwid };
+        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync("${typeof window !== 'undefined' ? window.location.origin : 'https://hexsyncth.site'}/api/license/verify", content);
+        if (!response.IsSuccessStatusCode) return false;
+
+        string json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        string status = doc.RootElement.GetProperty("status").GetString();
+        return status == "active";
+    }
+}`}
+
+                    {apiDocLang === 'python' && `# Python License Verification Example
+import requests
+
+def verify_license(key: str, hwid: str) -> bool:
+    url = "${typeof window !== 'undefined' ? window.location.origin : 'https://hexsyncth.site'}/api/license/verify"
+    payload = {
+        "key": key,
+        "hwid": hwid
+    }
+    try:
+        res = requests.post(url, json=payload, timeout=5)
+        data = res.json()
+        if data.get("status") == "active":
+            print("✅ License Valid! Remaining:", data["license"]["remainingFormatted"])
+            return True
+        else:
+            print("❌ Invalid:", data.get("message"))
+            return False
+    except Exception as e:
+        print("Error:", e)
+        return False`}
+
+                    {apiDocLang === 'nodejs' && `// Node.js / Electron / Fetch Example
+async function verifyLicense(key, hwid) {
+  const res = await fetch('${typeof window !== 'undefined' ? window.location.origin : 'https://hexsyncth.site'}/api/license/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, hwid })
+  });
+  const data = await res.json();
+  if (data.status === 'active') {
+    console.log('License valid until:', data.license.expiresAt);
+    return true;
+  }
+  throw new Error(data.message);
+}`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CREATE LICENSE KEY MODAL */}
+          {showCreateLicenseModal && (
+            <div className="modal-overlay" onClick={() => setShowCreateLicenseModal(false)}>
+              <div className="modal-content" style={{ maxWidth: '560px' }} onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IconKey color="#10b981" size={20} />
+                    <span>สร้าง License Key & กำหนดเวลาใช้งาน</span>
+                  </div>
+                  <button className="btn-close-modal" onClick={() => setShowCreateLicenseModal(false)}>
+                    <IconX size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateLicense} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Mode Selector */}
+                  <div>
+                    <label className="input-label" style={{ marginBottom: '6px' }}>รูปแบบการสร้างคีย์:</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setLicenseFormKeyType('auto')}
+                        style={{
+                          padding: '0.65rem',
+                          borderRadius: '8px',
+                          border: licenseFormKeyType === 'auto' ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                          background: licenseFormKeyType === 'auto' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.03)',
+                          color: licenseFormKeyType === 'auto' ? '#10b981' : '#9ca3af',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🎲 สุ่มอัตโนมัติ (Auto-Gen)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLicenseFormKeyType('custom')}
+                        style={{
+                          padding: '0.65rem',
+                          borderRadius: '8px',
+                          border: licenseFormKeyType === 'custom' ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                          background: licenseFormKeyType === 'custom' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.03)',
+                          color: licenseFormKeyType === 'custom' ? '#10b981' : '#9ca3af',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✏️ ตั้งรหัสคีย์เอง (Custom Key)
+                      </button>
+                    </div>
+                  </div>
+
+                  {licenseFormKeyType === 'auto' ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label className="input-label">คำนำหน้าคีย์ (Prefix):</label>
+                        <input
+                          type="text"
+                          className="text-input"
+                          placeholder="เช่น WINNER-, HEX-, VIP-"
+                          value={licenseFormPrefix}
+                          onChange={(e) => setLicenseFormPrefix(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="input-label">จำนวนคีย์:</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="50"
+                          className="text-input"
+                          value={licenseFormCount}
+                          onChange={(e) => setLicenseFormCount(parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="input-label">รหัสคีย์ที่คุณต้องการ (Custom License Key):</label>
+                      <input
+                        type="text"
+                        className="text-input"
+                        placeholder="เช่น WINNER-SPECIAL-VIP-2026 หรือ MY-API-KEY-001"
+                        required
+                        value={licenseFormCustomKey}
+                        onChange={(e) => setLicenseFormCustomKey(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {/* App / Game Name */}
+                  <div>
+                    <label className="input-label">ชื่อแอปพลิเคชัน หรือ เกมที่ผูก:</label>
+                    <input
+                      type="text"
+                      className="text-input"
+                      placeholder="เช่น PubgM VIP, ROV ESP, FreeFire Bot"
+                      required
+                      value={licenseFormAppName}
+                      onChange={(e) => setLicenseFormAppName(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Duration & Expiration Selection */}
+                  <div>
+                    <label className="input-label">กำหนดอายุการใช้งาน (เริ่มนับเมื่อคีย์ถูกเปิดใช้):</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '8px' }}>
+                      {[
+                        { label: '1 ชั่วโมง', hours: 1, lifetime: false },
+                        { label: '1 วัน (24 ชม.)', hours: 24, lifetime: false },
+                        { label: '3 วัน (72 ชม.)', hours: 72, lifetime: false },
+                        { label: '7 วัน (1 สัปดาห์)', hours: 168, lifetime: false },
+                        { label: '15 วัน', hours: 360, lifetime: false },
+                        { label: '30 วัน (1 เดือน)', hours: 720, lifetime: false },
+                        { label: 'ถาวร (ตลอดชีพ)', hours: 0, lifetime: true },
+                      ].map(dur => (
+                        <button
+                          key={dur.label}
+                          type="button"
+                          onClick={() => {
+                            setLicenseFormDurationHours(dur.hours);
+                            setLicenseFormIsLifetime(dur.lifetime);
+                          }}
+                          style={{
+                            padding: '0.45rem',
+                            borderRadius: '8px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: (licenseFormIsLifetime === dur.lifetime && (!dur.lifetime ? licenseFormDurationHours === dur.hours : true)) ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.08)',
+                            background: (licenseFormIsLifetime === dur.lifetime && (!dur.lifetime ? licenseFormDurationHours === dur.hours : true)) ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)',
+                            color: (licenseFormIsLifetime === dur.lifetime && (!dur.lifetime ? licenseFormDurationHours === dur.hours : true)) ? '#10b981' : '#cbd5e1'
+                          }}
+                        >
+                          {dur.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Optional Note */}
+                  <div>
+                    <label className="input-label">หมายเหตุ / ชื่อลูกค้า (ถ้ามี):</label>
+                    <input
+                      type="text"
+                      className="text-input"
+                      placeholder="เช่น ขายให้คุณบอย, กิจกรรมดิสคอร์ด"
+                      value={licenseFormNote}
+                      onChange={(e) => setLicenseFormNote(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Add to Store Product Stock Toggle */}
+                  <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>
+                      <input
+                        type="checkbox"
+                        checked={licenseFormAddToStock}
+                        onChange={(e) => setLicenseFormAddToStock(e.target.checked)}
+                      />
+                      <span>เติมคีย์นี้เข้าสต็อกสินค้าในร้านค้าโดยอัตโนมัติ</span>
+                    </label>
+                    {licenseFormAddToStock && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <select
+                          className="text-input"
+                          value={licenseFormProductId}
+                          onChange={(e) => setLicenseFormProductId(e.target.value)}
+                          required={licenseFormAddToStock}
+                        >
+                          <option value="">-- เลือกสินค้าที่ต้องการเติมคีย์ --</option>
+                          {products.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} (สต็อกปัจจุบัน: {p.stock || 0})</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      onClick={() => setShowCreateLicenseModal(false)}
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      style={{ flex: 2, justifyContent: 'center', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none' }}
+                    >
+                      ⚡ สร้างคีย์พร้อมใช้งานทันที
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ADD TIME MODAL */}
+          {showAddTimeModal && (
+            <div className="modal-overlay" onClick={() => setShowAddTimeModal(null)}>
+              <div className="modal-content" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IconClock color="#10b981" size={20} />
+                    <span>ต่อเวลาคีย์: {showAddTimeModal.key}</span>
+                  </div>
+                  <button className="btn-close-modal" onClick={() => setShowAddTimeModal(null)}>
+                    <IconX size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddTimeSubmit} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+                    เวลาคงเหลือปัจจุบัน: <strong style={{ color: '#fff' }}>{showAddTimeModal.remainingFormatted || 'ยังไม่เปิดใช้'}</strong>
+                  </div>
+
+                  <div>
+                    <label className="input-label">เลือกจำนวนเวลาที่จะเพิ่ม:</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      {[
+                        { label: '+24 ชม. (1 วัน)', hours: 24 },
+                        { label: '+72 ชม. (3 วัน)', hours: 72 },
+                        { label: '+1 สัปดาห์ (7 วัน)', hours: 168 },
+                        { label: '+1 เดือน (30 วัน)', hours: 720 },
+                      ].map(dur => (
+                        <button
+                          key={dur.label}
+                          type="button"
+                          onClick={() => setAddTimeHours(dur.hours)}
+                          style={{
+                            padding: '0.6rem',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            border: addTimeHours === dur.hours ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                            background: addTimeHours === dur.hours ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)',
+                            color: addTimeHours === dur.hours ? '#10b981' : '#cbd5e1'
+                          }}
+                        >
+                          {dur.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      onClick={() => setShowAddTimeModal(null)}
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      style={{ flex: 2, justifyContent: 'center', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none' }}
+                    >
+                      ✓ บันทึกการเพิ่มเวลา
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
 
           {/* TAB 2: USERS & ROLES */}
           {adminTab === 'users' && (
