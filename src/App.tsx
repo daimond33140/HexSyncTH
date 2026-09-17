@@ -611,6 +611,7 @@ export function groupProductsByGame(
 
 export default function App() {
   useScreenSize();
+  const [isAppReady, setIsAppReady] = useState(false);
   const [availableGames, setAvailableGames] = useState<Array<{ id: string; title: string }>>([]);
   const [products, setProducts] = useState<Product[]>(() => {
     try {
@@ -1193,8 +1194,9 @@ export default function App() {
     hasAttemptedAutoplayRef.current = false;
   }, [siteSettings.bg_music_volume, siteSettings.bg_music_url]);
 
-  // Autoplay on first user interaction anywhere on the document
+  // Autoplay on first user interaction anywhere on the document (ONLY after App is fully loaded & ready)
   useEffect(() => {
+    if (!isAppReady) return;
     if (siteSettings.bg_music_enabled !== 'true' || siteSettings.bg_music_autoplay !== 'true') return;
 
     const startAudioOnInteraction = () => {
@@ -1227,7 +1229,7 @@ export default function App() {
       window.removeEventListener('touchstart', startAudioOnInteraction);
       window.removeEventListener('keydown', startAudioOnInteraction);
     };
-  }, [siteSettings.bg_music_enabled, siteSettings.bg_music_autoplay, isYouTube, musicVolume]);
+  }, [isAppReady, siteSettings.bg_music_enabled, siteSettings.bg_music_autoplay, isYouTube, musicVolume]);
 
   const togglePlayMusic = () => {
     if (isYouTube) {
@@ -3021,11 +3023,30 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-    fetchGamesList();
-    fetchSettings();
-    fetchStats();
+    let isMounted = true;
+    const loadAllInitialData = async () => {
+      try {
+        await Promise.allSettled([
+          fetchProducts(),
+          fetchCategories(),
+          fetchGamesList(),
+          fetchSettings(),
+          fetchStats()
+        ]);
+      } catch (err) {
+        console.warn('Initial data load warning:', err);
+      } finally {
+        if (isMounted) {
+          // Small minimum delay for smooth UX so spinner does not flicker
+          setTimeout(() => {
+            setIsAppReady(true);
+            setIsLoadingProducts(false);
+          }, 350);
+        }
+      }
+    };
+    loadAllInitialData();
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -5132,8 +5153,24 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Active YouTube Audio Player (Mounted via Official YouTube IFrame API) */}
-      {siteSettings.bg_music_enabled === 'true' && isYouTube && ytVideoId && (
+      {/* HexSyncTH Full-Screen Spinner Loading Screen */}
+      {!isAppReady && (
+        <div className="hexsync-global-loader-screen">
+          <div className="hexsync-spinner-box">
+            <div className="hexsync-spin-outer" />
+            <div className="hexsync-spin-inner" />
+            <div className="hexsync-spin-core" />
+          </div>
+          <div className="hexsync-loader-brand">
+            HEXSYNC<span>TH</span>
+          </div>
+          <div className="hexsync-loader-status-text">
+            <span>กำลังโหลดข้อมูลร้านค้า กรุณารอสักครู่...</span>
+          </div>
+        </div>
+      )}
+      {/* Active YouTube Audio Player (Mounted only when site data has loaded) */}
+      {isAppReady && siteSettings.bg_music_enabled === 'true' && isYouTube && ytVideoId && (
         <div
           id="hexsync-yt-container"
           ref={(el) => {
@@ -5158,7 +5195,7 @@ export default function App() {
       )}
 
       {/* Standard HTML5 Background Audio Element */}
-      {siteSettings.bg_music_enabled === 'true' && !isYouTube && siteSettings.bg_music_url && (
+      {isAppReady && siteSettings.bg_music_enabled === 'true' && !isYouTube && siteSettings.bg_music_url && (
         <audio
           ref={audioRef}
           src={siteSettings.bg_music_url}
@@ -5170,7 +5207,7 @@ export default function App() {
       )}
 
       {/* Floating Cyberpunk Background Music Player Widget (สามารถพับเก็บเข้ามุมจอได้) */}
-      {siteSettings.bg_music_enabled === 'true' && (
+      {isAppReady && siteSettings.bg_music_enabled === 'true' && (
         <div className={`floating-music-widget ${isMusicPlayerFolded ? 'folded' : 'unfolded'} ${showMusicPlayerExpanded ? 'expanded' : ''}`}>
           {isMusicPlayerFolded ? (
             <button

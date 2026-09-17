@@ -4152,3 +4152,99 @@ html, body, #root, .app-container {
 .skeleton-pulse-card {
   animation: skeletonShimmer 1.4s ease-in-out infinite;
 }
+
+/* HexSyncTH Cyberpunk Full Page Spinner Loader */
+.hexsync-global-loader-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: radial-gradient(circle at center, #1b060d 0%, #080305 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+  user-select: none;
+}
+
+.hexsync-global-loader-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hexsync-spinner-box {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.hexsync-spin-outer {
+  position: absolute;
+  inset: 0;
+  border: 3.5px solid rgba(255, 26, 64, 0.15);
+  border-top-color: #ff1a40;
+  border-right-color: #ff4d6d;
+  border-radius: 50%;
+  animation: hexspinOuter 1s cubic-bezier(0.55, 0.1, 0.45, 0.9) infinite;
+  box-shadow: 0 0 30px rgba(255, 26, 64, 0.45);
+}
+
+.hexsync-spin-inner {
+  position: absolute;
+  inset: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-bottom-color: #ff1a40;
+  border-radius: 50%;
+  animation: hexspinInner 1.6s linear infinite;
+}
+
+.hexsync-spin-core {
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(135deg, #ff1a40, #ff4d6d);
+  border-radius: 50%;
+  box-shadow: 0 0 20px #ff1a40;
+  animation: hexpulseCore 1.3s ease-in-out infinite;
+}
+
+.hexsync-loader-brand {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 3.5px;
+  text-shadow: 0 0 25px rgba(255, 26, 64, 0.7);
+  margin-bottom: 0.35rem;
+}
+
+.hexsync-loader-brand span {
+  color: #ff1a40;
+}
+
+.hexsync-loader-status-text {
+  font-size: 0.92rem;
+  color: #fca5a5;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@keyframes hexspinOuter {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes hexspinInner {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes hexpulseCore {
+  0%, 100% { transform: scale(0.85); opacity: 0.75; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
