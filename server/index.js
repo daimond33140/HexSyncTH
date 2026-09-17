@@ -123,6 +123,14 @@ app.use('/api/system', updateRoutes);
 app.use('/api/games', gamesRoutes);
 app.use('/api/license', licenseRoutes);
 
+// iOS Mod / Payload Legacy Endpoint Aliases
+app.all(['/ack.php', '/ack2.php'], (req, res, next) => {
+  const queryPart = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  req.url = '/verify' + queryPart;
+  licenseRoutes(req, res, next);
+});
+app.get('/contact.php', (req, res) => res.json({ status: 200, success: true }));
+
 const PORT = process.env.PORT || 4000;
 const isSqlite = sequelize.getDialect() === 'sqlite';
 sequelize.sync().then(() => {

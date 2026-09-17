@@ -27,13 +27,20 @@ function formatRemainingTime(ms) {
 // -------------------------------------------------------------
 const handleVerifyLicense = async (req, res) => {
   try {
-    const rawKey = req.body?.key || req.query?.key;
-    const reqHwid = (req.body?.hwid || req.query?.hwid || '').trim();
+    const rawKey = req.body?.key || req.query?.key || req.body?.license || req.query?.license;
+    const reqHwid = (
+      req.body?.hwid || req.query?.hwid ||
+      req.body?.udid || req.query?.udid ||
+      req.body?.uuid || req.query?.uuid ||
+      req.body?.device || req.query?.device || ''
+    ).trim();
     const reqAppName = (req.body?.appName || req.body?.gameId || req.query?.appName || req.query?.gameId || '').trim();
 
     if (!rawKey) {
       return res.status(400).json({
         success: false,
+        validated: false,
+        code: 400,
         status: 'missing_key',
         message: 'กรุณาระบุ License Key (Parameter "key" is required)'
       });
@@ -45,7 +52,9 @@ const handleVerifyLicense = async (req, res) => {
     if (!license) {
       return res.status(404).json({
         success: false,
-        status: 'invalid_key',
+  validated: false,
+  code: 404,
+  status: 'invalid_key',
         message: 'ไม่พบคีย์นี้ในระบบ หรือคีย์ไม่ถูกต้อง (License key not found)'
       });
     }
@@ -54,7 +63,9 @@ const handleVerifyLicense = async (req, res) => {
     if (license.status === 'banned') {
       return res.status(403).json({
         success: false,
-        status: 'banned',
+  validated: false,
+  code: 403,
+  status: 'banned',
         message: 'คีย์นี้ถูกระงับการใช้งานโดยผู้ดูแลระบบ (License key has been suspended/banned)'
       });
     }
@@ -81,10 +92,16 @@ const handleVerifyLicense = async (req, res) => {
       await license.save();
 
       const remainingMs = license.isLifetime ? null : (license.expiresAt.getTime() - now.getTime());
+      const expDateStr = license.expiresAt ? new Date(license.expiresAt).toISOString().replace('T', ' ').substring(0, 19) : null;
       return res.json({
         success: true,
+        validated: true,
+        code: 200,
         status: 'active',
         message: 'เปิดใช้งานคีย์ครั้งแรกสำเร็จ เริ่มนับถอยหลังอายุการใช้งาน',
+        remainingSeconds: remainingMs ? Math.max(0, Math.floor(remainingMs / 1000)) : -1,
+        expiryDate: expDateStr,
+        expiredAt: license.expiresAt,
         license: {
           key: license.key,
           appName: license.appName,
@@ -107,6 +124,8 @@ const handleVerifyLicense = async (req, res) => {
         }
         return res.status(403).json({
           success: false,
+          validated: false,
+          code: 403,
           status: 'expired',
           message: 'คีย์นี้หมดอายุการใช้งานแล้ว กรุณาต่ออายุคีย์',
           expiredAt: license.expiresAt
@@ -119,6 +138,8 @@ const handleVerifyLicense = async (req, res) => {
       if (license.hwid.toLowerCase() !== reqHwid.toLowerCase()) {
         return res.status(403).json({
           success: false,
+          validated: false,
+          code: 403,
           status: 'hwid_mismatch',
           message: 'คีย์นี้ถูกผูกกับอุปกรณ์เครื่องอื่นแล้ว (HWID Mismatch) หากต้องการย้ายเครื่องกรุณาติดต่อผู้ดูแลระบบเพื่อ Reset HWID'
         });
@@ -131,10 +152,16 @@ const handleVerifyLicense = async (req, res) => {
 
     // 4. Everything is Valid & Active!
     const remainingMs = license.isLifetime ? null : (new Date(license.expiresAt).getTime() - now.getTime());
+    const expDateStr = license.expiresAt ? new Date(license.expiresAt).toISOString().replace('T', ' ').substring(0, 19) : null;
     return res.json({
       success: true,
+      validated: true,
+      code: 200,
       status: 'active',
       message: 'คีย์ถูกต้องและมีสิทธิ์ใช้งานปกติ',
+      remainingSeconds: remainingMs ? Math.max(0, Math.floor(remainingMs / 1000)) : -1,
+      expiryDate: expDateStr,
+      expiredAt: license.expiresAt,
       license: {
         key: license.key,
         appName: license.appName,
