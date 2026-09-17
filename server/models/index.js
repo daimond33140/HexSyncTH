@@ -180,6 +180,18 @@ const Product = sequelize.define('Product', {
   isFeatured: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
+  },
+  linkedGameId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  durationHours: {
+    type: DataTypes.INTEGER,
+    defaultValue: 24,
+  },
+  durationDays: {
+    type: DataTypes.FLOAT,
+    defaultValue: 1,
   }
 });
 

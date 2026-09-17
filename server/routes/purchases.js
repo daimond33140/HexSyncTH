@@ -1,10 +1,50 @@
 // server/routes/purchases.js
 const express = require('express');
 const { Purchase, Product, ProductKey, User, Log, Coupon, sequelize } = require('../models');
+const { Op } = require('sequelize');
 const { verifyToken, requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 // Get purchase history for user or all (if admin)
+
+// GET /api/purchases/active-licenses (checks active rental licenses for logged-in user)
+router.get('/active-licenses', verifyToken, async (req, res) => {
+  try {
+    const now = new Date();
+    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'superadmin');
+
+    if (isAdmin) {
+      return res.json({ isAdmin: true, licenses: {} });
+    }
+
+    const activePurchases = await Purchase.findAll({
+      where: {
+        userId: req.user.id,
+        expiresAt: { [Op.gt]: now }
+      },
+      order: [['expiresAt', 'DESC']]
+    });
+
+    const licenses = {};
+    for (const p of activePurchases) {
+      if (p.linkedGameId) {
+        if (!licenses[p.linkedGameId] || new Date(licenses[p.linkedGameId].expiresAt) < new Date(p.expiresAt)) {
+          licenses[p.linkedGameId] = {
+            gameId: p.linkedGameId,
+            productName: p.productName,
+            expiresAt: p.expiresAt,
+            remainingMs: Math.max(0, new Date(p.expiresAt).getTime() - now.getTime())
+          };
+        }
+      }
+    }
+
+    return res.json({ isAdmin: false, licenses });
+  } catch (err) {
+    return res.status(500).json({ message: 'Error checking licenses: ' + err.message });
+  }
+});
+
 router.get('/', verifyToken, async (req, res) => {
   try {
     const { username, userId } = req.query;
@@ -132,7 +172,36 @@ router.post('/checkout', verifyToken, async (req, res) => {
           pKey.usedAt = new Date();
           await pKey.save({ transaction: t });
 
-          // Create purchase record with real unique key
+          // Calculate rental duration
+          const durationHrs = p.durationHours || (p.durationDays ? Math.round(p.durationDays * 24) : 24);
+          const durationMs = durationHrs * 60 * 60 * 1000;
+          const newExpiresAt = new Date(Date.now() + durationMs);
+          let finalExpiresAt = newExpiresAt;
+
+          // User Rule: If renting again while time remains, use whichever time is GREATER (do not stack)
+          // เช่น เช่า 1 วัน เหลือ 10 ชม. แล้วไปเช่า 3 วัน ก็จะนับถอยหลัง 3 วันเลย ไม่เอาเวลาเก่ามารวม
+          if (p.linkedGameId) {
+            const activePrev = await Purchase.findOne({
+              where: {
+                userId: user.id,
+                linkedGameId: p.linkedGameId,
+                expiresAt: { [Op.gt]: new Date() }
+              },
+              order: [['expiresAt', 'DESC']],
+              transaction: t
+            });
+
+            if (activePrev && activePrev.expiresAt) {
+              const prevExpiry = new Date(activePrev.expiresAt);
+              if (prevExpiry > newExpiresAt) {
+                finalExpiresAt = prevExpiry;
+              } else {
+                finalExpiresAt = newExpiresAt;
+              }
+            }
+          }
+
+          // Create purchase record with real unique key and rental expiry
           const purchase = await Purchase.create({
             userId: user.id,
             username: user.username,
@@ -142,6 +211,9 @@ router.post('/checkout', verifyToken, async (req, res) => {
             key: pKey.keyString,
             downloadUrl: p.downloadUrl || 'https://store.steampowered.com',
             purchaseDate: new Date(),
+            linkedGameId: p.linkedGameId || null,
+            durationHours: durationHrs,
+            expiresAt: finalExpiresAt,
           }, { transaction: t });
           createdPurchases.push(purchase);
         }

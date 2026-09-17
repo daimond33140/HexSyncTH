@@ -74,6 +74,9 @@ interface Product {
   stock: number;
   active: boolean;
   isFeatured?: boolean;
+  linkedGameId?: string | null;
+  durationHours?: number | null;
+  durationDays?: number | null;
 }
 
 interface CategoryItem {
@@ -109,6 +112,9 @@ interface PurchaseRecord {
   key: string;
   downloadUrl: string;
   purchaseDate: string;
+  linkedGameId?: string | null;
+  durationHours?: number | null;
+  expiresAt?: string | null;
 }
 
 interface UserState {
@@ -280,8 +286,201 @@ const useScreenSize = () => {
   return screenInfo;
 };
 
+interface RentalCountdownProps {
+  expiresAt?: string | null;
+  linkedGameId?: string | null;
+  productName: string;
+  onGoToGame?: () => void;
+}
+
+const RentalCountdown: React.FC<RentalCountdownProps> = ({ expiresAt, linkedGameId, productName, onGoToGame }) => {
+  const [timeLeft, setTimeLeft] = useState<{
+    totalMs: number;
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isExpired: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!expiresAt) return;
+
+    const calcTime = () => {
+      const target = new Date(expiresAt).getTime();
+      const now = Date.now();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        return { totalMs: 0, days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true };
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      return { totalMs: diff, days, hours, minutes, seconds, isExpired: false };
+    };
+
+    setTimeLeft(calcTime());
+    const interval = setInterval(() => {
+      setTimeLeft(calcTime());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  if (!expiresAt) {
+    if (linkedGameId) {
+      return (
+        <div style={{
+          marginTop: '0.85rem',
+          padding: '0.75rem 1rem',
+          background: 'rgba(16, 185, 129, 0.08)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.75rem'
+        }}>
+          <div>
+            <span style={{ fontSize: '0.82rem', color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <IconCheckCircle2 size={15} /> สิทธิ์การใช้งานถาวร (ตลอดชีพ)
+            </span>
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>ปลดล็อกสิทธิ์ดาวน์โหลดในหน้าระบบเช็คสถานะเกมแบบไม่จำกัดเวลา</span>
+          </div>
+          {onGoToGame && (
+            <button
+              onClick={onGoToGame}
+              className="btn-outline"
+              style={{
+                fontSize: '0.8rem',
+                padding: '0.35rem 0.85rem',
+                borderColor: '#10b981',
+                color: '#10b981',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <IconDownload size={14} /> ไปดาวน์โหลดที่หน้าสถานะเกม
+            </button>
+          )}
+        </div>
+      );
+    }
+    return null;
+  }
+
+  if (!timeLeft) return null;
+
+  if (timeLeft.isExpired) {
+    return (
+      <div style={{
+        marginTop: '0.85rem',
+        padding: '0.75rem 1rem',
+        background: 'rgba(239, 68, 68, 0.08)',
+        border: '1px solid rgba(239, 68, 68, 0.3)',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.75rem'
+      }}>
+        <div>
+          <span style={{ fontSize: '0.85rem', color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <IconAlertCircle size={16} /> หมดอายุเวลาการเช่าแล้ว (Expired)
+          </span>
+          <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+            หมดอายุเมื่อ: {new Date(expiresAt).toLocaleString('th-TH')} • ไม่สามารถดาวน์โหลดเกมได้แล้ว
+          </span>
+        </div>
+        <span style={{ fontSize: '0.78rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.15)', padding: '0.25rem 0.6rem', borderRadius: '6px', fontWeight: 600 }}>
+          🔒 สิทธิ์ดาวน์โหลดถูกล็อค
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      marginTop: '0.85rem',
+      padding: '0.85rem 1.1rem',
+      background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.12) 0%, rgba(255, 77, 109, 0.05) 100%)',
+      border: '1px solid rgba(255, 26, 64, 0.35)',
+      borderRadius: '14px',
+      boxShadow: '0 4px 15px rgba(255, 26, 64, 0.08)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ff4d6d', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <IconClock size={16} color="#ff1a40" />
+            ⏳ สิทธิ์การเช่า ({productName}):
+          </span>
+        </div>
+        <span style={{ fontSize: '0.75rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '0.2rem 0.65rem', borderRadius: '20px', fontWeight: 600 }}>
+          ✅ มีสิทธิ์ดาวน์โหลด
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>
+          {timeLeft.days > 0 && (
+            <span style={{ background: 'rgba(0,0,0,0.5)', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              {timeLeft.days}<span style={{ fontSize: '0.75rem', color: '#b89ca2', marginLeft: '2px' }}>วัน</span>
+            </span>
+          )}
+          <span style={{ background: 'rgba(0,0,0,0.5)', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            {String(timeLeft.hours).padStart(2, '0')}<span style={{ fontSize: '0.75rem', color: '#b89ca2', marginLeft: '2px' }}>ชม.</span>
+          </span>
+          <span style={{ background: 'rgba(0,0,0,0.5)', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            {String(timeLeft.minutes).padStart(2, '0')}<span style={{ fontSize: '0.75rem', color: '#b89ca2', marginLeft: '2px' }}>น.</span>
+          </span>
+          <span style={{ background: 'rgba(255,26,64,0.3)', color: '#ff4d6d', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid rgba(255,26,64,0.5)' }}>
+            {String(timeLeft.seconds).padStart(2, '0')}<span style={{ fontSize: '0.75rem', color: '#ffaab9', marginLeft: '2px' }}>วิ</span>
+          </span>
+        </div>
+
+        <span style={{ fontSize: '0.78rem', color: '#9ca3af', marginLeft: 'auto' }}>
+          สิ้นสุด: {new Date(expiresAt).toLocaleString('th-TH')}
+        </span>
+      </div>
+
+      {onGoToGame && (
+        <div style={{ marginTop: '0.75rem', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onGoToGame}
+            className="btn-primary"
+            style={{
+              fontSize: '0.8rem',
+              padding: '0.45rem 1rem',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              border: 'none',
+              borderRadius: '8px',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <IconDownload size={15} />
+            <span>ไปดาวน์โหลดเกมนี้ในหน้าระบบเช็คสถานะ</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function App() {
   useScreenSize();
+  const [availableGames, setAvailableGames] = useState<Array<{ id: string; title: string }>>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1368,6 +1567,19 @@ export default function App() {
     } catch {
       // Backend offline fallback
     }
+  };
+
+  // Fetch games list for linked product rental
+  const fetchGamesList = async () => {
+    try {
+      const res = await fetch('/api/games');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.games && Array.isArray(data.games)) {
+          setAvailableGames(data.games.map((g: any) => ({ id: g.id, title: g.title })));
+        }
+      }
+    } catch {}
   };
 
   // Fetch categories
@@ -2540,6 +2752,7 @@ export default function App() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    fetchGamesList();
     fetchSettings();
     fetchStats();
   }, []);
@@ -5471,19 +5684,85 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* DIRECT DOWNLOAD BUTTON */}
-                  {rec.downloadUrl && (
-                    <a
-                      href={rec.downloadUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-download"
-                    >
-                      <IconDownload size={18} />
-                      <span>ดาวน์โหลดไฟล์ / โปรแกรม (คลิกเพื่อดาวน์โหลดทันที)</span>
-                      <IconExternalLink size={15} />
-                    </a>
-                  )}
+                  {/* LIVE RENTAL COUNTDOWN TIMER */}
+                  <RentalCountdown
+                    expiresAt={rec.expiresAt}
+                    linkedGameId={rec.linkedGameId}
+                    productName={rec.productName}
+                    onGoToGame={() => setView('status')}
+                  />
+
+                  {/* DIRECT DOWNLOAD BUTTON WITH EXPIRY ACCESS CONTROL */}
+                  {(() => {
+                    const isRentalExpired = rec.expiresAt ? new Date(rec.expiresAt).getTime() <= Date.now() : false;
+                    if (isRentalExpired) {
+                      return (
+                        <div
+                          style={{
+                            marginTop: '0.75rem',
+                            padding: '0.75rem 1rem',
+                            background: 'rgba(255, 26, 64, 0.08)',
+                            border: '1px dashed rgba(255, 26, 64, 0.3)',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            color: '#ff4d6d',
+                            fontSize: '0.85rem',
+                            fontWeight: 600
+                          }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <IconLock size={16} /> สิทธิ์การดาวน์โหลดหมดอายุแล้ว (เวลาเช่าสิ้นสุด)
+                          </span>
+                          <button
+                            className="btn-primary"
+                            style={{ fontSize: '0.78rem', padding: '0.35rem 0.8rem' }}
+                            onClick={() => setView('store')}
+                          >
+                            เช่าต่อเวลา
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (rec.linkedGameId) {
+                      return (
+                        <button
+                          onClick={() => setView('status')}
+                          className="btn-download"
+                          style={{
+                            marginTop: '0.75rem',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: '#fff',
+                            border: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <IconDownload size={18} />
+                          <span>ไปดาวน์โหลดเกมนี้ในหน้าระบบเช็คสถานะ & ดาวน์โหลด</span>
+                          <IconExternalLink size={15} />
+                        </button>
+                      );
+                    }
+
+                    if (rec.downloadUrl) {
+                      return (
+                        <a
+                          href={rec.downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-download"
+                          style={{ marginTop: '0.75rem' }}
+                        >
+                          <IconDownload size={18} />
+                          <span>ดาวน์โหลดไฟล์ / โปรแกรม (คลิกเพื่อดาวน์โหลดทันที)</span>
+                          <IconExternalLink size={15} />
+                        </a>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               ))}
             </div>
@@ -12156,6 +12435,81 @@ export default function App() {
                   />
                 </div>
 
+                {/* GAME RENTAL LINKAGE & DURATION (ADMIN) */}
+                <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '12px', padding: '1rem', margin: '1rem 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#10b981', fontWeight: 700, fontSize: '0.92rem' }}>
+                    <IconGamepad size={18} />
+                    <span>🎮 กำหนดสิทธิ์เช่าเกม & ปลดล็อกดาวน์โหลด (Rental System)</span>
+                  </div>
+
+                  <div className="responsive-grid-2col">
+                    <div className="input-field-group">
+                      <label className="input-label">เกมที่ต้องการปลดล็อกในหน้าเช็คสถานะ</label>
+                      <select
+                        className="text-input"
+                        value={editingProduct.linkedGameId || ''}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, linkedGameId: e.target.value || null })}
+                      >
+                        <option value="">-- ไม่ผูกกับเกม (สินค้าทั่วไป) --</option>
+                        {availableGames.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            🎮 {g.title} ({g.id})
+                          </option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '4px', display: 'block' }}>
+                        เมื่อลูกค้าซื้อ จะปลดล็อกปุ่มดาวน์โหลดของเกมนี้ในหน้าเช็คสถานะเกม
+                      </span>
+                    </div>
+
+                    <div className="input-field-group">
+                      <label className="input-label">ระยะเวลาเช่า (จำนวนวัน)</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input
+                          type="number"
+                          min="0"
+                          className="text-input"
+                          placeholder="เช่น 1, 3, 7, 30 (0 = ถาวร)"
+                          value={editingProduct.durationDays !== undefined && editingProduct.durationDays !== null ? editingProduct.durationDays : ''}
+                          onChange={(e) => {
+                            const days = e.target.value === '' ? null : Number(e.target.value);
+                            setEditingProduct({
+                              ...editingProduct,
+                              durationDays: days,
+                              durationHours: days ? days * 24 : 0
+                            });
+                          }}
+                        />
+                        <select
+                          className="text-input"
+                          style={{ width: '130px' }}
+                          value={editingProduct.durationDays !== undefined && editingProduct.durationDays !== null ? editingProduct.durationDays : ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const days = val === '' ? 0 : Number(val);
+                            setEditingProduct({
+                              ...editingProduct,
+                              durationDays: days,
+                              durationHours: days * 24
+                            });
+                          }}
+                        >
+                          <option value="">เลือกสำเร็จ</option>
+                          <option value="1">1 วัน (24 ชม.)</option>
+                          <option value="3">3 วัน (72 ชม.)</option>
+                          <option value="7">7 วัน (1 สัปดาห์)</option>
+                          <option value="15">15 วัน</option>
+                          <option value="30">30 วัน (1 เดือน)</option>
+                          <option value="0">ถาวร (ตลอดชีพ)</option>
+                        </select>
+                      </div>
+                      <span style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '4px', display: 'block' }}>
+                        {editingProduct.durationDays ? ('⏳ นับถอยหลัง ' + editingProduct.durationDays + ' วัน (' + (editingProduct.durationDays * 24) + ' ชม.) หลังซื้อ') : 'ถาวร (ไม่จำกัดเวลา)'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* EDIT FULL DESCRIPTION */}
                 <div className="input-field-group">
                   <label className="input-label">รายละเอียดสินค้า (Description & Features)</label>
@@ -12301,6 +12655,7 @@ export default function App() {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   const target = e.target as any;
+                  const durationDaysVal = Number(target.durationDays?.value || 0);
                   const newProduct = {
                     name: target.name.value,
                     categoryId: target.categoryId.value,
@@ -12310,6 +12665,9 @@ export default function App() {
                     initialKeys: target.initialKeys.value,
                     description: target.description.value,
                     isFeatured: Boolean(target.isFeatured?.checked),
+                    linkedGameId: target.linkedGameId?.value || null,
+                    durationDays: durationDaysVal,
+                    durationHours: durationDaysVal > 0 ? durationDaysVal * 24 : 0,
                     adminUsername: user?.username,
                   };
 
@@ -12402,6 +12760,46 @@ export default function App() {
                 <div className="input-field-group">
                   <label className="input-label">ลิงก์ของปุ่มดาวน์โหลด (Download URL)</label>
                   <input name="downloadUrl" type="text" required className="text-input" defaultValue="https://rov.in.th" />
+                </div>
+
+                {/* GAME RENTAL LINKAGE & DURATION (ADMIN) */}
+                <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '12px', padding: '1rem', margin: '0.85rem 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#10b981', fontWeight: 700, fontSize: '0.92rem' }}>
+                    <IconGamepad size={18} />
+                    <span>🎮 กำหนดสิทธิ์เช่าเกม & ปลดล็อกดาวน์โหลด (Rental System)</span>
+                  </div>
+
+                  <div className="responsive-grid-2col">
+                    <div className="input-field-group">
+                      <label className="input-label">เกมที่ต้องการปลดล็อกในหน้าเช็คสถานะ</label>
+                      <select name="linkedGameId" className="text-input">
+                        <option value="">-- ไม่ผูกกับเกม (สินค้าทั่วไป) --</option>
+                        {availableGames.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            🎮 {g.title} ({g.id})
+                          </option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '4px', display: 'block' }}>
+                        เมื่อลูกค้าซื้อ จะปลดล็อกปุ่มดาวน์โหลดของเกมนี้ในหน้าเช็คสถานะเกม
+                      </span>
+                    </div>
+
+                    <div className="input-field-group">
+                      <label className="input-label">ระยะเวลาเช่า (จำนวนวัน)</label>
+                      <select name="durationDays" className="text-input" defaultValue="1">
+                        <option value="1">1 วัน (24 ชั่วโมง)</option>
+                        <option value="3">3 วัน (72 ชั่วโมง)</option>
+                        <option value="7">7 วัน (1 สัปดาห์)</option>
+                        <option value="15">15 วัน</option>
+                        <option value="30">30 วัน (1 เดือน)</option>
+                        <option value="0">ถาวร (ตลอดชีพ / ไม่จำกัดเวลา)</option>
+                      </select>
+                      <span style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '4px', display: 'block' }}>
+                        ระบบจะเริ่มนับถอยหลังทันทีเมื่อลูกค้าทำรายการสั่งซื้อสำเร็จ
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="input-field-group">
@@ -12809,6 +13207,13 @@ export default function App() {
                           <span>{copiedKey === rec.key ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
                         </button>
                       </div>
+
+                      {/* RENTAL EXPIRY INFO IN ADMIN */}
+                      <RentalCountdown
+                        expiresAt={rec.expiresAt}
+                        linkedGameId={rec.linkedGameId}
+                        productName={rec.productName}
+                      />
 
                       {rec.downloadUrl && (
                         <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: '#888' }}>

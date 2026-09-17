@@ -147,6 +147,9 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
   const [selectedFilter, setSelectedFilter] = useState<'all' | GameStatus>('all');
   const [selectedGameForDownload, setSelectedGameForDownload] = useState<GameItem | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [activeLicenses, setActiveLicenses] = useState<Record<string, { gameId: string; productName: string; expiresAt: string; remainingMs: number }>>({});
+  const [isLicenseAdmin, setIsLicenseAdmin] = useState(false);
+  const [lockedModalGame, setLockedModalGame] = useState<GameItem | null>(null);
 
   // Admin edit states
   const [editingGame, setEditingGame] = useState<GameItem | null>(null);
@@ -163,6 +166,22 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
         }
       })
       .catch(() => {});
+
+    
+    const token = localStorage.getItem('hexsync_token');
+    if (token) {
+      fetch('/api/purchases/active-licenses', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data) {
+            setIsLicenseAdmin(Boolean(data.isAdmin));
+            if (data.licenses) setActiveLicenses(data.licenses);
+          }
+        })
+        .catch(() => {});
+    }
 
     fetch('/api/games/settings')
       .then((res) => res.json())
@@ -210,6 +229,18 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
     } catch (err) {
       console.error('Failed to sync settings to server:', err);
     }
+  };
+
+  
+  const formatRemaining = (targetDateStr: string) => {
+    const diff = new Date(targetDateStr).getTime() - Date.now();
+    if (diff <= 0) return 'หมดอายุแล้ว';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const mins = Math.floor((diff / (1000 * 60)) % 60);
+    if (days > 0) return `เหลือ ${days} วัน ${hours} ชม.`;
+    if (hours > 0) return `เหลือ ${hours} ชม. ${mins} นาที`;
+    return `เหลือ ${mins} นาที`;
   };
 
   const handleCopyNote = (text: string) => {
@@ -677,7 +708,10 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
             const isDetected = game.status === 'detected';
             const isUpdating = game.status === 'updating';
 
-            const canDownload = game.isDownloadEnabled && !settings.globalMaintenance && isUndetected;
+            const hasAdminPrivilege = isAdmin || isLicenseAdmin || user?.role === 'admin' || user?.role === 'superadmin';
+            const licenseInfo = activeLicenses[game.id];
+            const hasRentalAccess = hasAdminPrivilege || Boolean(licenseInfo && new Date(licenseInfo.expiresAt).getTime() > Date.now());
+            const canDownload = game.isDownloadEnabled && !settings.globalMaintenance && isUndetected && hasRentalAccess;
 
             return (
               <div
@@ -828,47 +862,95 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                   )}
 
                   {/* Action Buttons */}
-                  <div style={{ marginTop: 'auto', paddingTop: '1.25rem', display: 'flex', gap: '8px' }}>
-                    <button
-                      disabled={!canDownload}
-                      onClick={() => setSelectedGameForDownload(game)}
-                      style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        border: 'none',
-                        background: canDownload
-                          ? 'linear-gradient(135deg, #10b981, #059669)'
-                          : 'rgba(255, 255, 255, 0.08)',
-                        color: canDownload ? '#fff' : '#6b7280',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        cursor: canDownload ? 'pointer' : 'not-allowed',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        boxShadow: canDownload ? '0 4px 14px rgba(16, 185, 129, 0.35)' : 'none'
-                      }}
-                    >
-                      {canDownload ? (
-                        <>
-                          <Download size={16} /> ดาวน์โหลดไฟล์
-                        </>
-                      ) : isDetected ? (
-                        <>
-                          <Lock size={16} /> ปิดดาวน์โหลด (Detected)
-                        </>
-                      ) : isUpdating ? (
-                        <>
-                          <RefreshCw size={16} /> อยู่ระหว่างอัปเดต
-                        </>
+                  <div style={{ marginTop: 'auto', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* License Access Status Badge */}
+                    <div style={{
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: hasRentalAccess ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.1)',
+                      border: hasRentalAccess ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.25)',
+                      color: hasRentalAccess ? '#10b981' : '#f87171'
+                    }}>
+                      {hasAdminPrivilege ? (
+                        <><span>👑</span> <span>สิทธิ์แอดมิน (เข้าถึงได้ทุกเกม)</span></>
+                      ) : hasRentalAccess ? (
+                        <><span>✅</span> <span>สิทธิ์เช่าพร้อมใช้งาน ({formatRemaining(licenseInfo.expiresAt)})</span></>
                       ) : (
-                        <>
-                          <Lock size={16} /> ปิดดาวน์โหลดชั่วคราว
-                        </>
+                        <><span>🔒</span> <span>ต้องเช่าเกมเพื่อปลดล็อกดาวน์โหลด</span></>
                       )}
-                    </button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {!hasRentalAccess ? (
+                        <button
+                          onClick={() => setLockedModalGame(game)}
+                          style={{
+                            flex: 1,
+                            padding: '10px 14px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            color: '#f87171',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            boxShadow: '0 2px 10px rgba(239, 68, 68, 0.2)'
+                          }}
+                        >
+                          <Lock size={15} />
+                          <span>เช่าเกมเพื่อปลดล็อกดาวน์โหลด</span>
+                        </button>
+                      ) : (
+                        <button
+                          disabled={!canDownload}
+                          onClick={() => setSelectedGameForDownload(game)}
+                          style={{
+                            flex: 1,
+                            padding: '10px 14px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            background: canDownload
+                              ? 'linear-gradient(135deg, #10b981, #059669)'
+                              : 'rgba(255, 255, 255, 0.08)',
+                            color: canDownload ? '#fff' : '#6b7280',
+                            fontWeight: 700,
+                            fontSize: '0.9rem',
+                            cursor: canDownload ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            boxShadow: canDownload ? '0 4px 14px rgba(16, 185, 129, 0.35)' : 'none'
+                          }}
+                        >
+                          {canDownload ? (
+                            <>
+                              <Download size={16} /> ดาวน์โหลดไฟล์
+                            </>
+                          ) : isDetected ? (
+                            <>
+                              <Lock size={16} /> ปิดดาวน์โหลด (Detected)
+                            </>
+                          ) : isUpdating ? (
+                            <>
+                              <RefreshCw size={16} /> อยู่ระหว่างอัปเดต
+                            </>
+                          ) : (
+                            <>
+                              <Lock size={16} /> ปิดดาวน์โหลดชั่วคราว
+                            </>
+                          )}
+                        </button>
+                      )}
 
                     {/* Admin Quick Action */}
                     {isAdmin && (
@@ -890,11 +972,143 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                         <Edit3 size={16} />
                       </button>
                     )}
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Locked Game Modal (Requires Rental) */}
+      {lockedModalGame && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#18181b',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '18px',
+            maxWidth: '480px',
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
+          }}>
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'rgba(239, 68, 68, 0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Lock size={20} color="#ef4444" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', fontWeight: 700 }}>
+                    ต้องเช่าเกมเพื่อปลดล็อกดาวน์โหลด
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#9ca3af' }}>
+                    {lockedModalGame.title} ({lockedModalGame.category})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setLockedModalGame(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#9ca3af',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+                padding: '1rem',
+                marginBottom: '1.25rem',
+                fontSize: '0.88rem',
+                lineHeight: 1.6,
+                color: '#cbd5e1'
+              }}>
+                🔒 คุณยังไม่มีสิทธิ์เช่าเกม <strong>{lockedModalGame.title}</strong> หรือเวลาเช่าเดิมของคุณหมดอายุแล้ว
+                <div style={{ marginTop: '0.5rem', color: '#9ca3af', fontSize: '0.8rem' }}>
+                  ระบบจำกัดสิทธิ์ให้เฉพาะผู้ที่เช่าเกมจริงเท่านั้น จึงจะสามารถดาวน์โหลดไฟล์และดูวิธีติดตั้งได้
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <button
+                  onClick={() => {
+                    setLockedModalGame(null);
+                    onBackToStore();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #ff1a40, #ff4d6d)',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 15px rgba(255, 26, 64, 0.4)'
+                  }}
+                >
+                  <Sparkles size={18} />
+                  <span>ไปเลือกเช่าเกมนี้ที่หน้าร้านค้า</span>
+                </button>
+
+                <button
+                  onClick={() => setLockedModalGame(null)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'transparent',
+                    color: '#9ca3af',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ปิดหน้าต่าง
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

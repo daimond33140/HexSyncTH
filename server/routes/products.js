@@ -233,7 +233,7 @@ router.patch('/:id/featured', requireAdmin, async (req, res) => {
 // Add new product (Admin Only)
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { name, categoryId, price, originalPrice, downloadUrl, description, image, badge, initialKeys, isFeatured } = req.body;
+    const { name, categoryId, price, originalPrice, downloadUrl, description, image, badge, initialKeys, isFeatured, linkedGameId, durationHours, durationDays } = req.body;
     const newProduct = await Product.create({
       name,
       categoryId: categoryId || 'rov',
@@ -246,6 +246,9 @@ router.post('/', requireAdmin, async (req, res) => {
       stock: 0,
       active: true,
       isFeatured: Boolean(isFeatured),
+      linkedGameId: linkedGameId || null,
+      durationHours: durationHours ? Number(durationHours) : 24,
+      durationDays: durationDays ? Number(durationDays) : 1,
     });
 
     // If initial keys provided
@@ -289,6 +292,9 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if (badge !== undefined) safeUpdates.badge = badge;
     if (active !== undefined) safeUpdates.active = Boolean(active);
     if (isFeatured !== undefined) safeUpdates.isFeatured = Boolean(isFeatured);
+    if (req.body.linkedGameId !== undefined) safeUpdates.linkedGameId = req.body.linkedGameId || null;
+    if (req.body.durationHours !== undefined) safeUpdates.durationHours = Number(req.body.durationHours) || 24;
+    if (req.body.durationDays !== undefined) safeUpdates.durationDays = Number(req.body.durationDays) || 1;
 
     await product.update(safeUpdates);
 
