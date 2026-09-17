@@ -4929,3 +4929,240 @@ select option:checked, select.text-input option:checked {
   border-radius: 6px;
   color: #aaa;
 }
+
+
+/* ========================================================
+   UNIVERSAL RESPONSIVE NAVBAR & PROFILE HUB
+   (Optimized for All Mobile Screens & iPads / Tablets)
+   ======================================================== */
+
+.desktop-nav-link {
+  display: inline-flex !important;
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+.mobile-only-dropdown-group {
+  display: none;
+}
+
+.profile-admin-banner-card {
+  background: linear-gradient(135deg, rgba(255, 26, 64, 0.18), rgba(245, 158, 11, 0.1));
+  border: 1px solid rgba(255, 26, 64, 0.35);
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+
+.profile-btn-admin-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #ff1a40, #ff4d6d);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 26, 64, 0.4);
+  transition: all 0.2s ease;
+}
+
+.profile-btn-admin-shortcut:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 26, 64, 0.6);
+}
+
+/* Tablet & iPad Specific (768px to 1080px) */
+@media (min-width: 769px) and (max-width: 1080px) {
+  .navbar {
+    padding: 0.75rem 1.25rem !important;
+  }
+  .desktop-nav-link span {
+    display: inline !important;
+  }
+  .btn-outline, .btn-admin {
+    padding: 0.45rem 0.85rem !important;
+    font-size: 0.82rem !important;
+  }
+  .profile-modal-box {
+    width: 90vw !important;
+    max-height: 88vh !important;
+  }
+}
+
+/* All Mobile Phones (iPhone SE, Android, up to 768px) */
+@media (max-width: 768px) {
+  .desktop-nav-link {
+    display: none !important;
+  }
+
+  .mobile-only-dropdown-group {
+    display: block !important;
+  }
+
+  /* Compact Navbar Header */
+  .navbar {
+    padding: 0.6rem 0.75rem !important;
+    gap: 0.4rem !important;
+  }
+
+  .brand-logo {
+    gap: 0.5rem !important;
+  }
+
+  .brand-icon-wrapper {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .brand-name {
+    font-size: 1.1rem !important;
+  }
+
+  .nav-actions {
+    gap: 0.4rem !important;
+  }
+
+  /* Compact Cart Button on Mobile */
+  .btn-cart {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Compact Balance Pill on Mobile */
+  .btn-balance {
+    padding: 0.35rem 0.65rem !important;
+    font-size: 0.78rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* User Profile Badge on Mobile */
+  .btn-profile-badge {
+    padding: 3px 8px 3px 6px !important;
+    gap: 5px !important;
+    border-radius: 14px !important;
+  }
+
+  .profile-mini-avatar {
+    font-size: 1rem !important;
+  }
+
+  .profile-mini-info {
+    max-width: 70px !important;
+  }
+
+  .profile-mini-name {
+    font-size: 0.78rem !important;
+    max-width: 70px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .profile-mini-role {
+    display: none !important;
+  }
+
+  /* Dropdown Menu on Mobile: Aligned to Right edge with safe width */
+  .user-dropdown-menu {
+    right: 0 !important;
+    width: 250px !important;
+    max-width: calc(100vw - 20px) !important;
+    top: calc(100% + 8px) !important;
+  }
+
+  /* Profile Hub Modal Mobile Optimization */
+  .profile-modal-overlay {
+    padding: 0.5rem !important;
+  }
+
+  .profile-modal-box {
+    width: 96vw !important;
+    max-height: 90dvh !important;
+    border-radius: 16px !important;
+  }
+
+  .profile-modal-header {
+    padding: 0.85rem 1rem !important;
+  }
+
+  .profile-avatar-large {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 1.5rem !important;
+  }
+
+  .profile-header-name-row h3 {
+    font-size: 1.05rem !important;
+  }
+
+  .profile-header-email {
+    font-size: 0.75rem !important;
+  }
+
+  .profile-balance-pill {
+    padding: 4px 10px !important;
+  }
+
+  .profile-balance-val {
+    font-size: 0.95rem !important;
+  }
+
+  .profile-nav-tabs {
+    padding: 8px 10px !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .profile-nav-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .profile-tab-btn {
+    padding: 6px 12px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .profile-tab-content {
+    padding: 1rem 0.85rem !important;
+  }
+
+  .profile-overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .profile-purchases-table-wrap,
+  .profile-topups-table-wrap {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 10px !important;
+  }
+
+  .profile-custom-table {
+    min-width: 540px !important;
+  }
+
+  .profile-key-box {
+    max-width: 180px !important;
+  }
+
+  .profile-key-box code {
+    font-size: 0.75rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 120px !important;
+    display: inline-block !important;
+  }
+}

@@ -5827,26 +5827,15 @@ export default function App() {
           </div>
         </div>
 
-        {view === 'store' && (
-          <div className="nav-search-container">
-            <IconSearch size={18} className="search-icon-nav" />
-            <input
-              type="text"
-              className="nav-search-input"
-              placeholder="ค้นหาคีย์ ROV, วินโดว์, เกม, ซอฟต์แวร์..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        )}
+        {/* Search bar moved to storefront body */ }
 
         <div className="nav-actions">
-          {/* Navigation Links: Store / Game Status / Admin */}
+          {/* Navigation Links: Store / Game Status / Admin (Visible on Tablet/iPad & Desktop) */}
           {user && (
             <>
               {view !== "store" && (
                 <button
-                  className="btn-outline desktop-only-btn"
+                  className="btn-outline desktop-nav-link"
                   onClick={() => setView("store")}
                 >
                   <IconGamepad size={16} />
@@ -5855,7 +5844,7 @@ export default function App() {
               )}
 
               <button
-                className={`btn-outline desktop-only-btn ${view === "status" ? "active" : ""}`}
+                className={`btn-outline desktop-nav-link ${view === "status" ? "active" : ""}`}
                 onClick={() => setView("status")}
                 style={{
                   background: view === "status" ? "linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.2))" : "rgba(16, 185, 129, 0.1)",
@@ -5873,7 +5862,7 @@ export default function App() {
 
               {(user.role === "admin" || user.role === "superadmin") && (
                 <button
-                  className={`btn-admin ${view === "admin" ? "active" : ""}`}
+                  className={`btn-admin desktop-nav-link ${view === "admin" ? "active" : ""}`}
                   onClick={() => {
                     setView("admin");
                     fetchAdminData();
@@ -5884,13 +5873,13 @@ export default function App() {
                 </button>
               )}
 
-              <div className="nav-divider desktop-only-btn" />
+              <div className="nav-divider desktop-nav-link" />
             </>
           )}
 
-          {/* Cart Button */}
-          <button className="btn-cart desktop-only-btn" onClick={() => setShowCartModal(true)} title="ตะกร้าสินค้า">
-            <IconCart size={20} />
+          {/* Cart Button (Always visible on Mobile, iPad, Desktop) */}
+          <button className="btn-cart" onClick={() => setShowCartModal(true)} title="ตะกร้าสินค้า">
+            <IconCart size={19} />
             {cart.length > 0 && (
               <span className="cart-badge-count">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
             )}
@@ -5898,14 +5887,14 @@ export default function App() {
 
           {user ? (
             <>
-              {/* Wallet Balance Pill */}
+              {/* Wallet Balance Pill (Always visible & interactive on Mobile, iPad, Desktop) */}
               <button className="btn-balance" onClick={handleOpenTopup} title="คลิกเพื่อเติมเงิน">
-                <IconWallet size={16} />
+                <IconWallet size={15} />
                 <span>฿{user.balance.toLocaleString()}</span>
               </button>
 
-              {/* User Profile & Menu Dropdown */}
-              <div className="user-dropdown-container desktop-only-btn" ref={userDropdownRef}>
+              {/* User Profile & Menu Dropdown (Active on ALL screens: Mobile, iPad, Desktop) */}
+              <div className="user-dropdown-container" ref={userDropdownRef}>
                 <button
                   className={`btn-profile-badge ${showUserDropdown ? "active" : ""}`}
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
@@ -5980,6 +5969,35 @@ export default function App() {
                       <span>เปลี่ยนรหัสผ่าน</span>
                     </button>
 
+                    {/* Mobile/iPad quick navigation inside dropdown */}
+                    <div className="mobile-only-dropdown-group">
+                      <div className="user-dropdown-divider" />
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          setView("status");
+                        }}
+                      >
+                        <ShieldCheck size={16} color="#10b981" />
+                        <span>สถานะเกม & ดาวน์โหลด</span>
+                      </button>
+
+                      {(user.role === "admin" || user.role === "superadmin") && (
+                        <button
+                          className="user-dropdown-item"
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            setView("admin");
+                            fetchAdminData();
+                          }}
+                        >
+                          <IconSettings size={16} color="#ff1a40" />
+                          <span>{user.role === "superadmin" ? "ระบบหลังบ้าน 👑" : "ระบบหลังบ้าน"}</span>
+                        </button>
+                      )}
+                    </div>
+
                     <button
                       className="user-dropdown-item danger"
                       onClick={() => {
@@ -5999,14 +6017,14 @@ export default function App() {
           ) : (
             <>
               <button
-                className="btn-outline desktop-only-btn"
+                className="btn-outline"
                 onClick={() => handleOpenAuthModal("login")}
               >
                 <IconUser size={16} />
                 <span>เข้าสู่ระบบ</span>
               </button>
               <button
-                className="btn-primary desktop-only-btn"
+                className="btn-primary desktop-nav-link"
                 onClick={() => handleOpenAuthModal("register")}
               >
                 <span>สมัครสมาชิก</span>
@@ -12654,6 +12672,30 @@ async function verifyLicense(key, hwid) {
             {profileTab === 'overview' && (
               <div className="profile-tab-content">
                 <div className="profile-overview-grid">
+                  {(user.role === 'admin' || user.role === 'superadmin') && (
+                    <div className="profile-admin-banner-card" style={{ gridColumn: '1 / -1' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '1.4rem' }}>👑</span>
+                          <div>
+                            <strong style={{ color: '#fff', fontSize: '0.95rem' }}>คุณมีสิทธิ์เข้าถึงระบบผู้ดูแลระบบ</strong>
+                            <p style={{ margin: '2px 0 0', color: '#a89498', fontSize: '0.78rem' }}>จัดการสต็อกคีย์, อนุมัติสลิป, ตรวจสอบผู้ใช้ และตั้งค่าเว็บไซต์</p>
+                          </div>
+                        </div>
+                        <button
+                          className="profile-btn-admin-shortcut"
+                          onClick={() => {
+                            setShowProfileModal(false);
+                            setView('admin');
+                            fetchAdminData();
+                          }}
+                        >
+                          <IconSettings size={16} />
+                          <span>ไปที่ระบบหลังบ้าน</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="profile-overview-card">
                     <div className="profile-card-icon"><IconWallet size={24} color="#ff1a40" /></div>
                     <div className="profile-card-data">
@@ -16747,7 +16789,7 @@ async function verifyLicense(key, hwid) {
 
           {/* MOBILE BOTTOM NAVIGATION BAR (iOS / Android Native App Bar) */}
           <nav className="mobile-bottom-nav">
-            {/* Slot 1 (Left 1): หน้าร้าน */}
+            {/* Slot 1: หน้าร้าน */}
             <button
               className={`mobile-nav-item ${view === 'store' ? 'active' : ''}`}
               onClick={() => setView('store')}
@@ -16756,29 +16798,16 @@ async function verifyLicense(key, hwid) {
               <span>หน้าร้าน</span>
             </button>
 
-            {/* Slot 2 (Left 2): สถานะเกม หรือ ประวัติการซื้อ */}
-            {user ? (
-              <button
-                className={`mobile-nav-item ${view === 'status' ? 'active' : ''}`}
-                onClick={() => setView('status')}
-              >
-                <ShieldCheck size={20} color={view === 'status' ? '#10b981' : 'currentColor'} />
-                <span>สถานะเกม</span>
-              </button>
-            ) : (
-              <button
-                className={`mobile-nav-item ${view === 'history' ? 'active' : ''}`}
-                onClick={() => {
-                  setAuthTab('login');
-                  setAuthModalOpen(true);
-                }}
-              >
-                <IconHistory size={20} />
-                <span>ประวัติ</span>
-              </button>
-            )}
+            {/* Slot 2: สถานะเกม */}
+            <button
+              className={`mobile-nav-item ${view === 'status' ? 'active' : ''}`}
+              onClick={() => setView('status')}
+            >
+              <ShieldCheck size={20} color={view === 'status' ? '#10b981' : 'currentColor'} />
+              <span>สถานะเกม</span>
+            </button>
 
-            {/* Slot 3 (DEAD CENTER): ปุ่มเติมเงิน ลอยเด่นตรงกลางแบบ 1:1 เป๊ะ */}
+            {/* Slot 3: เติมเงิน (Center highlight) */}
             <button
               className="mobile-nav-item mobile-nav-highlight"
               onClick={handleOpenTopup}
@@ -16790,75 +16819,42 @@ async function verifyLicense(key, hwid) {
               <span style={{ fontWeight: 800, color: '#fff' }}>เติมเงิน</span>
             </button>
 
-            {/* Slot 4 (Right 1): ตะกร้าสินค้า หรือ ประวัติซื้อ */}
+            {/* Slot 4: ตะกร้าสินค้า */}
+            <button
+              className="mobile-nav-item"
+              onClick={() => setShowCartModal(true)}
+              title="ตะกร้าสินค้า"
+            >
+              <div style={{ position: 'relative', display: 'inline-flex' }}>
+                <IconCart size={20} />
+                {cart.length > 0 && (
+                  <span className="mobile-cart-badge">
+                    {cart.reduce((s, i) => s + i.quantity, 0)}
+                  </span>
+                )}
+              </div>
+              <span>ตะกร้า</span>
+            </button>
+
+            {/* Slot 5: โปรไฟล์ & ประวัติ หรือ เข้าสู่ระบบ */}
             {user ? (
               <button
-                className={`mobile-nav-item ${view === 'history' ? 'active' : ''}`}
-                onClick={() => setView('history')}
-              >
-                <IconHistory size={20} />
-                <span>ประวัติซื้อ</span>
-              </button>
-            ) : (
-              <button
-                className="mobile-nav-item"
-                onClick={() => setShowCartModal(true)}
+                className={`mobile-nav-item ${showProfileModal ? 'active' : ''}`}
+                onClick={() => handleOpenProfile('overview')}
+                title="โปรไฟล์และประวัติของฉัน"
               >
                 <div style={{ position: 'relative', display: 'inline-flex' }}>
-                  <IconCart size={20} />
-                  {cart.length > 0 && (
-                    <span className="mobile-cart-badge">
-                      {cart.reduce((s, i) => s + i.quantity, 0)}
-                    </span>
+                  <IconUser size={20} />
+                  {purchases && purchases.length > 0 && (
+                    <span className="mobile-cart-badge" style={{ background: '#3b82f6' }}>{purchases.length}</span>
                   )}
                 </div>
-                <span>ตะกร้า</span>
-              </button>
-            )}
-
-            {/* Slot 5 (Right 2): แอดมินหลังบ้าน หรือ บัญชีสมาชิก/ล็อกอิน */}
-            {(user?.role === 'admin' || user?.role === 'superadmin') ? (
-              view === 'admin' ? (
-                <button
-                  className="mobile-nav-item"
-                  onClick={() => setView('store')}
-                  style={{ color: '#10b981' }}
-                  title="กลับหน้าร้าน"
-                >
-                  <IconShoppingBag size={20} />
-                  <span>หน้าร้าน</span>
-                </button>
-              ) : (
-                <button
-                  className="mobile-nav-item"
-                  onClick={() => {
-                    setView('admin');
-                    fetchAdminData();
-                  }}
-                >
-                  <IconSettings size={20} />
-                  <span>หลังบ้าน</span>
-                </button>
-              )
-            ) : user ? (
-              <button
-                className="mobile-nav-item"
-                onClick={() => {
-                  if (window.confirm('คุณต้องการออกจากระบบหรือไม่?')) {
-                    handleLogout();
-                  }
-                }}
-              >
-                <IconLogOut size={20} />
-                <span>ออกระบบ</span>
+                <span>โปรไฟล์</span>
               </button>
             ) : (
               <button
                 className="mobile-nav-item"
-                onClick={() => {
-                  setAuthTab('login');
-                  setAuthModalOpen(true);
-                }}
+                onClick={() => handleOpenAuthModal('login')}
               >
                 <IconUser size={20} />
                 <span>เข้าสู่ระบบ</span>
