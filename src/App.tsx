@@ -6231,17 +6231,37 @@ export default function App() {
         </button>
       )}
 
-      {/* Center Screen Toast Alert Dialog */}
+      {/* Bottom-Right Toast Alert Dialog */}
       {toast && (
-        <div className="toast-container" onClick={() => setToast(null)}>
-          <div className="toast-item" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="toast-container"
+          style={{
+            position: 'fixed',
+            bottom: '5rem',
+            right: '1.5rem',
+            top: 'auto',
+            left: 'auto',
+            width: 'auto',
+            height: 'auto',
+            zIndex: 99999999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: 'flex-end',
+            pointerEvents: 'none'
+          }}
+        >
+          <div className="toast-item" onClick={() => setToast(null)} title="คลิกเพื่อปิด">
             <div className="toast-icon-wrapper">
               <IconSparkles size={20} color="#ff1a40" />
             </div>
             <span className="toast-text">{toast}</span>
             <button
               className="toast-close-btn"
-              onClick={() => setToast(null)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setToast(null);
+              }}
               title="ปิดการแจ้งเตือน"
             >
               ✕

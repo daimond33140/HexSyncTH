@@ -1,4 +1,4 @@
-﻿/* App.css - KeyShop Dark & Red Edition */
+/* App.css - KeyShop Dark & Red Edition */
 
 .app-container {
   min-height: 100vh;
@@ -1020,20 +1020,24 @@
   font-weight: 600;
 }
 
-/* Toast Center Dialog Notification */
+/* Toast Bottom-Right Notification */
 .toast-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 99999999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  padding: 1.5rem;
-  box-sizing: border-box;
+  position: fixed !important;
+  bottom: 5rem !important;
+  right: 1.5rem !important;
+  top: auto !important;
+  left: auto !important;
+  width: auto !important;
+  height: auto !important;
+  z-index: 99999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  justify-content: flex-end !important;
+  pointer-events: none !important;
+  box-sizing: border-box !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .toast-item {
@@ -1043,28 +1047,34 @@
   -webkit-backdrop-filter: blur(20px);
   border: 1.5px solid rgba(255, 26, 64, 0.7);
   color: #ffffff;
-  padding: 1.25rem 1.85rem;
-  border-radius: 18px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 26, 64, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  padding: 1rem 1.4rem;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 26, 64, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
-  gap: 1rem;
-  font-size: 1.05rem;
+  gap: 0.85rem;
+  font-size: 0.98rem;
   font-weight: 600;
-  max-width: 520px;
+  max-width: 480px;
   width: auto;
   line-height: 1.5;
-  animation: toastCenterPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: toastBottomRightSlide 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   cursor: pointer;
   user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toast-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 55px rgba(0, 0, 0, 0.95), 0 0 35px rgba(255, 26, 64, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .toast-icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(255, 26, 64, 0.15);
   border: 1px solid rgba(255, 26, 64, 0.4);
@@ -1080,7 +1090,7 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   line-height: 1;
   padding: 4px 8px;
   border-radius: 6px;
@@ -1094,14 +1104,14 @@
   background: rgba(255, 26, 64, 0.15);
 }
 
-@keyframes toastCenterPop {
+@keyframes toastBottomRightSlide {
   0% {
     opacity: 0;
-    transform: scale(0.85) translateY(12px);
+    transform: translateX(30px) translateY(10px) scale(0.95);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateX(0) translateY(0) scale(1);
   }
 }
 
@@ -3433,23 +3443,23 @@ html, body, #root, .app-container {
 
   /* Toast Notification adjustments for Mobile */
   .toast-container {
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    justify-content: center !important;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 1rem !important;
+    left: 1rem !important;
+    top: auto !important;
+    width: auto !important;
+    height: auto !important;
+    justify-content: flex-end !important;
     align-items: center !important;
-    padding: 1rem !important;
+    padding: 0 !important;
     z-index: 99999999 !important;
   }
 
   .toast-item {
-    width: 92% !important;
-    max-width: 380px !important;
-    padding: 1rem 1.25rem !important;
-    font-size: 0.95rem !important;
+    width: 100% !important;
+    max-width: 420px !important;
+    padding: 0.85rem 1.15rem !important;
+    font-size: 0.92rem !important;
     box-sizing: border-box !important;
   }
 
