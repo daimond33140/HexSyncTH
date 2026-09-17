@@ -1,6 +1,6 @@
 // server/routes/products.js
 const express = require('express');
-const { Product, ProductKey, Log } = require('../models');
+const { Product, ProductKey, Log, sequelize } = require('../models');
 const { requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
@@ -99,17 +99,33 @@ router.get('/', async (req, res) => {
 
     const products = await Product.findAll({ order: [['id', 'ASC']] });
     
-    // Attach real live stock count based on unused ProductKey
-    const results = await Promise.all(products.map(async (p) => {
-      const realStock = await ProductKey.count({
-        where: { productId: p.id, isUsed: false }
+    // Batch query unused stock keys in 1 fast aggregated SQL query
+    let stockMap = {};
+    try {
+      const stockCounts = await ProductKey.findAll({
+        attributes: [
+          'productId',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'stockCount']
+        ],
+        where: { isUsed: false },
+        group: ['productId'],
+        raw: true
       });
-      p.stock = realStock;
-      return p;
-    }));
+      for (const sc of stockCounts) {
+        stockMap[sc.productId] = parseInt(sc.stockCount, 10) || 0;
+      }
+    } catch (e) {
+      console.warn('Batch stock count error:', e.message);
+    }
+
+    const results = products.map((p) => {
+      const pJson = p.toJSON ? p.toJSON() : { ...p };
+      pJson.stock = stockMap[pJson.id] !== undefined ? stockMap[pJson.id] : 0;
+      return pJson;
+    });
 
     cachedProducts = results;
-    cacheExpiry = now + 3000; // 3 seconds micro-cache
+    cacheExpiry = now + 30000; // 30 seconds micro-cache
 
     res.json({ products: results });
   } catch (err) {

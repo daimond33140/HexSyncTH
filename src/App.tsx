@@ -3256,7 +3256,7 @@ export default function App() {
     }, 60);
 
     const loadAllInitialData = async () => {
-      // Parallel fetch with maximum 1,150ms timeout for instant fast loading
+      // Parallel fetch real data from cloud
       const fetchPromise = Promise.allSettled([
         fetchProducts(),
         fetchCategories(),
@@ -3265,23 +3265,24 @@ export default function App() {
         fetchStats()
       ]);
 
-      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1100));
+      // Generous safety timeout so the loader never hangs permanently if offline
+      const safetyTimeout = new Promise((resolve) => setTimeout(resolve, 8000));
 
       try {
-        await Promise.race([fetchPromise, timeoutPromise]);
+        await Promise.race([fetchPromise, safetyTimeout]);
       } catch (err) {
-        console.warn('Initial data load warning:', err);
+        console.warn("Initial data load warning:", err);
       } finally {
         if (isMounted) {
           clearInterval(progressInterval);
           setLoadProgress(100);
-          setLoadStatusText('ระบบพร้อมใช้งาน 100%');
+          setLoadStatusText("ระบบพร้อมใช้งาน 100%");
           setTimeout(() => {
             if (isMounted) {
               setIsAppReady(true);
               setIsLoadingProducts(false);
             }
-          }, 180);
+          }, 220);
         }
       }
     };
