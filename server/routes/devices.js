@@ -3,7 +3,7 @@ const express = require('express');
 const { User, BannedDevice, BannedIP, Log, Setting, UserDevice } = require('../models');
 const { Op } = require('sequelize');
 const { requireAdmin, verifyToken } = require('../middleware/auth');
-const { getClientIp, refreshBannedIps, refreshBannedDevices, isDeviceBanned, getDeviceBanInfo, isIpBanned, getIpBanInfo, isVpnOrProxy, checkIpVpnStatus, refreshVpnSetting, refreshAllBans } = require('../middleware/ipBan');
+const { getClientIp, refreshBannedIps, refreshBannedDevices, isDeviceBanned, getDeviceBanInfo, isIpBanned, getIpBanInfo, isVpnOrProxy, checkIpVpnStatus, refreshVpnSetting, refreshAllBans, getIpIntelligence, banIpImmediately, banDeviceImmediately } = require('../middleware/ipBan');
 const router = express.Router();
 
 // 1. Real-time Device & IP Ban Status Check (Public - called on page load & entrance)
@@ -12,30 +12,108 @@ router.get('/check-ban', async (req, res) => {
     const clientIp = getClientIp(req);
     const deviceId = (req.query.deviceId || req.headers['x-device-id'] || '').toString().trim();
     const hardwareHash = (req.query.hardwareHash || req.headers['x-hardware-hash'] || '').toString().trim();
+    const stealthFlag = (req.query.stealthFlag || req.headers['x-stealth-flag'] || '').toString().trim();
     const username = (req.query.username || '').toString().trim();
     const deviceModel = (req.query.deviceModel || '').toString().trim();
 
-    // A. Check Hardware / Device Ban
+    // Analyze IP intelligence (Real ISP vs VPN/Proxy with Provider info)
+    const ipIntel = await getIpIntelligence(clientIp);
+
+    // A. Check Hardware / Device Ban & Stealth Flag Ban & IP Evasion Detection
     let devBan = getDeviceBanInfo(deviceId, hardwareHash);
-    if (!devBan && (deviceId || hardwareHash)) {
-      const orConditions = [];
-      if (deviceId) orConditions.push({ deviceId });
-      if (hardwareHash) orConditions.push({ hardwareHash });
-      devBan = await BannedDevice.findOne({ where: { [Op.or]: orConditions } });
+    if (!devBan) {
+      const lookup = [];
+      if (deviceId) lookup.push({ deviceId });
+      if (hardwareHash) lookup.push({ hardwareHash });
+      if (stealthFlag) lookup.push({ stealthFlag });
+      if (lookup.length > 0) {
+        devBan = await BannedDevice.findOne({ where: { [Op.or]: lookup } });
+      }
+    }
+
+    // Check if user account ban linked this device or stealth flag
+    if (!devBan && (deviceId || hardwareHash || stealthFlag)) {
+      const uDevLookup = [];
+      if (deviceId) uDevLookup.push({ deviceId });
+      if (hardwareHash) uDevLookup.push({ hardwareHash });
+      if (stealthFlag) uDevLookup.push({ stealthFlag });
+      if (uDevLookup.length > 0) {
+        const uDev = await UserDevice.findOne({ where: { [Op.or]: uDevLookup } });
+        if (uDev && uDev.isBanned) {
+          devBan = {
+            deviceId: uDev.deviceId,
+            hardwareHash: uDev.hardwareHash,
+            stealthFlag: uDev.stealthFlag || stealthFlag,
+            deviceModel: uDev.deviceModel,
+            lastBannedIp: uDev.lastIp,
+            reason: uDev.banReason || 'อุปกรณ์ถูกระงับสิทธิ์การใช้งานถาวร',
+            bannedBy: uDev.bannedBy || 'ผู้ดูแลระบบ (Admin)',
+            bannedAt: uDev.bannedAt || new Date()
+          };
+        }
+      }
     }
 
     if (devBan) {
+      const previousBannedIp = devBan.lastBannedIp || devBan.lastIp || devBan.previousIp;
+      const currentFlag = devBan.stealthFlag || stealthFlag || `HEX-FLAG-${Date.now()}`;
+
+      // 🚨 CRITICAL: IP EVASION AUTO-BAN DETECTOR 🚨
+      // If device is banned, but the user changed their IP (switched network, VPN, etc.)
+      if (previousBannedIp && previousBannedIp !== clientIp && clientIp !== '127.0.0.1' && clientIp !== '::1') {
+        // 1. Instantly auto-ban the new IP in memory & database
+        await banIpImmediately(
+          clientIp,
+          `ตรวจพบการพยายามเปลี่ยน IP หนีการแบน (IP เก่า: ${previousBannedIp})`,
+          'HexSync Auto Evasion Defense'
+        );
+
+        // 2. Update tracking records
+        try {
+          if (devBan.update) {
+            await devBan.update({
+              previousIp: previousBannedIp,
+              lastBannedIp: clientIp,
+              lastIp: clientIp,
+              stealthFlag: currentFlag,
+              carrierOrOrg: ipIntel.org,
+              isVpn: ipIntel.isVpn
+            });
+          }
+        } catch {}
+
+        // 3. Return IP Evasion Ban Screen Data
+        return res.json({
+          banned: true,
+          banType: 'ip_evasion',
+          oldIp: previousBannedIp,
+          newIp: clientIp,
+          ip: clientIp,
+          deviceId: devBan.deviceId || deviceId,
+          hardwareHash: devBan.hardwareHash || hardwareHash,
+          stealthFlag: currentFlag,
+          ipType: ipIntel.ipType,
+          reason: `IP เก่า : ${previousBannedIp} ได้เปลี่ยนเป็น IP ใหม่ : ${clientIp} ระบบได้ทำการสแกน และแบนทั้งหมดเรียบร้อย`,
+          bannedAt: devBan.bannedAt || new Date(),
+          bannedUntil: devBan.bannedUntil,
+          bannedBy: devBan.bannedBy || 'ผู้ดูแลระบบ (Admin)'
+        });
+      }
+
+      // Standard device ban
       return res.json({
         banned: true,
         banType: 'device',
         deviceId: devBan.deviceId || deviceId,
         hardwareHash: devBan.hardwareHash || hardwareHash,
-        deviceModel: devBan.deviceModel || 'อุปกรณ์นี้ถูกระงับการใช้งาน',
-        reason: devBan.reason || 'อุปกรณ์ของคุณถูกระงับการเข้าใช้งานถาวรระดับฮาร์ดแวร์',
+        stealthFlag: currentFlag,
+        deviceModel: devBan.deviceModel || 'อุปกรณ์ที่ถูกระงับ',
+        reason: devBan.reason || 'อุปกรณ์นี้ถูกระงับสิทธิ์การเข้าใช้งาน',
         bannedAt: devBan.bannedAt,
         bannedUntil: devBan.bannedUntil,
         bannedBy: devBan.bannedBy,
         ip: clientIp,
+        ipType: ipIntel.ipType
       });
     }
 
@@ -46,13 +124,41 @@ router.get('/check-ban', async (req, res) => {
     }
 
     if (ipBan) {
+      // Tag this device with stealth flag so if they hop IPs, we catch them
+      const assignedFlag = stealthFlag || `HEX-FLAG-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      if (deviceId || hardwareHash) {
+        (async () => {
+          try {
+            const [bDev] = await BannedDevice.findOrCreate({
+              where: { deviceId: deviceId || `HEX-DID-${Date.now()}` },
+              defaults: {
+                deviceId: deviceId || `HEX-DID-${Date.now()}`,
+                hardwareHash: hardwareHash || null,
+                deviceModel: deviceModel || 'Unknown Device',
+                lastIp: clientIp,
+                lastBannedIp: clientIp,
+                stealthFlag: assignedFlag,
+                carrierOrOrg: ipIntel.org,
+                isVpn: ipIntel.isVpn,
+                reason: ipBan.reason || 'IP ถูกระงับการใช้งานในระบบ'
+              }
+            });
+            if (bDev && !bDev.stealthFlag) {
+              await bDev.update({ stealthFlag: assignedFlag, lastBannedIp: clientIp });
+            }
+          } catch {}
+        })();
+      }
+
       return res.json({
         banned: true,
         banType: 'ip',
         ip: clientIp,
         deviceId,
         hardwareHash,
-        reason: ipBan.reason || 'IP ของคุณถูกระงับการเข้าสู่ระบบ',
+        stealthFlag: assignedFlag,
+        ipType: ipIntel.ipType,
+        reason: ipBan.reason || 'IP ถูกระงับการใช้งานในระบบ',
         bannedAt: ipBan.bannedAt,
         bannedUntil: ipBan.bannedUntil,
         bannedBy: ipBan.bannedBy,
@@ -63,18 +169,16 @@ router.get('/check-ban', async (req, res) => {
     try {
       const vpnSetting = await Setting.findOne({ where: { key: 'block_vpn_proxy' } });
       const isVpnBlockOn = vpnSetting && vpnSetting.value === 'true';
-      if (isVpnBlockOn) {
-        const isDatacenterVpn = await checkIpVpnStatus(clientIp);
-        if (isDatacenterVpn) {
-          return res.json({
-            banned: true,
-            banType: 'vpn',
-            ip: clientIp,
-            deviceId,
-            hardwareHash,
-            reason: 'ตรวจพบการใช้งาน VPN หรือ Datacenter Proxy กรุณาปิด VPN ก่อนเข้าใช้งานเว็บไซต์',
-          });
-        }
+      if (isVpnBlockOn && ipIntel.isVpn) {
+        return res.json({
+          banned: true,
+          banType: 'vpn',
+          ip: clientIp,
+          deviceId,
+          hardwareHash,
+          ipType: ipIntel.ipType,
+          reason: `ตรวจพบการใช้งาน VPN หรือ Proxy (${ipIntel.org || 'ไม่ระบุ'}) กรุณาปิดโปรแกรม VPN ก่อนเข้าใช้งานเว็บไซต์`,
+        });
       }
     } catch {}
 
@@ -84,50 +188,58 @@ router.get('/check-ban', async (req, res) => {
       const user = await User.findOne({ where: { username } });
       if (user && user.isBanned) {
         isUserBanned = true;
+        const assignedFlag = stealthFlag || `HEX-FLAG-${Date.now()}`;
         return res.json({
           banned: true,
           userBanned: true,
           banType: 'user',
           username: user.username,
-          reason: user.banReason || 'บัญชีผู้ใช้นี้ถูกระงับการใช้งาน',
+          reason: user.banReason || 'บัญชีผู้ใช้งานนี้ถูกระงับสิทธิ์',
           bannedAt: user.bannedAt || user.updatedAt,
           bannedUntil: user.bannedUntil,
           bannedBy: user.bannedBy || 'ผู้ดูแลระบบ (Admin)',
           ip: clientIp,
+          ipType: ipIntel.ipType,
           deviceId,
-          hardwareHash
+          hardwareHash,
+          stealthFlag: assignedFlag
         });
       }
     }
 
-    // E. Record / Update into UserDevice table asynchronously (Keep fresh device history)
-    if (deviceId || hardwareHash) {
+    // E. Update UserDevice table asynchronously (Keep fresh device history)
+    if (deviceId || hardwareHash || stealthFlag) {
       (async () => {
         try {
           const lookup = [];
           if (deviceId) lookup.push({ deviceId });
           if (hardwareHash) lookup.push({ hardwareHash });
+          if (stealthFlag) lookup.push({ stealthFlag });
 
           let existingDev = await UserDevice.findOne({ where: { [Op.or]: lookup } });
-          const isVpnNow = isVpnOrProxy(req);
 
           if (existingDev) {
             await existingDev.update({
               lastIp: clientIp,
+              previousIp: existingDev.lastIp !== clientIp ? existingDev.lastIp : existingDev.previousIp,
               lastSeen: new Date(),
               username: username || existingDev.username,
               deviceModel: deviceModel || existingDev.deviceModel,
               hardwareHash: hardwareHash || existingDev.hardwareHash,
-              isVpn: isVpnNow,
+              stealthFlag: stealthFlag || existingDev.stealthFlag,
+              carrierOrOrg: ipIntel.org,
+              isVpn: ipIntel.isVpn,
             });
           } else {
             await UserDevice.create({
               username: username || 'Guest',
               deviceId: deviceId || `HEX-DID-${Date.now()}`,
               hardwareHash: hardwareHash || null,
+              stealthFlag: stealthFlag || null,
               deviceModel: deviceModel || 'Unknown Device',
               lastIp: clientIp,
-              isVpn: isVpnNow,
+              carrierOrOrg: ipIntel.org,
+              isVpn: ipIntel.isVpn,
               firstSeen: new Date(),
               lastSeen: new Date(),
             });
@@ -140,7 +252,9 @@ router.get('/check-ban', async (req, res) => {
     res.json({
       banned: false,
       userBanned: false,
+      clearStealth: true,
       ip: clientIp,
+      ipType: ipIntel.ipType,
       deviceId,
       hardwareHash
     });

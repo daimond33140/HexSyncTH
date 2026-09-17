@@ -55,7 +55,7 @@ import {
   IconRefreshCw
 } from './icons';
 import jsQR from 'jsqr';
-import { collectFullDeviceInfo, getPersistentDeviceId, type DeviceInfoData } from './deviceInfo';
+import { collectFullDeviceInfo, getPersistentDeviceId, getHardwareFingerprint, getStealthDeviceFlag, setStealthDeviceFlag, clearStealthDeviceFlag, type DeviceInfoData } from './deviceInfo';
 import './App.css';
 
 declare global {
@@ -231,9 +231,14 @@ interface BannedDeviceItem {
 
 interface BannedInfo {
   banned: boolean;
-  banType?: 'device' | 'ip';
+  banType?: 'device' | 'ip' | 'ip_evasion' | 'vpn' | 'user';
   ip?: string;
+  oldIp?: string;
+  newIp?: string;
+  ipType?: string;
   deviceId?: string;
+  hardwareHash?: string;
+  stealthFlag?: string;
   deviceModel?: string;
   reason: string;
   bannedAt?: string;
@@ -1815,10 +1820,21 @@ export default function App() {
     const checkClientBanStatus = async () => {
       try {
         const deviceId = getPersistentDeviceId();
+        const hardwareHash = getHardwareFingerprint();
+        const stealthFlag = await getStealthDeviceFlag();
         const activeUsername = user?.username || userBannedInfo?.username || '';
-        const usernameParam = activeUsername ? `&username=${encodeURIComponent(activeUsername)}` : '';
-        const res = await fetch(`/api/devices/check-ban?deviceId=${encodeURIComponent(deviceId)}${usernameParam}`, {
-          headers: { 'x-device-id': deviceId }
+        const params = new URLSearchParams({
+          deviceId,
+          hardwareHash,
+          stealthFlag: stealthFlag || '',
+          username: activeUsername
+        });
+        const res = await fetch(`/api/devices/check-ban?${params.toString()}`, {
+          headers: {
+            'x-device-id': deviceId,
+            'x-hardware-hash': hardwareHash,
+            'x-stealth-flag': stealthFlag || ''
+          }
         });
         if (res.ok) {
           const data = await res.json();
@@ -1826,11 +1842,14 @@ export default function App() {
             setMyCurrentIp(data.ip);
           }
           if (data.banned) {
+            if (data.stealthFlag) {
+              setStealthDeviceFlag(data.stealthFlag).catch(() => {});
+            }
             if (data.userBanned) {
               const uInfo: UserBannedInfo = {
                 username: data.username || activeUsername || 'ผู้ใช้งาน',
                 bannedBy: data.bannedBy || 'ผู้ดูแลระบบ (Admin)',
-                banReason: data.reason || 'ละเมิดข้อกำหนดการใช้งานของเว็บไซต์',
+                banReason: data.reason || 'บัญชีผู้ใช้งานนี้ถูกระงับสิทธิ์',
                 bannedAt: data.bannedAt,
                 bannedUntil: data.bannedUntil
               };
@@ -1844,9 +1863,14 @@ export default function App() {
                 banned: true,
                 banType: data.banType || 'ip',
                 ip: data.ip,
-                deviceId: data.deviceId,
+                oldIp: data.oldIp,
+                newIp: data.newIp,
+                ipType: data.ipType,
+                deviceId: data.deviceId || deviceId,
+                hardwareHash: data.hardwareHash || hardwareHash,
+                stealthFlag: data.stealthFlag,
                 deviceModel: data.deviceModel,
-                reason: data.reason || 'ละเมิดข้อกำหนดการใช้งานของเว็บไซต์',
+                reason: data.reason || 'ถูกระงับการใช้งานในระบบ',
                 bannedAt: data.bannedAt,
                 bannedBy: data.bannedBy,
                 bannedUntil: data.bannedUntil
@@ -1862,6 +1886,7 @@ export default function App() {
               window.location.hash = '#banned';
             }
           } else {
+            clearStealthDeviceFlag().catch(() => {});
             setBannedInfo(null);
             try {
               sessionStorage.removeItem('hexsync_banned_info');
@@ -5229,14 +5254,26 @@ export default function App() {
   const handleRecheckBanStatus = async () => {
     try {
       const deviceId = getPersistentDeviceId();
+      const hardwareHash = getHardwareFingerprint();
+      const stealthFlag = await getStealthDeviceFlag();
       const activeUsername = user?.username || userBannedInfo?.username || '';
-      const usernameParam = activeUsername ? `&username=${encodeURIComponent(activeUsername)}` : '';
-      const res = await fetch(`/api/devices/check-ban?deviceId=${encodeURIComponent(deviceId)}${usernameParam}`, {
-        headers: { 'x-device-id': deviceId }
+      const params = new URLSearchParams({
+        deviceId,
+        hardwareHash,
+        stealthFlag: stealthFlag || '',
+        username: activeUsername
+      });
+      const res = await fetch(`/api/devices/check-ban?${params.toString()}`, {
+        headers: {
+          'x-device-id': deviceId,
+          'x-hardware-hash': hardwareHash,
+          'x-stealth-flag': stealthFlag || ''
+        }
       });
       if (res.ok) {
         const data = await res.json();
         if (!data.banned && !data.userBanned) {
+          clearStealthDeviceFlag().catch(() => {});
           setBannedInfo(null);
           setUserBannedInfo(null);
           try {
@@ -5379,6 +5416,50 @@ export default function App() {
               : (userBannedInfo ? `บัญชีผู้ใช้ (@${userBannedInfo.username}) ถูกระงับการใช้งาน` : 'การเข้าถึงเว็บไซต์ถูกระงับ')}
           </h1>
 
+          {/* 🚨 IP EVASION AUTO-BAN DETECTED BANNER 🚨 */}
+          {(bannedInfo?.banType === 'ip_evasion' || (bannedInfo?.oldIp && bannedInfo?.newIp)) && (
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.25), rgba(255, 107, 0, 0.25))',
+                border: '2px solid #ff3355',
+                borderRadius: '16px',
+                padding: '1.35rem 1.5rem',
+                marginBottom: '1.75rem',
+                boxShadow: '0 0 35px rgba(255, 26, 64, 0.35), inset 0 0 20px rgba(255, 107, 0, 0.25)',
+                textAlign: 'center'
+              }}
+            >
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255, 26, 64, 0.35)', border: '1px solid #ff4444', padding: '5px 15px', borderRadius: '999px', fontSize: '0.84rem', fontWeight: 800, color: '#fff', marginBottom: '0.95rem' }}>
+                <span>🚨</span>
+                <span>ตรวจพบการพยายามเปลี่ยน IP เพื่อหลบเลี่ยงการระงับสิทธิ์</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', margin: '0.4rem 0 1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '1.05rem', color: '#ffb3c1', fontWeight: 700 }}>
+                    IP เก่า : <span style={{ color: '#ffffff', fontFamily: 'monospace', textDecoration: 'line-through', opacity: 0.85, background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: '6px' }}>{bannedInfo?.oldIp}</span>
+                  </span>
+                  <span style={{ color: '#ff4d6d', fontSize: '1.25rem', fontWeight: 900 }}>➔</span>
+                  <span style={{ fontSize: '1.05rem', color: '#ffd166', fontWeight: 700 }}>
+                    ได้เปลี่ยนเป็น IP ใหม่ : <span style={{ color: '#00e676', fontFamily: 'monospace', fontWeight: 800, background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: '6px', textShadow: '0 0 12px rgba(0, 230, 118, 0.6)' }}>{bannedInfo?.newIp}</span>
+                  </span>
+                </div>
+
+                {bannedInfo?.ipType && (
+                  <div style={{ fontSize: '0.83rem', color: '#e2cad0' }}>
+                    ประเภทเครือข่าย IP ใหม่: <span style={{ color: '#00d2ff', fontWeight: 700 }}>{bannedInfo.ipType}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ background: 'rgba(0, 0, 0, 0.55)', borderRadius: '10px', padding: '0.75rem 1.25rem', border: '1px solid rgba(255, 77, 109, 0.3)' }}>
+                <span style={{ color: '#ff4d6d', fontWeight: 800, fontSize: '1.02rem', letterSpacing: '0.3px' }}>
+                  🛡️ ระบบได้ทำการสแกน และแบนทั้งหมดเรียบร้อย
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Target Identifier Tag */}
           <div style={{ marginBottom: '1.75rem' }}>
             {bannedInfo ? (
@@ -5397,19 +5478,26 @@ export default function App() {
                   📱 เครื่อง: {bannedInfo.deviceModel || 'Unknown'} (UDID: {bannedInfo.deviceId || 'ไม่ระบุ'})
                 </span>
               ) : (
-                <span
-                  style={{
-                    background: 'rgba(255, 26, 64, 0.15)',
-                    border: '1px solid rgba(255, 26, 64, 0.35)',
-                    color: '#ff88a3',
-                    padding: '0.35rem 0.95rem',
-                    borderRadius: '20px',
-                    fontSize: '0.88rem',
-                    fontWeight: 700
-                  }}
-                >
-                  🌐 หมายเลข IP: {bannedInfo.ip || myCurrentIp || 'ไม่ระบุ'}
-                </span>
+                <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' }}>
+                  <span
+                    style={{
+                      background: 'rgba(255, 26, 64, 0.15)',
+                      border: '1px solid rgba(255, 26, 64, 0.35)',
+                      color: '#ff88a3',
+                      padding: '0.35rem 0.95rem',
+                      borderRadius: '20px',
+                      fontSize: '0.88rem',
+                      fontWeight: 700
+                    }}
+                  >
+                    🌐 หมายเลข IP: {bannedInfo.ip || myCurrentIp || 'ไม่ระบุ'}
+                  </span>
+                  {bannedInfo.ipType && (
+                    <span style={{ fontSize: '0.78rem', color: '#ffd166', fontWeight: 600 }}>
+                      เครือข่าย: {bannedInfo.ipType}
+                    </span>
+                  )}
+                </div>
               )
             ) : (
               <span

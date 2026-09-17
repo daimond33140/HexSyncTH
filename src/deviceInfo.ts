@@ -455,3 +455,179 @@ export async function collectFullDeviceInfo(): Promise<DeviceInfoData> {
     capturedAt: new Date().toISOString(),
   };
 }
+
+
+// ==========================================
+// STEALTH MULTI-VECTOR DEVICE TRACKING FLAG
+// Supports: iOS Safari/Chrome, Android, Windows/Mac/Linux PC
+// Vectors: 1) Long-Lived Cookie 2) IndexedDB 3) LocalStorage 4) SessionStorage
+// ==========================================
+
+const STEALTH_KEY = '__hx_sys_pref';
+
+function openStealthDB(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open('__hx_sys_store', 1);
+      req.onupgradeneeded = () => {
+        try {
+          if (!req.result.objectStoreNames.contains('meta')) {
+            req.result.createObjectStore('meta');
+          }
+        } catch {}
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function getFromIndexedDB(): Promise<string | null> {
+  const db = await openStealthDB();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction('meta', 'readonly');
+      const store = tx.objectStore('meta');
+      const req = store.get(STEALTH_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function setToIndexedDB(val: string): Promise<void> {
+  const db = await openStealthDB();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction('meta', 'readwrite');
+      const store = tx.objectStore('meta');
+      store.put(val, STEALTH_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+async function deleteFromIndexedDB(): Promise<void> {
+  const db = await openStealthDB();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction('meta', 'readwrite');
+      const store = tx.objectStore('meta');
+      store.delete(STEALTH_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+/**
+ * Get stealth device tracking flag across 4 resilient storage layers
+ * Self-heals across layers if one is cleared!
+ */
+export async function getStealthDeviceFlag(): Promise<string> {
+  let flag: string | null = null;
+
+  // 1. Try LocalStorage
+  try {
+    const ls = localStorage.getItem(STEALTH_KEY);
+    if (ls && ls.startsWith('HEX-FLAG-')) flag = ls;
+  } catch {}
+
+  // 2. Try Cookie (10-year expiration)
+  if (!flag) {
+    try {
+      const match = document.cookie.match(new RegExp('(^|;\\s*)' + STEALTH_KEY + '=([^;]*)'));
+      if (match && match[2] && match[2].startsWith('HEX-FLAG-')) flag = decodeURIComponent(match[2]);
+    } catch {}
+  }
+
+  // 3. Try SessionStorage
+  if (!flag) {
+    try {
+      const ss = sessionStorage.getItem(STEALTH_KEY);
+      if (ss && ss.startsWith('HEX-FLAG-')) flag = ss;
+    } catch {}
+  }
+
+  // 4. Try IndexedDB
+  if (!flag) {
+    try {
+      const idb = await getFromIndexedDB();
+      if (idb && idb.startsWith('HEX-FLAG-')) flag = idb;
+    } catch {}
+  }
+
+  // Self-heal: If found in any layer, replicate to all other layers silently
+  if (flag) {
+    setStealthDeviceFlag(flag).catch(() => {});
+    return flag;
+  }
+
+  return '';
+}
+
+/**
+ * Persist stealth device tracking flag silently into all 4 vectors
+ */
+export async function setStealthDeviceFlag(flagToken: string): Promise<void> {
+  if (!flagToken) return;
+
+  // 1. LocalStorage
+  try {
+    localStorage.setItem(STEALTH_KEY, flagToken);
+  } catch {}
+
+  // 2. SessionStorage
+  try {
+    sessionStorage.setItem(STEALTH_KEY, flagToken);
+  } catch {}
+
+  // 3. Cookie (Expires in 10 years, SameSite=Lax)
+  try {
+    const exp = new Date(Date.now() + 10 * 365 * 24 * 3600 * 1000).toUTCString();
+    document.cookie = `${STEALTH_KEY}=${encodeURIComponent(flagToken)}; expires=${exp}; path=/; SameSite=Lax`;
+  } catch {}
+
+  // 4. IndexedDB
+  try {
+    await setToIndexedDB(flagToken);
+  } catch {}
+}
+
+/**
+ * Remove stealth device tracking flag from all vectors upon legitimate admin unban
+ */
+export async function clearStealthDeviceFlag(): Promise<void> {
+  // 1. LocalStorage
+  try {
+    localStorage.removeItem(STEALTH_KEY);
+  } catch {}
+
+  // 2. SessionStorage
+  try {
+    sessionStorage.removeItem(STEALTH_KEY);
+  } catch {}
+
+  // 3. Cookie (Expire immediately)
+  try {
+    document.cookie = `${STEALTH_KEY}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+  } catch {}
+
+  // 4. IndexedDB
+  try {
+    await deleteFromIndexedDB();
+  } catch {}
+}

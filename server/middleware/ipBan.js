@@ -545,7 +545,25 @@ async function banDeviceImmediately(deviceId, reason = 'ละเมิดคว
   }
 }
 
+
+// Detailed IP Intelligence (Detects Real ISP vs VPN/Proxy with Carrier/ISP name)
+async function getIpIntelligence(ip) {
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    return { isVpn: false, org: 'Localhost / Intranet', ipType: 'IP ท้องถิ่น (Local Network)' };
+  }
+  const isVpn = await checkIpVpnStatus(ip);
+  let org = '';
+  if (vpnIpCache.has(ip)) {
+    org = vpnIpCache.get(ip).org || '';
+  }
+  const ipType = isVpn
+    ? `VPN / Proxy (${org || 'ตรวจพบการซ่อนไอพี / Datacenter'})`
+    : `IP จริง (${org || 'ผู้ให้บริการอินเทอร์เน็ตมือถือ/บ้าน'})`;
+  return { isVpn, org, ipType };
+}
+
 module.exports = {
+  getIpIntelligence,
   isVpnOrProxy,
   checkIpVpnStatus,
   refreshVpnSetting,

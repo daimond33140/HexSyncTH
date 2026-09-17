@@ -521,6 +521,26 @@ const BannedDevice = sequelize.define('BannedDevice', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  lastBannedIp: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  previousIp: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  stealthFlag: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  carrierOrOrg: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  isVpn: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
   reason: {
     type: DataTypes.STRING,
     defaultValue: 'แบนเลขเครื่องโดยแอดมิน (Hardware Ban)',
@@ -722,6 +742,18 @@ const UserDevice = sequelize.define('UserDevice', {
     allowNull: true,
   },
   ipLocation: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  previousIp: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  stealthFlag: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  carrierOrOrg: {
     type: DataTypes.STRING,
     allowNull: true,
   },
