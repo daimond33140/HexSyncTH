@@ -4335,3 +4335,53 @@ html, body, #root, .app-container {
   cursor: not-allowed !important;
   box-shadow: none !important;
 }
+
+
+.hexsync-loader-progress-inside {
+  position: absolute;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 8px rgba(255, 26, 64, 0.9);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hexsync-loader-percent-badge {
+  margin: 0.25rem 0 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hexsync-loader-percent-text {
+  font-size: 1.75rem;
+  font-weight: 900;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #fff;
+  background: linear-gradient(135deg, #ffffff 0%, #ff4d6d 50%, #ff1a40 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 12px rgba(255, 26, 64, 0.6));
+  letter-spacing: 1px;
+}
+
+.hexsync-loader-progress-bar-wrap {
+  width: 230px;
+  max-width: 78vw;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 26, 64, 0.35);
+  box-shadow: 0 0 15px rgba(255, 26, 64, 0.2);
+  margin-bottom: 0.85rem;
+}
+
+.hexsync-loader-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff1a40 0%, #ff4d6d 60%, #ff758f 100%);
+  box-shadow: 0 0 12px #ff1a40;
+  border-radius: 10px;
+  transition: width 0.1s ease-out;
+}

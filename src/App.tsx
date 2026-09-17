@@ -618,6 +618,8 @@ export function groupProductsByGame(
 export default function App() {
   useScreenSize();
   const [isAppReady, setIsAppReady] = useState(false);
+  const [loadProgress, setLoadProgress] = useState<number>(15);
+  const [loadStatusText, setLoadStatusText] = useState<string>('กำลังเริ่มต้นระบบและเชื่อมต่อเกตเวย์...');
   const [availableGames, setAvailableGames] = useState<Array<{ id: string; title: string }>>([]);
   const [products, setProducts] = useState<Product[]>(() => {
     try {
@@ -775,13 +777,32 @@ export default function App() {
   const [generatingQr, setGeneratingQr] = useState<boolean>(false);
   const [qrSlipImage, setQrSlipImage] = useState<string>('');
 
-  // HexSyncTH Security MAX Entrance Modal State (แสดงผลตลอดทุกครั้งที่รีเว็บ และต้องกดยืนยันก่อน Login)
-  const [showSecurityMaxModal, setShowSecurityMaxModal] = useState<boolean>(true);
-  const [securityMaxAcknowledged, setSecurityMaxAcknowledged] = useState<boolean>(false);
+  // Helper to check 3-day Security MAX remembrance
+  const isSecurityMaxValid = () => {
+    try {
+      const ackTime = localStorage.getItem('hexsync_security_ack_until');
+      if (ackTime) {
+        const exp = parseInt(ackTime, 10);
+        if (!isNaN(exp) && exp > Date.now()) {
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  };
+
+  // HexSyncTH Security MAX Entrance Modal State (แสดงผล 3 วันครั้งต่อเครื่อง เมื่อยอมรับแล้วจะไม่แสดงซ้ำจนกว่าจะครบ 3 วัน)
+  const [showSecurityMaxModal, setShowSecurityMaxModal] = useState<boolean>(() => !isSecurityMaxValid());
+  const [securityMaxAcknowledged, setSecurityMaxAcknowledged] = useState<boolean>(() => isSecurityMaxValid());
 
   const handleAcknowledgeSecurityMax = (goToLogin?: boolean) => {
     setSecurityMaxAcknowledged(true);
     setShowSecurityMaxModal(false);
+    try {
+      // บันทึกเวลาหมดอายุ 3 วันนับจากปัจจุบัน (3 * 24 * 60 * 60 * 1000 ms)
+      const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+      localStorage.setItem('hexsync_security_ack_until', (Date.now() + threeDaysMs).toString());
+    } catch (e) {}
     if (goToLogin && !user) {
       setAuthTab('login');
       setAuthModalOpen(true);
@@ -789,7 +810,7 @@ export default function App() {
   };
 
   const handleOpenAuthModal = (tab: 'login' | 'register' = 'login') => {
-    if (!securityMaxAcknowledged) {
+    if (!securityMaxAcknowledged && !isSecurityMaxValid()) {
       setShowSecurityMaxModal(true);
       return;
     }
@@ -1370,8 +1391,10 @@ export default function App() {
     setBankAmount(0);
     setBankSlipImage('');
     setView('store');
-    setSecurityMaxAcknowledged(false);
-    setShowSecurityMaxModal(true);
+    if (!isSecurityMaxValid()) {
+      setSecurityMaxAcknowledged(false);
+      setShowSecurityMaxModal(true);
+    }
     showToast('ออกจากระบบเรียบร้อย');
   };
 
@@ -3034,29 +3057,63 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
+    let progressInterval;
+
+    let currentProgress = 18;
+    setLoadProgress(18);
+
+    // Smooth & quick animated progress counter
+    progressInterval = setInterval(() => {
+      if (!isMounted) return;
+      currentProgress += Math.floor(Math.random() * 8) + 6;
+      if (currentProgress > 94) {
+        currentProgress = 94;
+      }
+      setLoadProgress(currentProgress);
+      if (currentProgress < 38) {
+        setLoadStatusText('กำลังตรวจสอบความปลอดภัยและเกตเวย์...');
+      } else if (currentProgress < 72) {
+        setLoadStatusText('กำลังดึงข้อมูลคลังสินค้าและโปรโมชั่น...');
+      } else {
+        setLoadStatusText('กำลังจัดเตรียมหน้าต่างร้านค้า...');
+      }
+    }, 60);
+
     const loadAllInitialData = async () => {
+      // Parallel fetch with maximum 1,150ms timeout for instant fast loading
+      const fetchPromise = Promise.allSettled([
+        fetchProducts(),
+        fetchCategories(),
+        fetchGamesList(),
+        fetchSettings(),
+        fetchStats()
+      ]);
+
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1100));
+
       try {
-        await Promise.allSettled([
-          fetchProducts(),
-          fetchCategories(),
-          fetchGamesList(),
-          fetchSettings(),
-          fetchStats()
-        ]);
+        await Promise.race([fetchPromise, timeoutPromise]);
       } catch (err) {
         console.warn('Initial data load warning:', err);
       } finally {
         if (isMounted) {
-          // Small minimum delay for smooth UX so spinner does not flicker
+          clearInterval(progressInterval);
+          setLoadProgress(100);
+          setLoadStatusText('ระบบพร้อมใช้งาน 100%');
           setTimeout(() => {
-            setIsAppReady(true);
-            setIsLoadingProducts(false);
-          }, 350);
+            if (isMounted) {
+              setIsAppReady(true);
+              setIsLoadingProducts(false);
+            }
+          }, 180);
         }
       }
     };
     loadAllInitialData();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+      if (progressInterval) clearInterval(progressInterval);
+    };
   }, []);
 
   useEffect(() => {
@@ -5163,19 +5220,28 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* HexSyncTH Full-Screen Spinner Loading Screen */}
+      {/* HexSyncTH Full-Screen Spinner Loading Screen with % and Progress Bar */}
       {!isAppReady && (
         <div className="hexsync-global-loader-screen">
           <div className="hexsync-spinner-box">
             <div className="hexsync-spin-outer" />
             <div className="hexsync-spin-inner" />
             <div className="hexsync-spin-core" />
+            <div className="hexsync-loader-progress-inside">
+              <span>{loadProgress}%</span>
+            </div>
           </div>
           <div className="hexsync-loader-brand">
             HEXSYNC<span>TH</span>
           </div>
+          <div className="hexsync-loader-percent-badge">
+            <span className="hexsync-loader-percent-text">{loadProgress}%</span>
+          </div>
+          <div className="hexsync-loader-progress-bar-wrap">
+            <div className="hexsync-loader-progress-bar-fill" style={{ width: `${loadProgress}%` }} />
+          </div>
           <div className="hexsync-loader-status-text">
-            <span>กำลังโหลดข้อมูลร้านค้า กรุณารอสักครู่...</span>
+            <span>{loadStatusText}</span>
           </div>
         </div>
       )}
@@ -5989,42 +6055,34 @@ export default function App() {
                       );
                     }
 
-                    if (rec.linkedGameId) {
-                      return (
-                        <button
-                          onClick={() => setView('status')}
-                          className="btn-download"
-                          style={{
-                            marginTop: '0.75rem',
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            color: '#fff',
-                            border: 'none',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <IconDownload size={18} />
-                          <span>ไปดาวน์โหลดเกมนี้ในหน้าระบบเช็คสถานะ & ดาวน์โหลด</span>
-                          <IconExternalLink size={15} />
-                        </button>
-                      );
-                    }
-
-                    if (rec.downloadUrl) {
-                      return (
-                        <a
-                          href={rec.downloadUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn-download"
-                          style={{ marginTop: '0.75rem' }}
-                        >
-                          <IconDownload size={18} />
-                          <span>ดาวน์โหลดไฟล์ / โปรแกรม (คลิกเพื่อดาวน์โหลดทันที)</span>
-                          <IconExternalLink size={15} />
-                        </a>
-                      );
-                    }
-                    return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setView('status')}
+                        className="btn-download"
+                        style={{
+                          marginTop: '0.75rem',
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          color: '#fff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '0.8rem 1.2rem',
+                          borderRadius: '10px',
+                          fontWeight: 700,
+                          fontSize: '0.95rem',
+                          boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)'
+                        }}
+                      >
+                        <IconDownload size={18} />
+                        <span>ไปดาวน์โหลดไฟล์ที่หน้าระบบสถานะเกม</span>
+                        <IconArrowRight size={16} />
+                      </button>
+                    );
                   })()}
                 </div>
               ))}
