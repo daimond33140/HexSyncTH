@@ -3239,37 +3239,40 @@ export default function App() {
     setLoadProgress(18);
 
     // Smooth & quick animated progress counter
+    // Smooth & quick animated progress counter
     progressInterval = setInterval(() => {
       if (!isMounted) return;
-      currentProgress += Math.floor(Math.random() * 8) + 6;
+      currentProgress += Math.floor(Math.random() * 8) + 10;
       if (currentProgress > 94) {
         currentProgress = 94;
       }
       setLoadProgress(currentProgress);
-      if (currentProgress < 38) {
-        setLoadStatusText('กำลังตรวจสอบความปลอดภัยและเกตเวย์...');
-      } else if (currentProgress < 72) {
-        setLoadStatusText('กำลังดึงข้อมูลคลังสินค้าและโปรโมชั่น...');
+      if (currentProgress < 40) {
+        setLoadStatusText("กำลังตรวจสอบความปลอดภัยและเกตเวย์...");
+      } else if (currentProgress < 75) {
+        setLoadStatusText("กำลังดึงข้อมูลคลังสินค้าและโปรโมชั่น...");
       } else {
-        setLoadStatusText('กำลังจัดเตรียมหน้าต่างร้านค้า...');
+        setLoadStatusText("กำลังจัดเตรียมหน้าต่างร้านค้า...");
       }
-    }, 60);
+    }, 35);
 
     const loadAllInitialData = async () => {
-      // Parallel fetch real data from cloud
-      const fetchPromise = Promise.allSettled([
+      // Parallel fetch critical storefront data (products, categories, settings)
+      const coreFetchPromise = Promise.allSettled([
         fetchProducts(),
         fetchCategories(),
-        fetchGamesList(),
-        fetchSettings(),
-        fetchStats()
+        fetchSettings()
       ]);
 
-      // Generous safety timeout so the loader never hangs permanently if offline
-      const safetyTimeout = new Promise((resolve) => setTimeout(resolve, 8000));
+      // Non-blocking background fetches for secondary data
+      fetchGamesList().catch(() => {});
+      fetchStats().catch(() => {});
+
+      // Safety timeout so the loader never hangs
+      const safetyTimeout = new Promise((resolve) => setTimeout(resolve, 4000));
 
       try {
-        await Promise.race([fetchPromise, safetyTimeout]);
+        await Promise.race([coreFetchPromise, safetyTimeout]);
       } catch (err) {
         console.warn("Initial data load warning:", err);
       } finally {
@@ -3279,10 +3282,10 @@ export default function App() {
           setLoadStatusText("ระบบพร้อมใช้งาน 100%");
           setTimeout(() => {
             if (isMounted) {
-              setIsAppReady(true);
+              setIsAppReady(true)
               setIsLoadingProducts(false);
             }
-          }, 220);
+          }, 150);
         }
       }
     };

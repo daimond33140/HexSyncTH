@@ -168,17 +168,34 @@ function streamFileFromUrl(targetUrl, res, filename, cookies = '', redirectCount
   }
 }
 
-// Helper to get current games list
+// In-memory cache for instant games status
+let cachedGamesList = null;
+let cachedGamesExpiry = 0;
+
+function invalidateGamesCache() {
+  cachedGamesList = null;
+  cachedGamesExpiry = 0;
+}
+
+// Helper to get current games list (Cached)
 async function getGamesList() {
-  const s = await Setting.findOne({ where: { key: 'hexsync_games_status' } });
-  if (s && s.value) {
-    try {
+  const now = Date.now();
+  if (cachedGamesList && now < cachedGamesExpiry) {
+    return cachedGamesList;
+  }
+  try {
+    const s = await Setting.findOne({ where: { key: 'hexsync_games_status' } });
+    if (s && s.value) {
       const games = JSON.parse(s.value);
       if (Array.isArray(games) && games.length > 0) {
+        cachedGamesList = games;
+        cachedGamesExpiry = now + 60000; // 60s cache
         return games;
       }
-    } catch {}
-  }
+    }
+  } catch {}
+  cachedGamesList = DEFAULT_GAMES;
+  cachedGamesExpiry = now + 60000;
   return DEFAULT_GAMES;
 }
 
@@ -359,6 +376,7 @@ router.post('/', requireAdmin, async (req, res) => {
 
     setting.value = JSON.stringify(games);
     await setting.save();
+    invalidateGamesCache();
 
     return res.json({ success: true, message: 'บันทึกข้อมูลสถานะเกมสำเร็จ', games });
   } catch (err) {

@@ -79,7 +79,7 @@ router.get('/', async (req, res) => {
     delete settingsMap.superadmin_master_secret;
 
     cachedSettings = settingsMap;
-    settingsCacheExpiry = now + 4000; // 4 seconds micro-cache
+    settingsCacheExpiry = now + 60000; // 60s cache // 4 seconds micro-cache
 
     res.json({ settings: settingsMap });
   } catch (err) {

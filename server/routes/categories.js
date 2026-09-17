@@ -1,6 +1,6 @@
 // server/routes/categories.js
 const express = require('express');
-const { Category, Product, Log } = require('../models');
+const { Category, Product, Log, sequelize } = require('../models');
 const { requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
@@ -91,20 +91,33 @@ router.get('/', async (req, res) => {
       ],
     });
 
-    // Also attach product count for each category
-    const results = await Promise.all(
-      categories.map(async (cat) => {
-        const productCount = await Product.count({
-          where: { categoryId: cat.slug, active: true },
-        });
-        const c = cat.toJSON();
-        c.productCount = productCount;
-        return c;
-      })
-    );
+    // Batch attach product count in 1 single fast SQL query
+    let countMap = {};
+    try {
+      const productCounts = await Product.findAll({
+        attributes: [
+          'categoryId',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'productCount']
+        ],
+        where: { active: true },
+        group: ['categoryId'],
+        raw: true
+      });
+      for (const pc of productCounts) {
+        countMap[pc.categoryId] = parseInt(pc.productCount, 10) || 0;
+      }
+    } catch (e) {
+      console.warn('Batch category product count error:', e.message);
+    }
+
+    const results = categories.map((cat) => {
+      const c = cat.toJSON();
+      c.productCount = countMap[cat.slug] || 0;
+      return c;
+    });
 
     cachedCategories = results;
-    cacheExpiry = now + 4000; // 4s micro-cache
+    cacheExpiry = now + 60000; // 60 seconds micro-cache
 
     res.json({ categories: results });
   } catch (err) {
