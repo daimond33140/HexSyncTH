@@ -525,7 +525,18 @@ export function getGameBaseTitle(name: string): string {
     .trim() || name;
 }
 
-export function groupProductsByGame(productsList: Product[], categoriesList: CategoryItem[]): GameGroup[] {
+export function groupProductsByGame(
+  productsList: Product[],
+  categoriesList: CategoryItem[],
+  customImagesJson?: string
+): GameGroup[] {
+  let customMap: Record<string, { bannerImage?: string; image?: string; description?: string }> = {};
+  if (customImagesJson) {
+    try {
+      customMap = JSON.parse(customImagesJson);
+    } catch {}
+  }
+
   const map: Record<string, GameGroup> = {};
 
   productsList.forEach(p => {
@@ -533,15 +544,17 @@ export function groupProductsByGame(productsList: Product[], categoriesList: Cat
     const cat = categoriesList.find(c => c.slug === p.categoryId);
     const catName = cat ? cat.name : p.categoryId;
 
+    const custom = customMap[baseTitle] || {};
+
     if (!map[baseTitle]) {
       map[baseTitle] = {
         id: baseTitle.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         title: baseTitle,
         categoryId: p.categoryId,
         categoryName: catName,
-        image: p.image || (cat ? cat.bannerImage : '') || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600',
-        bannerImage: (cat && cat.bannerImage) ? cat.bannerImage : p.image,
-        description: p.description || 'โปรเกมคุณภาพสูง ปลอดภัย 100% ส่งออโต้ 24 ชั่วโมง',
+        image: custom.image || p.image || (cat ? cat.bannerImage : '') || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600',
+        bannerImage: custom.bannerImage || (cat && cat.bannerImage) || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800',
+        description: custom.description || p.description || 'โปรเกมคุณภาพสูง ปลอดภัย 100% ส่งออโต้ 24 ชั่วโมง',
         startingPrice: p.price,
         maxPrice: p.price,
         totalStock: 0,
@@ -589,18 +602,12 @@ export default function App() {
 
   // Category management states
   const [categories, setCategories] = useState<CategoryItem[]>([]);
-  // Grouped products by game (fahbtc.online style)
-  const gameGroups = React.useMemo(() => groupProductsByGame(products, categories), [products, categories]);
-  const filteredGameGroups = React.useMemo(() => {
-    return gameGroups.filter((g: GameGroup) => {
-      const matchCat = selectedCategory === 'all' || g.categoryId === selectedCategory;
-      const matchQuery = !searchQuery || 
-        g.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        g.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        g.packages.some((pkg: Product) => pkg.name.toLowerCase().includes(searchQuery.toLowerCase()));
-      return matchCat && matchQuery;
-    });
-  }, [gameGroups, selectedCategory, searchQuery]);
+  // Custom Game Meta State (Banner, Icon, Description)
+  const [editingGameMeta, setEditingGameMeta] = useState<GameGroup | null>(null);
+  const [gameBannerInput, setGameBannerInput] = useState('');
+  const [gameIconInput, setGameIconInput] = useState('');
+  const [gameDescInput, setGameDescInput] = useState('');
+
 
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
@@ -922,6 +929,7 @@ export default function App() {
     bank_account_name: 'บจก. คีย์ช็อป ดิจิทัล (KeyShop Co., Ltd.)',
     bank_account_number: '123-4-56789-0',
     promptpay_number: '0812345678',
+    hexsync_game_custom_images: '{}',
 
     // Dashboard custom stats
     dashboard_override_enabled: 'false',
@@ -943,6 +951,19 @@ export default function App() {
     bg_music_volume: '30',
     bg_music_autoplay: 'true',
   });
+
+  // Grouped products by game (with custom image support)
+  const gameGroups = React.useMemo(() => groupProductsByGame(products, categories, (siteSettings as any).hexsync_game_custom_images), [products, categories, (siteSettings as any).hexsync_game_custom_images]);
+  const filteredGameGroups = React.useMemo(() => {
+    return gameGroups.filter((g: GameGroup) => {
+      const matchCat = selectedCategory === 'all' || g.categoryId === selectedCategory;
+      const matchQuery = !searchQuery || 
+        g.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        g.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        g.packages.some((pkg: Product) => pkg.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchCat && matchQuery;
+    });
+  }, [gameGroups, selectedCategory, searchQuery]);
 
   // Extract YouTube Video ID helper (Supports youtube.com/watch?v=, youtu.be/, shorts/, embed/)
   const getYouTubeVideoId = (url: string): string | null => {
@@ -2528,6 +2549,49 @@ export default function App() {
     }
   };
 
+
+  // Save custom game banner, icon, and description
+  const handleSaveGameMeta = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGameMeta) return;
+
+    let customMap: Record<string, { bannerImage?: string; image?: string; description?: string }> = {};
+    try {
+      if ((siteSettings as any).hexsync_game_custom_images) {
+        customMap = JSON.parse((siteSettings as any).hexsync_game_custom_images);
+      }
+    } catch {}
+
+    customMap[editingGameMeta.title] = {
+      bannerImage: gameBannerInput.trim() || editingGameMeta.bannerImage,
+      image: gameIconInput.trim() || editingGameMeta.image,
+      description: gameDescInput.trim() || editingGameMeta.description,
+    };
+
+    const updatedJson = JSON.stringify(customMap);
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          hexsync_game_custom_images: updatedJson,
+          adminUsername: user?.username
+        })
+      });
+
+      if (res.ok) {
+        setSiteSettings(prev => ({ ...prev, hexsync_game_custom_images: updatedJson }));
+        showToast('บันทึกรูปภาพและข้อมูลเกมสำเร็จแล้ว');
+        setEditingGameMeta(null);
+      } else {
+        showToast('บันทึกไม่สำเร็จ');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
+
   // Open key manager for product
   const handleOpenKeyManager = (product: Product) => {
     setManagingKeysProduct(product);
@@ -2887,11 +2951,12 @@ export default function App() {
   }, [otpCountdown]);
 
   // Active Category & Featured products
-  const activeCategory = categories.find((c) => c.slug === selectedCategory);
-  const featuredProducts = (products || []).filter((p) => p && p.isFeatured && p.active);
+  const _activeCategory = categories.find((c) => c.slug === selectedCategory); void _activeCategory;
+  const _featuredProducts = (products || []).filter((p) => p && p.isFeatured && p.active); void _featuredProducts;
 
   // Filter products
-  const filteredProducts = (products || []).filter((p) => {
+  const _filteredProducts = (products || []).filter((p) => {
+    void _filteredProducts;
     if (!p) return false;
     const matchesCategory = selectedCategory === 'all' || p.categoryId === selectedCategory;
     const matchesSearch = (p.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()) ||
@@ -5368,253 +5433,33 @@ export default function App() {
           </section>
 
           {/* Game Category Banners Grid (Shown on Homepage when not searching) */}
-          {selectedCategory === 'all' && !searchQuery && categories.length > 0 && (
-            <section className="category-banners-section">
-              <div className="section-header" style={{ marginBottom: '1.2rem' }}>
-                <div className="section-title-group">
-                  <h2>
-                    <IconGamepad size={24} color="#ff1a40" />
-                    <span>หมวดหมู่เกม & สินค้า (Game Categories)</span>
-                  </h2>
-                  <p>กดที่รูปแบนเนอร์เกมเพื่อดูสินค้าเฉพาะหมวดนั้นได้ทันที</p>
-                </div>
-              </div>
-
-              <div className="category-banners-grid">
-                {categories.map((cat) => (
-                  <div
-                    key={cat.id}
-                    className="category-banner-card"
-                    onClick={() => {
-                      setSelectedCategory(cat.slug);
-                      const el = document.getElementById('products-section');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                  >
-                    <img
-                      src={cat.bannerImage || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'}
-                      alt={cat.name}
-                      className="cat-banner-bg"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
-                      }}
-                    />
-                    <div className="cat-banner-overlay" />
-                    <div className="cat-banner-content">
-                      <div className="cat-banner-top">
-                        <span className="cat-count-badge">
-                          <IconShoppingBag size={12} />
-                          <span>{cat.productCount || 0} รายการ</span>
-                        </span>
-                      </div>
-                      <div className="cat-banner-bottom">
-                        <h3 className="cat-banner-title">{cat.name}</h3>
-                        <p className="cat-banner-desc">{cat.description || 'กดเพื่อดูสินค้าในหมวดนี้'}</p>
-                        <span className="cat-banner-action">
-                          <span>เลือกดูสินค้า</span>
-                          <IconArrowRight size={13} />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Active Category Hero Banner (Shown when a specific category is selected) */}
-          {selectedCategory !== 'all' && activeCategory && (
-            <div className="active-category-hero">
-              <img
-                src={activeCategory.bannerImage || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200'}
-                alt={activeCategory.name}
-                className="active-cat-bg"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200';
-                }}
-              />
-              <div className="active-cat-overlay" />
-              <div className="active-cat-content">
-                <button
-                  className="btn-back-all-categories"
-                  onClick={() => setSelectedCategory('all')}
-                >
-                  <IconArrowRight size={15} style={{ transform: 'rotate(180deg)' }} />
-                  <span>ดูหมวดหมู่ทั้งหมด (กลับสู่หน้าหลัก)</span>
-                </button>
-                <div className="active-cat-badge">
-                  <IconGamepad size={15} />
-                  <span>หมวดหมู่เกม</span>
-                </div>
-                <h1 className="active-cat-title">{activeCategory.name}</h1>
-                <p className="active-cat-desc">{activeCategory.description}</p>
-                <div className="active-cat-stats">
-                  <span>พบสินค้า {filteredProducts.length} รายการในหมวดนี้</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Featured Products Section (Shown on Homepage when not searching) */}
-          {selectedCategory === 'all' && !searchQuery && featuredProducts.length > 0 && (
-            <section className="featured-products-section">
-              <div className="section-header" style={{ marginBottom: '1.2rem' }}>
-                <div className="section-title-group">
-                  <h2>
-                    <IconSparkles size={24} color="#ffb703" />
-                    <span style={{ background: 'linear-gradient(90deg, #ffb703, #ff4d6d)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                      สินค้าแนะนำยอดนิยม (Featured Products)
-                    </span>
-                  </h2>
-                  <p>คัดสรรโปรและไอดีที่ดีที่สุด ปลอดภัย 100% ส่งมอบอัตโนมัติทันทีหลังชำระเงิน</p>
-                </div>
-              </div>
-
-              <div className="products-grid featured-grid">
-                {featuredProducts.map((p) => {
-                  const isOutOfStock = p.stock <= 0;
-                  return (
-                    <div
-                      key={`feat-${p.id}`}
-                      className="product-card featured-card"
-                      onClick={() => {
-                        setSelectedProductDetail(p);
-                        setDetailQty(1);
-                      }}
-                    >
-                      <div className="badge-featured-gold">
-                        <IconSparkles size={13} color="#000" />
-                        <span>แนะนำ</span>
-                      </div>
-                      <div className="card-media-wrapper">
-                        <img src={p.image} alt={p.name} className="card-img-gradient" />
-                        <div className="card-view-hint">
-                          <IconEye size={18} />
-                          <span>กดเพื่อดูรายละเอียด</span>
-                        </div>
-                        <div className="card-stock-pill" style={isOutOfStock ? { color: '#ff4d6d', borderColor: 'rgba(255,50,50,0.5)' } : {}}>
-                          <span className="stock-dot" style={isOutOfStock ? { background: '#ff3333', boxShadow: '0 0 6px #ff3333' } : {}} />
-                          <span className="stock-txt-desktop">{isOutOfStock ? 'สินค้าหมด' : `คงเหลือ ${p.stock} ชิ้น`}</span>
-                          <span className="stock-txt-mobile">{isOutOfStock ? 'หมด' : `เหลือ ${p.stock}`}</span>
-                        </div>
-                      </div>
-
-                      <div className="card-body">
-                        <div className="product-category-name">
-                          {categories.find(c => c.slug === p.categoryId)?.name || p.categoryId}
-                        </div>
-                        <h3 className="product-title">{p.name}</h3>
-                        <p className="product-desc">{p.description}</p>
-
-                        <div className="card-footer">
-                          <div className="price-box">
-                            {p.originalPrice && (
-                              <span className="price-original">฿{p.originalPrice.toLocaleString()}</span>
-                            )}
-                            <span className="price-current">
-                              <span className="price-symbol">฿</span>
-                              {p.price.toLocaleString()}
-                            </span>
-                          </div>
-
-                          <div className="card-action-btns">
-                            <button
-                              className="btn-add-cart"
-                              title={isOutOfStock ? 'สินค้าหมด' : 'เพิ่มลงตะกร้า'}
-                              disabled={isOutOfStock}
-                              style={isOutOfStock ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!user) {
-                                  showToast('กรุณาเข้าสู่ระบบก่อนเลือกซื้อสินค้า');
-                                  setAuthTab('login');
-                                  setAuthModalOpen(true);
-                                  return;
-                                }
-                                addToCart(p);
-                              }}
-                            >
-                              <IconCart size={18} />
-                            </button>
-                            <button
-                              className="btn-buy"
-                              disabled={isOutOfStock}
-                              style={isOutOfStock ? { opacity: 0.4, cursor: 'not-allowed', background: '#333' } : {}}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!user) {
-                                  showToast('กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อสินค้า');
-                                  setAuthTab('login');
-                                  setAuthModalOpen(true);
-                                  return;
-                                }
-                                if (isOutOfStock) {
-                                  showToast('สินค้านี้หมดสต็อกชั่วคราว');
-                                  return;
-                                }
-                                setDirectBuyQuantity(1);
-                                setShowDirectBuyConfirm(p);
-                              }}
-                            >
-                              <span>{isOutOfStock ? 'หมด' : 'ซื้อทันที'}</span>
-                              {!isOutOfStock && <IconArrowRight size={14} />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* Main Store Content */}
-          <main className="main-content" id="products-section">
-            <div className="section-header">
+          
+          {/* Main Storefront: Game Packages Section (fahbtc.online style) */}
+          <main id="products-section" className="main-content" style={{ maxWidth: '1280px', margin: '1.5rem auto 3rem', padding: '0 1rem' }}>
+            <div className="section-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <div className="section-title-group">
-                <h2>
-                  <IconShoppingBag size={24} color="#ff1a40" />
-                  <span>
-                    {selectedCategory === 'all'
-                      ? 'รายการสินค้าดิจิทัลทั้งหมด'
-                      : `สินค้าในหมวด ${activeCategory?.name || selectedCategory}`}
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.45rem', fontWeight: 800 }}>
+                  <IconGamepad size={26} color="#ff1a40" />
+                  <span style={{ background: 'linear-gradient(135deg, #fff, #ff8da1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    เลือกเกมที่ต้องการเช่าใช้งาน (Game Packages)
                   </span>
                 </h2>
-                <p>เลือกซื้อสินค้า สต็อกคีย์นับตามจริง ส่งคีย์และลิงก์ดาวน์โหลดทันที</p>
+                <p style={{ margin: '4px 0 0', color: '#9ca3af', fontSize: '0.88rem' }}>
+                  ระบบจัดส่งคีย์ดิจิทัลอัตโนมัติ 24 ชั่วโมง เลือกแพ็กเกจระยะเวลาได้ตามต้องการ
+                </p>
               </div>
 
-              {/* Mobile Search Input */}
-              <div className="mobile-search-container">
-                <IconSearch size={18} className="search-icon-nav" />
+              {/* Quick Search */}
+              <div style={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
+                <IconSearch size={16} color="#ff4d6d" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
                   type="text"
-                  className="nav-search-input"
-                  placeholder="ค้นหาคีย์ ROV, วินโดว์, เกม, ซอฟต์แวร์..."
+                  className="text-input"
+                  style={{ paddingLeft: '38px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,77,109,0.25)', height: '40px', fontSize: '0.88rem' }}
+                  placeholder="ค้นหาชื่อเกม เช่น ROV, PUBG..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-              </div>
-
-              {/* Category Tabs */}
-              <div className="category-tabs">
-                <button
-                  className={`tab-btn ${selectedCategory === 'all' ? 'active' : ''}`}
-                  onClick={() => setSelectedCategory('all')}
-                >
-                  <IconLayers size={16} />
-                  <span>ทั้งหมด (All)</span>
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    className={`tab-btn ${selectedCategory === cat.slug ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat.slug)}
-                  >
-                    <IconGamepad size={16} />
-                    <span>{cat.name}</span>
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -6206,7 +6051,7 @@ export default function App() {
                             </div>
                             <h4 className="admin-game-card-title">{group.title}</h4>
                             <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '2px' }}>
-                              ราคา: <strong style={{ color: '#60a5fa' }}>฿{group.startingPrice} - ฿{group.maxPrice}</strong>
+                              ราคา: <strong style={{ color: '#ff4d6d' }}>฿{group.startingPrice} - ฿{group.maxPrice}</strong>
                             </div>
                           </div>
                         </div>
@@ -6250,14 +6095,17 @@ export default function App() {
                           <button
                             type="button"
                             className="btn-outline"
-                            style={{ padding: '8px 12px', fontSize: '0.82rem' }}
+                            style={{ padding: '8px 12px', fontSize: '0.82rem', borderColor: 'rgba(255, 77, 109, 0.4)', color: '#ff4d6d' }}
                             onClick={() => {
-                              setEditingProduct(group.packages[0]);
+                              setEditingGameMeta(group);
+                              setGameBannerInput(group.bannerImage);
+                              setGameIconInput(group.image);
+                              setGameDescInput(group.description);
                             }}
-                            title="แก้ไขข้อมูลเกม / แพ็กเกจ"
+                            title="ตั้งค่ารูปภาพพื้นหลัง/แบนเนอร์ และไอคอนเกมนี้"
                           >
                             <IconEdit size={14} />
-                            <span>แก้ไข</span>
+                            <span>🖼️ แต่งรูป & แบนเนอร์</span>
                           </button>
                         </div>
                       </div>
@@ -11173,6 +11021,118 @@ export default function App() {
 
 
       
+      
+      {/* GAME BANNER & META CUSTOMIZER MODAL */}
+      {editingGameMeta && (
+        <div className="modal-overlay" onClick={() => setEditingGameMeta(null)}>
+          <div className="modal-content" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <IconEdit color="#ff1a40" size={20} />
+                <span>ตั้งค่ารูปภาพพื้นหลัง & ข้อมูลเกม: {editingGameMeta.title}</span>
+              </div>
+              <button className="btn-close-modal" onClick={() => setEditingGameMeta(null)}>
+                <IconX size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveGameMeta} className="modal-body">
+              {/* Preview Banner */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label className="input-label" style={{ marginBottom: '6px' }}>รูปภาพพื้นหลัง / แบนเนอร์ด้านบน (Banner Image):</label>
+                <div style={{ width: '100%', height: '140px', borderRadius: '12px', overflow: 'hidden', background: '#111', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '8px' }}>
+                  <img
+                    src={gameBannerInput || editingGameMeta.bannerImage}
+                    alt="Banner Preview"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="text-input"
+                    placeholder="URL รูปแบนเนอร์ (https://...)"
+                    value={gameBannerInput}
+                    onChange={(e) => setGameBannerInput(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <label className="btn-outline" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                    <IconUpload size={14} />
+                    <span>อัปโหลดรูป</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => handleFileUpload(e, (url) => setGameBannerInput(url))}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Preview Icon */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label className="input-label" style={{ marginBottom: '6px' }}>รูปไอคอนเกม (Game Icon):</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <img
+                    src={gameIconInput || editingGameMeta.image}
+                    alt="Icon Preview"
+                    style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.15)' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                    }}
+                  />
+                  <div style={{ flex: 1, display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      className="text-input"
+                      placeholder="URL รูปไอคอน (https://...)"
+                      value={gameIconInput}
+                      onChange={(e) => setGameIconInput(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <label className="btn-outline" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                      <IconUpload size={14} />
+                      <span>อัปโหลด</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => handleFileUpload(e, (url) => setGameIconInput(url))}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label className="input-label" style={{ marginBottom: '6px' }}>คำอธิบาย / จุดเด่นของเกมนี้ (แสดงในการ์ด):</label>
+                <textarea
+                  rows={3}
+                  className="text-input"
+                  placeholder="เช่น [+] มอง ESP [+] ล็อคเป้า [+] กันแบน 100%"
+                  value={gameDescInput}
+                  onChange={(e) => setGameDescInput(e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setEditingGameMeta(null)}>
+                  ยกเลิก
+                </button>
+                <button type="submit" className="btn-primary" style={{ flex: 2, justifyContent: 'center', background: 'linear-gradient(135deg, #ff1a40, #d90429)' }}>
+                  <IconCheck size={16} />
+                  <span>บันทึกรูปภาพ & ข้อมูลเกม</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* GAME PACKAGE SELECTION MODAL (fahbtc.online style) */}
       {selectedGameGroup && (
         <div className="modal-overlay" onClick={() => setSelectedGameGroup(null)}>
@@ -11290,7 +11250,7 @@ export default function App() {
                   type="button"
                   className="btn-primary"
                   disabled={!selectedPackageTier || selectedPackageTier.stock <= 0}
-                  style={{ flex: 2, justifyContent: 'center', padding: '12px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}
+                  style={{ flex: 2, justifyContent: 'center', padding: '12px', background: 'linear-gradient(135deg, #ff1a40, #d90429)', boxShadow: '0 4px 18px rgba(255, 26, 64, 0.45)' }}
                   onClick={() => {
                     if (!user) {
                       showToast('กรุณาเข้าสู่ระบบก่อนสั่งซื้อสินค้า');

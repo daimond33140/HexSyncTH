@@ -3829,13 +3829,14 @@ html, body, #root, .app-container {
 .game-card-price-block .price-val {
   font-size: 1.45rem;
   font-weight: 900;
-  color: #2563eb;
+  color: #ff1a40;
   letter-spacing: -0.5px;
   display: flex;
   align-items: baseline;
-  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  background: linear-gradient(135deg, #ff4d6d, #ff1a40);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(255, 26, 64, 0.35));
 }
 
 .btn-select-package {
@@ -3844,20 +3845,20 @@ html, body, #root, .app-container {
   gap: 8px;
   padding: 10px 18px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: linear-gradient(135deg, #ff1a40, #d90429);
   color: #fff;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   font-weight: 700;
   font-size: 0.92rem;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 16px rgba(255, 26, 64, 0.45);
 }
 
 .btn-select-package:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 6px 24px rgba(255, 46, 86, 0.65);
+  background: linear-gradient(135deg, #ff4d6d, #ff1a40);
 }
 
 /* Package Selection Modal */
@@ -3887,13 +3888,13 @@ html, body, #root, .app-container {
 
 .package-tier-item:hover {
   background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(59, 130, 246, 0.4);
+  border-color: rgba(255, 77, 109, 0.4);
 }
 
 .package-tier-item.selected {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: #3b82f6;
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+  background: rgba(255, 26, 64, 0.14);
+  border-color: #ff1a40;
+  box-shadow: 0 0 18px rgba(255, 26, 64, 0.35);
 }
 
 .package-tier-item.out {
@@ -3913,9 +3914,9 @@ html, body, #root, .app-container {
 }
 
 .tier-radio-dot.active {
-  border-color: #3b82f6;
-  background: #3b82f6;
-  box-shadow: 0 0 8px #3b82f6;
+  border-color: #ff1a40;
+  background: #ff1a40;
+  box-shadow: 0 0 10px #ff1a40;
 }
 
 .tier-radio-dot.active::after {
@@ -3953,7 +3954,7 @@ html, body, #root, .app-container {
 .tier-price {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #60a5fa;
+  color: #ff4d6d;
 }
 
 .tier-stock {
