@@ -478,15 +478,130 @@ const RentalCountdown: React.FC<RentalCountdownProps> = ({ expiresAt, linkedGame
   );
 };
 
+
+export interface GameGroup {
+  id: string;
+  title: string;
+  categoryId: string;
+  categoryName: string;
+  image: string;
+  bannerImage: string;
+  description: string;
+  startingPrice: number;
+  maxPrice: number;
+  totalStock: number;
+  packages: Product[];
+}
+
+export function extractDurationLabel(name: string): string {
+  if (/1\s*(?:day|วัน)/i.test(name)) return '1 วัน (1 Day)';
+  if (/3\s*(?:days?|วัน)/i.test(name)) return '3 วัน (3 Days)';
+  if (/7\s*(?:days?|วัน)/i.test(name)) return '7 วัน (7 Days)';
+  if (/30\s*(?:days?|วัน)/i.test(name)) return '30 วัน (30 Days)';
+  if (/ถาวร/i.test(name)) {
+    if (/จบซี/i.test(name)) return 'ถาวร (จนจบซีซั่น)';
+    return 'ถาวร (Permanent)';
+  }
+  const match = name.match(/\(([^)]+)\)/);
+  if (match) return match[1].trim();
+  return 'แพ็กเกจมาตรฐาน';
+}
+
+export function getGameBaseTitle(name: string): string {
+  const isVip = /VIP/i.test(name);
+  const isCrack = /Crack/i.test(name);
+
+  if (name.includes('ROV กันรายงาน')) return 'ROV กันรายงาน';
+  if (name.includes('ROV ไม่กันรายงาน')) return 'ROV ไม่กันรายงาน';
+  if (name.includes('FF / FF MAX')) return 'Free Fire / FF MAX';
+  if (name.includes('PubgM') && isVip) return 'PUBG Mobile (VIP)';
+  if (name.includes('PubgM') && isCrack) return 'PUBG Mobile (Crack)';
+  if (name.includes('Src เว็บ')) return 'ระบบเว็บ HexSyncTH (Full Source)';
+
+  return name
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\s*\d+\s*(?:Day|Days|วัน)/gi, '')
+    .replace(/\s*ถาวร/gi, '')
+    .trim() || name;
+}
+
+export function groupProductsByGame(productsList: Product[], categoriesList: CategoryItem[]): GameGroup[] {
+  const map: Record<string, GameGroup> = {};
+
+  productsList.forEach(p => {
+    const baseTitle = getGameBaseTitle(p.name);
+    const cat = categoriesList.find(c => c.slug === p.categoryId);
+    const catName = cat ? cat.name : p.categoryId;
+
+    if (!map[baseTitle]) {
+      map[baseTitle] = {
+        id: baseTitle.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        title: baseTitle,
+        categoryId: p.categoryId,
+        categoryName: catName,
+        image: p.image || (cat ? cat.bannerImage : '') || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600',
+        bannerImage: (cat && cat.bannerImage) ? cat.bannerImage : p.image,
+        description: p.description || 'โปรเกมคุณภาพสูง ปลอดภัย 100% ส่งออโต้ 24 ชั่วโมง',
+        startingPrice: p.price,
+        maxPrice: p.price,
+        totalStock: 0,
+        packages: []
+      };
+    }
+
+    const grp = map[baseTitle];
+    grp.packages.push(p);
+    grp.totalStock += (p.stock || 0);
+    if (p.price < grp.startingPrice) grp.startingPrice = p.price;
+    if (p.price > grp.maxPrice) grp.maxPrice = p.price;
+    if (p.image && (!grp.image || grp.image.includes('unsplash'))) grp.image = p.image;
+  });
+
+  const orderScore = (pkgName: string) => {
+    if (/1\s*(?:day|วัน)/i.test(pkgName)) return 1;
+    if (/3\s*(?:days?|วัน)/i.test(pkgName)) return 3;
+    if (/7\s*(?:days?|วัน)/i.test(pkgName)) return 7;
+    if (/30\s*(?:days?|วัน)/i.test(pkgName)) return 30;
+    if (/ถาวร/i.test(pkgName)) return 999;
+    return 50;
+  };
+
+  return Object.values(map).map(grp => {
+    grp.packages.sort((a, b) => orderScore(a.name) - orderScore(b.name));
+    return grp;
+  });
+}
+
 export default function App() {
   useScreenSize();
   const [availableGames, setAvailableGames] = useState<Array<{ id: string; title: string }>>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  
+  // Game Packages Storefront & Admin States
+  const [selectedGameGroup, setSelectedGameGroup] = useState<GameGroup | null>(null);
+  const [selectedPackageTier, setSelectedPackageTier] = useState<Product | null>(null);
+  const [packageQty, setPackageQty] = useState<number>(1);
+  const [adminProductViewMode, setAdminProductViewMode] = useState<'game' | 'flat'>('game');
+  const [managingKeysGameGroup, setManagingKeysGameGroup] = useState<GameGroup | null>(null);
+
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Category management states
   const [categories, setCategories] = useState<CategoryItem[]>([]);
+  // Grouped products by game (fahbtc.online style)
+  const gameGroups = React.useMemo(() => groupProductsByGame(products, categories), [products, categories]);
+  const filteredGameGroups = React.useMemo(() => {
+    return gameGroups.filter((g: GameGroup) => {
+      const matchCat = selectedCategory === 'all' || g.categoryId === selectedCategory;
+      const matchQuery = !searchQuery || 
+        g.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        g.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        g.packages.some((pkg: Product) => pkg.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchCat && matchQuery;
+    });
+  }, [gameGroups, selectedCategory, searchQuery]);
+
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [newCategoryBanner, setNewCategoryBanner] = useState('');
@@ -5503,96 +5618,100 @@ export default function App() {
               </div>
             </div>
 
-            {/* Products Grid */}
-            <div className="products-grid">
-              {filteredProducts.map((p) => {
-                const isOutOfStock = p.stock <= 0;
+            {/* Products / Game Packages Grid (fahbtc.online style) */}
+            <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+              {filteredGameGroups.map((group) => {
+                const isOutOfStock = group.totalStock <= 0;
                 return (
                   <div
-                    key={p.id}
-                    className="product-card"
+                    key={group.id}
+                    className="game-package-card"
                     onClick={() => {
-                      setSelectedProductDetail(p);
-                      setDetailQty(1);
+                      setSelectedGameGroup(group);
+                      setSelectedPackageTier(group.packages[0] || null);
+                      setPackageQty(1);
                     }}
+                    style={{ cursor: 'pointer' }}
                   >
-                    <div className="card-media-wrapper">
-                      <img src={p.image} alt={p.name} className="card-img-gradient" />
-                      <div className="card-view-hint">
-                        <IconEye size={18} />
-                        <span>กดเพื่อดูรายละเอียด</span>
-                      </div>
-                      {p.badge && (
-                        <div className={`card-badge ${p.badge === 'HOT' ? 'badge-hot' : 'badge-instant'}`}>
-                          {p.badge}
-                        </div>
-                      )}
-                      <div className="card-stock-pill" style={isOutOfStock ? { color: '#ff4d6d', borderColor: 'rgba(255,50,50,0.5)' } : {}}>
-                        <span className="stock-dot" style={isOutOfStock ? { background: '#ff3333', boxShadow: '0 0 6px #ff3333' } : {}} />
-                        <span className="stock-txt-desktop">{isOutOfStock ? 'สินค้าหมด' : `คงเหลือ ${p.stock} ชิ้น`}</span>
-                        <span className="stock-txt-mobile">{isOutOfStock ? 'หมด' : `เหลือ ${p.stock}`}</span>
+                    {/* Banner Header with Status pill */}
+                    <div className="game-card-banner-wrapper">
+                      <img
+                        src={group.bannerImage || group.image}
+                        alt={group.title}
+                        className="game-card-banner-img"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600';
+                        }}
+                      />
+                      <div className={`game-card-status-tag ${!isOutOfStock ? 'in-stock' : 'out-of-stock'}`}>
+                        <span className="pulse-dot" />
+                        <span>{!isOutOfStock ? 'พร้อมส่ง' : 'สินค้าหมด'}</span>
                       </div>
                     </div>
 
-                    <div className="card-body">
-                      <div className="product-category-name">{p.categoryId}</div>
-                      <h3 className="product-title">{p.name}</h3>
-                      <p className="product-desc">{p.description}</p>
+                    <div className="game-card-body">
+                      {/* Header row: Game square icon + Subtitle & Title */}
+                      <div className="game-card-header">
+                        <img
+                          src={group.image}
+                          alt=""
+                          className="game-card-icon"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                          }}
+                        />
+                        <div className="game-card-title-group">
+                          <span className="game-card-tag">GAME KEY · คีย์ดิจิทัล</span>
+                          <h3 className="game-card-title">{group.title}</h3>
+                        </div>
+                      </div>
 
-                      <div className="card-footer">
-                        <div className="price-box">
-                          {p.originalPrice && (
-                            <span className="price-original">฿{p.originalPrice.toLocaleString()}</span>
-                          )}
-                          <span className="price-current">
-                            <span className="price-symbol">฿</span>
-                            {p.price.toLocaleString()}
-                          </span>
+                      {/* Description text */}
+                      <p className="game-card-desc">{group.description}</p>
+
+                      {/* Badges / Guarantees row */}
+                      <div className="game-card-badges">
+                        <span className="game-badge-pill">
+                          <IconCheck size={13} color="#10b981" />
+                          <span>ยืนยันก่อนส่ง</span>
+                        </span>
+                        <span className="game-badge-pill">
+                          <IconKey size={13} color="#3b82f6" />
+                          <span>คีย์ดิจิทัล</span>
+                        </span>
+                        <span className="game-badge-pill">
+                          <IconShield size={13} color="#f59e0b" />
+                          <span>ปลอดภัย 100%</span>
+                        </span>
+                      </div>
+
+                      {/* Stock line */}
+                      <div className="game-card-stock-line">
+                        <IconShoppingBag size={14} color="#9ca3af" />
+                        <span>
+                          พร้อมส่ง <strong className="stock-count">{group.totalStock} คีย์</strong> ({group.packages.length} แพ็กเกจ)
+                        </span>
+                      </div>
+
+                      {/* Footer row: Starting price & Choose package button */}
+                      <div className="game-card-footer">
+                        <div className="game-card-price-block">
+                          <span className="price-label">เริ่มต้น</span>
+                          <span className="price-val">฿{group.startingPrice.toFixed(2)}</span>
                         </div>
 
-                        <div className="card-action-btns">
-                          <button
-                            className="btn-add-cart"
-                            title={isOutOfStock ? 'สินค้าหมด' : 'เพิ่มลงตะกร้า'}
-                            disabled={isOutOfStock}
-                            style={isOutOfStock ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!user) {
-                                showToast('กรุณาเข้าสู่ระบบก่อนเลือกซื้อสินค้า');
-                                setAuthTab('login');
-                                setAuthModalOpen(true);
-                                return;
-                              }
-                              addToCart(p);
-                            }}
-                          >
-                            <IconCart size={18} />
-                          </button>
-                          <button
-                            className="btn-buy"
-                            disabled={isOutOfStock}
-                            style={isOutOfStock ? { opacity: 0.4, cursor: 'not-allowed', background: '#333' } : {}}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!user) {
-                                showToast('กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อสินค้า');
-                                setAuthTab('login');
-                                setAuthModalOpen(true);
-                                return;
-                              }
-                              if (isOutOfStock) {
-                                showToast('สินค้านี้หมดสต็อกชั่วคราว');
-                                return;
-                              }
-                              setDirectBuyQuantity(1);
-                              setShowDirectBuyConfirm(p);
-                            }}
-                          >
-                            <span>{isOutOfStock ? 'หมดสต็อก' : 'ซื้อทันที'}</span>
-                            {!isOutOfStock && <IconArrowRight size={14} />}
-                          </button>
-                        </div>
+                        <button
+                          className="btn-select-package"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedGameGroup(group);
+                            setSelectedPackageTier(group.packages[0] || null);
+                            setPackageQty(1);
+                          }}
+                        >
+                          <span>เลือกแพ็กเกจ</span>
+                          <IconArrowRight size={15} />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -5600,10 +5719,10 @@ export default function App() {
               })}
             </div>
 
-            {filteredProducts.length === 0 && (
+            {filteredGameGroups.length === 0 && (
               <div style={{ textAlign: 'center', padding: '3.5rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '18px', border: '1px solid var(--border-subtle)', width: '100%', marginTop: '1rem' }}>
                 <IconShoppingBag size={48} color="#ff1a40" style={{ margin: '0 auto 1rem', opacity: 0.7 }} />
-                <h3 style={{ color: '#fff', marginBottom: '0.5rem' }}>ยังไม่มีรายการสินค้าในหมวดหมู่นี้</h3>
+                <h3 style={{ color: '#fff', marginBottom: '0.5rem' }}>ยังไม่มีรายการเกมในหมวดหมู่นี้</h3>
                 <p style={{ color: '#b89ca2', fontSize: '0.9rem', marginBottom: '1.25rem' }}>กำลังทยอยอัปเดตสต็อกสินค้าใหม่ กรุณาเลือกดูหมวดหมู่อื่นหรือย้อนกลับไปหน้าหลัก</p>
                 <button className="btn-primary" onClick={() => setSelectedCategory('all')} style={{ margin: '0 auto', display: 'inline-flex' }}>
                   <span>← กลับไปดูสินค้าทั้งหมด</span>
@@ -5615,6 +5734,7 @@ export default function App() {
       )}
 
       {/* VIEW: PURCHASE HISTORY */}
+
       {view === 'history' && (
         <main className="main-content" style={{ maxWidth: '1000px', marginTop: '2rem' }}>
           <div className="section-header">
@@ -6009,139 +6129,270 @@ export default function App() {
           {/* TAB 1: PRODUCTS & KEY STOCK POOL */}
           {adminTab === 'products' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.9rem', color: '#b89ca2' }}>
-                  ระบบจัดการสต็อกคีย์แบบรายชิ้น (ROV 1D, ROV 3D, ROV 7D) พร้อมระบบเปลี่ยนรูปภาพและลิงก์ดาวน์โหลด
-                </span>
-                <button className="btn-primary" onClick={() => setShowAddProductModal(true)}>
-                  <IconPlusCircle size={16} />
-                  <span>เพิ่มรายการสินค้าใหม่</span>
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <h3 style={{ margin: 0, color: '#fff', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IconShoppingBag size={22} color="#10b981" />
+                    <span>จัดการสินค้า & สต็อกคีย์แยกตามเกม</span>
+                  </h3>
+                  <span style={{ fontSize: '0.85rem', color: '#b89ca2' }}>
+                    กดที่เกมเพื่อเลือกเติมสต็อกคีย์ให้แต่ละแพ็กเกจ (1วัน, 3วัน, 7วัน, 30วัน, ถาวร) ได้สะดวกรวดเร็ว
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* View Mode Toggle */}
+                  <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', padding: '3px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <button
+                      type="button"
+                      className={`tab-btn ${adminProductViewMode === 'game' ? 'active' : ''}`}
+                      style={{ padding: '6px 14px', fontSize: '0.82rem', borderRadius: '8px', border: 'none' }}
+                      onClick={() => setAdminProductViewMode('game')}
+                    >
+                      <IconGamepad size={15} />
+                      <span>แสดงแบบกลุ่มเกม ({gameGroups.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`tab-btn ${adminProductViewMode === 'flat' ? 'active' : ''}`}
+                      style={{ padding: '6px 14px', fontSize: '0.82rem', borderRadius: '8px', border: 'none' }}
+                      onClick={() => setAdminProductViewMode('flat')}
+                    >
+                      <IconLayers size={15} />
+                      <span>ตารางรายการแยกชิ้น ({products.length})</span>
+                    </button>
+                  </div>
+
+                  <button className="btn-primary" onClick={() => setShowAddProductModal(true)}>
+                    <IconPlusCircle size={16} />
+                    <span>เพิ่มรายการสินค้าใหม่</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="admin-table-container">
-              <div className="mobile-table-tip">👈 เลื่อนซ้าย-ขวาเพื่อดูตารางทั้งหมด 👉</div>
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>รูปสินค้า</th>
-                      <th>ชื่อสินค้า</th>
-                      <th>หมวดหมู่</th>
-                      <th>ราคา</th>
-                      <th>สต็อกคีย์คงเหลือ</th>
-                      <th>สินค้าแนะนำ (หน้าแรก) ⭐</th>
-                      <th>ลิงก์ดาวน์โหลด</th>
-                      <th>การจัดการ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map((p) => (
-                      <tr key={p.id}>
-                        <td>
+              {/* GAME BASED VIEW (fahbtc.online style) */}
+              {adminProductViewMode === 'game' && (
+                <div className="admin-game-grid">
+                  {gameGroups.map((group) => {
+                    const hasStock = group.totalStock > 0;
+                    return (
+                      <div key={group.id} className="admin-game-card">
+                        <div className="admin-game-card-header">
                           <img
-                            src={p.image}
+                            src={group.image}
                             alt=""
-                            style={{ width: 45, height: 45, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-subtle)' }}
+                            className="admin-game-card-icon"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
                             }}
                           />
-                        </td>
-                        <td style={{ fontWeight: 700 }}>{p.name}</td>
-                        <td>
-                          <span className="category-pill-badge">
-                            {categories.find((c) => c.slug === p.categoryId)?.name || p.categoryId}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                              <span className="category-pill-badge" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                                {group.categoryName}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  color: hasStock ? '#10b981' : '#ef4444',
+                                  background: hasStock ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px'
+                                }}
+                              >
+                                {hasStock ? `สต็อก ${group.totalStock} คีย์` : 'สินค้าหมด'}
+                              </span>
+                            </div>
+                            <h4 className="admin-game-card-title">{group.title}</h4>
+                            <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '2px' }}>
+                              ราคา: <strong style={{ color: '#60a5fa' }}>฿{group.startingPrice} - ฿{group.maxPrice}</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Package Chips */}
+                        <div className="admin-game-pkgs-chips">
+                          <span style={{ fontSize: '0.75rem', color: '#9ca3af', width: '100%', marginBottom: '2px' }}>
+                            แพ็กเกจระยะเวลา ({group.packages.length} แพ็กเกจ):
                           </span>
-                        </td>
-                        <td style={{ color: '#ff4d6d', fontWeight: 700 }}>฿{p.price}</td>
-                        <td>
-                          <span
-                            style={{
-                              padding: '0.25rem 0.6rem',
-                              borderRadius: '6px',
-                              background: p.stock > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(255,26,64,0.15)',
-                              color: p.stock > 0 ? '#10b981' : '#ff3333',
-                              fontWeight: 700,
-                              fontSize: '0.85rem'
+                          {group.packages.map((pkg) => {
+                            const isOut = (pkg.stock || 0) <= 0;
+                            const durLabel = extractDurationLabel(pkg.name);
+                            return (
+                              <span
+                                key={pkg.id}
+                                className={`admin-game-pkg-chip ${!isOut ? 'in-stock' : 'out'}`}
+                                title={`${pkg.name} | ฿${pkg.price}`}
+                              >
+                                <span>{durLabel}:</span>
+                                <strong>{pkg.stock} คีย์</strong>
+                              </span>
+                            );
+                          })}
+                        </div>
+
+                        {/* Card Actions */}
+                        <div className="admin-game-card-footer">
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            style={{ flex: 1, padding: '8px 12px', fontSize: '0.82rem', justifyContent: 'center', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                            onClick={() => {
+                              setManagingKeysGameGroup(group);
+                              handleOpenKeyManager(group.packages[0]);
                             }}
                           >
-                            {p.stock} คีย์
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className={`btn-featured-toggle ${p.isFeatured ? 'active' : ''}`}
-                            onClick={() => handleToggleFeatured(p)}
-                            title={p.isFeatured ? 'คลิกเพื่อยกเลิกสินค้าแนะนำ' : 'คลิกเพื่อตั้งเป็นสินค้าแนะนำที่หน้าแรก'}
-                          >
-                            {p.isFeatured ? (
-                              <>
-                                <IconSparkles size={13} color="#ffb703" />
-                                <span>⭐ แนะนำ (เปิด)</span>
-                              </>
-                            ) : (
-                              <span>☆ ทั่วไป (กดเปิด)</span>
-                            )}
+                            <IconKey size={15} />
+                            <span>📦 เติมสต็อกคีย์ ({group.totalStock})</span>
                           </button>
-                        </td>
-                        <td>
-                          <a
-                            href={p.downloadUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ color: '#ff6b8b', textDecoration: 'underline', fontSize: '0.82rem' }}
+
+                          <button
+                            type="button"
+                            className="btn-outline"
+                            style={{ padding: '8px 12px', fontSize: '0.82rem' }}
+                            onClick={() => {
+                              setEditingProduct(group.packages[0]);
+                            }}
+                            title="แก้ไขข้อมูลเกม / แพ็กเกจ"
                           >
-                            {p.downloadUrl ? (p.downloadUrl.length > 20 ? p.downloadUrl.substring(0, 20) + '...' : p.downloadUrl) : 'ไม่มีลิงก์'}
-                          </a>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                            {/* MANAGE STOCK KEYS BUTTON */}
-                            <button
-                              className="btn-primary"
-                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', background: 'linear-gradient(135deg, #10b981, #059669)' }}
-                              onClick={() => handleOpenKeyManager(p)}
-                            >
-                              <IconKey size={14} />
-                              <span>เติม/ดูคีย์ ({p.stock})</span>
-                            </button>
-                            <button
-                              className="btn-outline"
-                              style={{ padding: '0.35rem 0.6rem', fontSize: '0.78rem' }}
-                              onClick={() => setEditingProduct(p)}
-                            >
-                              <IconEdit size={13} />
-                              <span>แก้ไขรูป/ลิงก์</span>
-                            </button>
-                            <button
-                              className="btn-outline"
-                              style={{
-                                padding: '0.35rem 0.65rem',
-                                fontSize: '0.78rem',
-                                color: '#ff3333',
-                                borderColor: 'rgba(255, 51, 51, 0.35)',
-                                background: 'rgba(255, 51, 51, 0.08)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.3rem'
-                              }}
-                              onClick={() => handleDeleteProduct(p)}
-                              title={`ลบสินค้า ${p.name}`}
-                            >
-                              <IconTrash size={13} />
-                              <span>ลบ</span>
-                            </button>
-                          </div>
-                        </td>
+                            <IconEdit size={14} />
+                            <span>แก้ไข</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* FLAT TABLE VIEW */}
+              {adminProductViewMode === 'flat' && (
+                <div className="admin-table-container">
+                  <div className="mobile-table-tip">👈 เลื่อนซ้าย-ขวาเพื่อดูตารางทั้งหมด 👉</div>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>รูปสินค้า</th>
+                        <th>ชื่อสินค้า</th>
+                        <th>หมวดหมู่</th>
+                        <th>ราคา</th>
+                        <th>สต็อกคีย์คงเหลือ</th>
+                        <th>สินค้าแนะนำ (หน้าแรก) ⭐</th>
+                        <th>ลิงก์ดาวน์โหลด</th>
+                        <th>การจัดการ</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {products.map((p) => (
+                        <tr key={p.id}>
+                          <td>
+                            <img
+                              src={p.image}
+                              alt=""
+                              style={{ width: 45, height: 45, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-subtle)' }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                              }}
+                            />
+                          </td>
+                          <td style={{ fontWeight: 700 }}>{p.name}</td>
+                          <td>
+                            <span className="category-pill-badge">
+                              {categories.find((c) => c.slug === p.categoryId)?.name || p.categoryId}
+                            </span>
+                          </td>
+                          <td style={{ color: '#ff4d6d', fontWeight: 700 }}>฿{p.price}</td>
+                          <td>
+                            <span
+                              style={{
+                                padding: '0.25rem 0.6rem',
+                                borderRadius: '6px',
+                                background: p.stock > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(255,26,64,0.15)',
+                                color: p.stock > 0 ? '#10b981' : '#ff3333',
+                                fontWeight: 700,
+                                fontSize: '0.85rem'
+                              }}
+                            >
+                              {p.stock} คีย์
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className={`btn-featured-toggle ${p.isFeatured ? 'active' : ''}`}
+                              onClick={() => handleToggleFeatured(p)}
+                              title={p.isFeatured ? 'คลิกเพื่อยกเลิกสินค้าแนะนำ' : 'คลิกเพื่อตั้งเป็นสินค้าแนะนำที่หน้าแรก'}
+                            >
+                              {p.isFeatured ? (
+                                <>
+                                  <IconSparkles size={13} color="#ffb703" />
+                                  <span>⭐ แนะนำ (เปิด)</span>
+                                </>
+                              ) : (
+                                <span>☆ ทั่วไป (กดเปิด)</span>
+                              )}
+                            </button>
+                          </td>
+                          <td>
+                            <a
+                              href={p.downloadUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: '#ff6b8b', textDecoration: 'underline', fontSize: '0.82rem' }}
+                            >
+                              {p.downloadUrl ? (p.downloadUrl.length > 20 ? p.downloadUrl.substring(0, 20) + '...' : p.downloadUrl) : 'ไม่มีลิงก์'}
+                            </a>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              <button
+                                className="btn-primary"
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                                onClick={() => {
+                                  setManagingKeysGameGroup(null);
+                                  handleOpenKeyManager(p);
+                                }}
+                              >
+                                <IconKey size={14} />
+                                <span>เติม/ดูคีย์ ({p.stock})</span>
+                              </button>
+                              <button
+                                className="btn-outline"
+                                style={{ padding: '0.35rem 0.6rem', fontSize: '0.78rem' }}
+                                onClick={() => setEditingProduct(p)}
+                              >
+                                <IconEdit size={13} />
+                                <span>แก้ไขรูป/ลิงก์</span>
+                              </button>
+                              <button
+                                className="btn-outline"
+                                style={{
+                                  padding: '0.35rem 0.65rem',
+                                  fontSize: '0.78rem',
+                                  color: '#ff3333',
+                                  borderColor: 'rgba(255, 51, 51, 0.35)',
+                                  background: 'rgba(255, 51, 51, 0.08)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.3rem'
+                                }}
+                                onClick={() => handleDeleteProduct(p)}
+                                title={`ลบสินค้า ${p.name}`}
+                              >
+                                <IconTrash size={13} />
+                                <span>ลบ</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
-          {/* TAB: CATEGORIES & GAME BANNERS */}
           {adminTab === 'categories' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.2rem', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -10305,6 +10556,41 @@ export default function App() {
             </div>
 
             <div className="modal-body">
+              {/* Duration Tabs for the Game Group */}
+              {(() => {
+                const currentGroup = managingKeysGameGroup || gameGroups.find(g => g.packages.some(pkg => pkg.id === managingKeysProduct.id));
+                if (!currentGroup || currentGroup.packages.length <= 1) return null;
+                return (
+                  <div style={{ marginBottom: '1.25rem', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div style={{ fontSize: '0.82rem', color: '#9ca3af', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <IconGamepad size={15} color="#10b981" />
+                      <span>เลือกแพ็กเกจระยะเวลาของ <strong>{currentGroup.title}</strong> ที่ต้องการเติมสต็อกคีย์:</span>
+                    </div>
+                    <div className="admin-pkg-tabs-row" style={{ margin: 0, paddingBottom: 0 }}>
+                      {currentGroup.packages.map((pkg) => {
+                        const isActive = managingKeysProduct.id === pkg.id;
+                        const label = extractDurationLabel(pkg.name);
+                        return (
+                          <button
+                            key={pkg.id}
+                            type="button"
+                            className={`admin-pkg-tab-btn ${isActive ? 'active' : ''}`}
+                            onClick={() => {
+                              setManagingKeysProduct(pkg);
+                              setInputKeysText('');
+                              fetchProductKeys(pkg.id);
+                            }}
+                          >
+                            <span>{label}</span>
+                            <span style={{ fontSize: '0.75rem', opacity: 0.85 }}>({pkg.stock} คีย์)</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div style={{ marginBottom: '1.25rem' }}>
                 <span style={{ fontSize: '0.85rem', color: '#b89ca2' }}>
                   สต็อกคงเหลือปัจจุบัน: <strong style={{ color: '#10b981' }}>{productKeysList.filter(k => !k.isUsed).length} คีย์</strong> (ขายแล้ว: {productKeysList.filter(k => k.isUsed).length} คีย์)
@@ -10886,7 +11172,149 @@ export default function App() {
       })()}
 
 
-      {/* 4.5 PRODUCT DETAIL MODAL (Cyberpunk Deep Crimson Layer) */}
+      
+      {/* GAME PACKAGE SELECTION MODAL (fahbtc.online style) */}
+      {selectedGameGroup && (
+        <div className="modal-overlay" onClick={() => setSelectedGameGroup(null)}>
+          <div className="modal-content game-package-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img
+                  src={selectedGameGroup.image}
+                  alt=""
+                  style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.15)' }}
+                />
+                <div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>{selectedGameGroup.title}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#9ca3af' }}>เลือกระยะเวลาการใช้งานที่ต้องการ ({selectedGameGroup.packages.length} แพ็กเกจ)</div>
+                </div>
+              </div>
+              <button className="btn-close-modal" onClick={() => setSelectedGameGroup(null)}>
+                <IconX size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {/* Duration Options */}
+              <label className="input-label" style={{ marginBottom: '8px', color: '#cbd5e1' }}>
+                เลือกระยะเวลาการใช้งาน:
+              </label>
+              <div className="package-tiers-grid">
+                {selectedGameGroup.packages.map((pkg) => {
+                  const isSelected = selectedPackageTier?.id === pkg.id;
+                  const isOut = (pkg.stock || 0) <= 0;
+                  const durationLabel = extractDurationLabel(pkg.name);
+                  return (
+                    <div
+                      key={pkg.id}
+                      className={`package-tier-item ${isSelected ? 'selected' : ''} ${isOut ? 'out' : ''}`}
+                      onClick={() => {
+                        setSelectedPackageTier(pkg);
+                        setPackageQty(1);
+                      }}
+                    >
+                      <div className="tier-radio-col">
+                        <span className={`tier-radio-dot ${isSelected ? 'active' : ''}`} />
+                      </div>
+                      <div className="tier-info-col">
+                        <div className="tier-name">{durationLabel}</div>
+                        <div className="tier-subname">{pkg.name}</div>
+                      </div>
+                      <div className="tier-price-col">
+                        <div className="tier-price">฿{pkg.price.toFixed(2)}</div>
+                        <div className={`tier-stock ${isOut ? 'out' : ''}`}>
+                          {isOut ? 'สินค้าหมด' : `พร้อมส่ง ${pkg.stock} คีย์`}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Selected Package Details */}
+              {selectedPackageTier && (
+                <div className="selected-tier-detail-box">
+                  <div className="tier-detail-desc">
+                    <span style={{ color: '#9ca3af', fontSize: '0.8rem', display: 'block', marginBottom: '4px' }}>รายละเอียดแพ็กเกจนี้:</span>
+                    <p style={{ margin: 0, fontSize: '0.86rem', color: '#e5e7eb', whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                      {selectedPackageTier.description || 'โปรเกมระบบ VIP คุณภาพสูง เสถียร ปลอดภัย 100%'}
+                    </p>
+                  </div>
+
+                  {/* Quantity Counter if in stock */}
+                  {selectedPackageTier.stock > 0 && (
+                    <div className="tier-qty-row">
+                      <span style={{ fontSize: '0.88rem', color: '#cbd5e1' }}>จำนวนที่ต้องการ:</span>
+                      <div className="qty-counter">
+                        <button type="button" onClick={() => setPackageQty(Math.max(1, packageQty - 1))}>-</button>
+                        <span>{packageQty}</span>
+                        <button type="button" onClick={() => setPackageQty(Math.min(selectedPackageTier.stock, packageQty + 1))}>+</button>
+                      </div>
+                      <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                        <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>รวมทั้งสิ้น: </span>
+                        <strong style={{ fontSize: '1.2rem', color: '#60a5fa' }}>฿{(selectedPackageTier.price * packageQty).toFixed(2)}</strong>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="modal-actions-row">
+                <button
+                  type="button"
+                  className="btn-outline"
+                  disabled={!selectedPackageTier || selectedPackageTier.stock <= 0}
+                  style={{ flex: 1, padding: '12px' }}
+                  onClick={() => {
+                    if (!user) {
+                      showToast('กรุณาเข้าสู่ระบบก่อนเลือกซื้อสินค้า');
+                      setAuthTab('login');
+                      setAuthModalOpen(true);
+                      return;
+                    }
+                    if (selectedPackageTier) {
+                      for (let i = 0; i < packageQty; i++) {
+                        addToCart(selectedPackageTier);
+                      }
+                      showToast(`เพิ่ม ${selectedPackageTier.name} (${packageQty} ชิ้น) ลงตะกร้าแล้ว`);
+                      setSelectedGameGroup(null);
+                    }
+                  }}
+                >
+                  <IconCart size={18} />
+                  <span>เพิ่มลงตะกร้า</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!selectedPackageTier || selectedPackageTier.stock <= 0}
+                  style={{ flex: 2, justifyContent: 'center', padding: '12px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}
+                  onClick={() => {
+                    if (!user) {
+                      showToast('กรุณาเข้าสู่ระบบก่อนสั่งซื้อสินค้า');
+                      setAuthTab('login');
+                      setAuthModalOpen(true);
+                      return;
+                    }
+                    if (selectedPackageTier) {
+                      setDirectBuyQuantity(packageQty);
+                      setShowDirectBuyConfirm(selectedPackageTier);
+                      setSelectedGameGroup(null);
+                    }
+                  }}
+                >
+                  <span>{selectedPackageTier && selectedPackageTier.stock <= 0 ? 'สินค้านี้หมดสต็อก' : 'เช่าทันที (Buy Now)'}</span>
+                  <IconArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+{/* 4.5 PRODUCT DETAIL MODAL (Cyberpunk Deep Crimson Layer) */}
       {selectedProductDetail && (
         <div className="modal-overlay" onClick={() => setSelectedProductDetail(null)}>
           <div className="modal-content detail-modal-content" onClick={(e) => e.stopPropagation()}>

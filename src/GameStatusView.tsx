@@ -152,24 +152,47 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
   const [lockedModalGame, setLockedModalGame] = useState<GameItem | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const handleDirectDownload = (game: GameItem) => {
+  const handleDirectDownload = async (game: GameItem) => {
     setIsDownloading(true);
     const token = localStorage.getItem('hexsync_token') || '';
+
+    // Quick verification check
+    try {
+      const checkRes = await fetch(`/api/games/${game.id}/download-check`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const checkData = await checkRes.json();
+      if (!checkRes.ok || !checkData.success) {
+        setIsDownloading(false);
+        alert(checkData.message || 'ไม่สามารถดาวน์โหลดไฟล์ได้ กรุณาตรวจสอบสิทธิ์การเช่าเกมหรือเข้าสู่ระบบ');
+        return;
+      }
+    } catch (err) {
+      console.warn('Download pre-check warning:', err);
+    }
+
     const downloadUrl = `/api/games/${game.id}/download?token=${encodeURIComponent(token)}`;
 
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = downloadUrl;
-    document.body.appendChild(iframe);
+    // Trigger direct native browser download
+    try {
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', '');
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        if (document.body.contains(link)) document.body.removeChild(link);
+      }, 500);
+    } catch {
+      window.location.href = downloadUrl;
+    }
 
     setGames(prev => prev.map(g => g.id === game.id ? { ...g, downloadCount: (g.downloadCount || 0) + 1 } : g));
 
     setTimeout(() => {
       setIsDownloading(false);
-      if (document.body.contains(iframe)) {
-        document.body.removeChild(iframe);
-      }
-    }, 3000);
+    }, 2500);
   };
 
   // Admin edit states
