@@ -119,6 +119,9 @@ interface PurchaseRecord {
   linkedGameId?: string | null;
   durationHours?: number | null;
   expiresAt?: string | null;
+  productCategory?: string | null;
+  keyString?: string;
+  createdAt?: string;
 }
 
 interface UserState {
@@ -849,6 +852,14 @@ export default function App() {
 
   // User state (starts as NOT logged in)
   const [user, setUser] = useState<UserState | null>(null);
+
+  // User Profile & Password Hub Modal States
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+  const [profileTab, setProfileTab] = useState<'overview' | 'purchases' | 'topups' | 'password'>('overview');
+  const [pwdOld, setPwdOld] = useState<string>('');
+  const [pwdNew, setPwdNew] = useState<string>('');
+  const [pwdConfirm, setPwdConfirm] = useState<string>('');
+  const [pwdLoading, setPwdLoading] = useState<boolean>(false);
 
   // Cart state (persisted to localStorage)
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -4050,6 +4061,56 @@ export default function App() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
+  // User Profile Hub & Change Password Handlers
+  const handleOpenProfile = (tab: 'overview' | 'purchases' | 'topups' | 'password' = 'overview') => {
+    if (!user) {
+      setAuthTab('login');
+      setAuthModalOpen(true);
+      return;
+    }
+    setProfileTab(tab);
+    setShowProfileModal(true);
+    fetchPurchases();
+    fetchUserTopupHistory();
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pwdOld || !pwdNew) {
+      showToast('กรุณากรอกรหัสผ่านเดิมและรหัสผ่านใหม่');
+      return;
+    }
+    if (pwdNew.length < 4) {
+      showToast('รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 ตัวอักษร');
+      return;
+    }
+    if (pwdNew !== pwdConfirm) {
+      showToast('รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน');
+      return;
+    }
+    setPwdLoading(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ oldPassword: pwdOld, newPassword: pwdNew, confirmPassword: pwdConfirm })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || '🎉 เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว');
+        setPwdOld('');
+        setPwdNew('');
+        setPwdConfirm('');
+      } else {
+        showToast(data.message || '❌ เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน');
+      }
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    } finally {
+      setPwdLoading(false);
+    }
+  };
+
   // Admin Actions
   const handleToggleUserRole = async (targetUser: any) => {
     const newRole = targetUser.role === 'admin' ? 'member' : 'admin';
@@ -5781,6 +5842,23 @@ export default function App() {
               <button className="btn-balance" onClick={handleOpenTopup}>
                 <IconWallet size={16} />
                 <span>฿{user.balance.toLocaleString()}</span>
+              </button>
+
+              {/* My Profile Button */}
+              <button
+                className={`btn-profile-badge desktop-only-btn ${showProfileModal ? 'active' : ''}`}
+                onClick={() => handleOpenProfile('overview')}
+                title="โปรไฟล์ของฉัน (ดูประวัติทั้งหมด & เปลี่ยนรหัสผ่าน)"
+              >
+                <div className="profile-mini-avatar">
+                  {user.role === 'superadmin' ? '👑' : user.role === 'admin' ? '🛡️' : '👤'}
+                </div>
+                <div className="profile-mini-info">
+                  <span className="profile-mini-name">{user.username}</span>
+                  <span className={`profile-mini-role role-${user.role}`}>
+                    {user.role === 'superadmin' ? 'SUPERADMIN' : user.role === 'admin' ? 'ADMIN' : 'MEMBER'}
+                  </span>
+                </div>
               </button>
 
                             <button
@@ -12427,6 +12505,292 @@ async function verifyLicense(key, hwid) {
       )}
 
       {/* 3. SHOPPING CART DRAWER / MODAL */}
+      {/* ========================================================
+          USER PROFILE & HISTORY & PASSWORD HUB MODAL
+          ======================================================== */}
+      {showProfileModal && user && (
+        <div className="profile-modal-overlay" onClick={() => setShowProfileModal(false)}>
+          <div className="profile-modal-box" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="profile-modal-header">
+              <div className="profile-header-left">
+                <div className="profile-avatar-large">
+                  {user.role === 'superadmin' ? '👑' : user.role === 'admin' ? '🛡️' : '👤'}
+                </div>
+                <div className="profile-header-title-block">
+                  <div className="profile-header-name-row">
+                    <h3>{user.username}</h3>
+                    <span className={`profile-role-pill role-${user.role}`}>
+                      {user.role === 'superadmin' ? '👑 SUPERADMIN' : user.role === 'admin' ? '🛡️ ADMIN' : '⭐ MEMBER'}
+                    </span>
+                  </div>
+                  <p className="profile-header-email">{user.email || 'ไม่มีข้อมูลอีเมล'}</p>
+                </div>
+              </div>
+              <div className="profile-header-right">
+                <div className="profile-balance-pill" onClick={() => { setShowProfileModal(false); handleOpenTopup(); }} title="คลิกเพื่อเติมเงิน">
+                  <span className="profile-balance-lbl">ยอดเงินในกระเป๋า</span>
+                  <span className="profile-balance-val">฿{user.balance?.toLocaleString()}</span>
+                </div>
+                <button className="profile-btn-close" onClick={() => setShowProfileModal(false)} title="ปิดหน้าต่าง">
+                  <IconX size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="profile-nav-tabs">
+              <button
+                className={`profile-tab-btn ${profileTab === 'overview' ? 'active' : ''}`}
+                onClick={() => setProfileTab('overview')}
+              >
+                <IconUser size={16} />
+                <span>ข้อมูลบัญชี</span>
+              </button>
+              <button
+                className={`profile-tab-btn ${profileTab === 'purchases' ? 'active' : ''}`}
+                onClick={() => { setProfileTab('purchases'); fetchPurchases(); }}
+              >
+                <IconKey size={16} />
+                <span>ประวัติการซื้อ & คีย์ ({purchases?.length || 0})</span>
+              </button>
+              <button
+                className={`profile-tab-btn ${profileTab === 'topups' ? 'active' : ''}`}
+                onClick={() => { setProfileTab('topups'); fetchUserTopupHistory(); }}
+              >
+                <IconWallet size={16} />
+                <span>ประวัติเติมเงิน ({userTopups?.length || 0})</span>
+              </button>
+              <button
+                className={`profile-tab-btn ${profileTab === 'password' ? 'active' : ''}`}
+                onClick={() => setProfileTab('password')}
+              >
+                <IconLock size={16} />
+                <span>เปลี่ยนรหัสผ่าน</span>
+              </button>
+            </div>
+
+            {/* Tab 1: Overview */}
+            {profileTab === 'overview' && (
+              <div className="profile-tab-content">
+                <div className="profile-overview-grid">
+                  <div className="profile-overview-card">
+                    <div className="profile-card-icon"><IconWallet size={24} color="#ff1a40" /></div>
+                    <div className="profile-card-data">
+                      <span className="profile-card-lbl">ยอดเงินคงเหลือปัจจุบัน</span>
+                      <span className="profile-card-num">฿{user.balance?.toLocaleString()}</span>
+                      <button className="profile-btn-topup-sm" onClick={() => { setShowProfileModal(false); handleOpenTopup(); }}>
+                        + เติมเงินด่วน
+                      </button>
+                    </div>
+                  </div>
+                  <div className="profile-overview-card">
+                    <div className="profile-card-icon"><IconKey size={24} color="#00e676" /></div>
+                    <div className="profile-card-data">
+                      <span className="profile-card-lbl">จำนวนสินค้า & คีย์ที่ครอบครอง</span>
+                      <span className="profile-card-num">{purchases?.length || 0} รายการ</span>
+                      <span className="profile-card-sub">คลิกแท็บ "ประวัติการซื้อ" เพื่อคัดลอกคีย์</span>
+                    </div>
+                  </div>
+                  <div className="profile-overview-card">
+                    <div className="profile-card-icon"><IconCreditCard size={24} color="#3b82f6" /></div>
+                    <div className="profile-card-data">
+                      <span className="profile-card-lbl">ประวัติการทำรายการเติมเงิน</span>
+                      <span className="profile-card-num">{userTopups?.length || 0} ครั้ง</span>
+                      <span className="profile-card-sub">ยอดรวมสำเร็จ: ฿{(userTopupSummary?.totalApprovedAmount || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="profile-overview-card">
+                    <div className="profile-card-icon"><IconShield size={24} color="#f59e0b" /></div>
+                    <div className="profile-card-data">
+                      <span className="profile-card-lbl">สถานะความปลอดภัย & อุปกรณ์</span>
+                      <span className="profile-card-num" style={{ fontSize: '1rem', color: '#00e676' }}>🛡️ ปกติ (Verified)</span>
+                      <span className="profile-card-sub">อุปกรณ์: {myDeviceInfo?.model || 'PC / Web Browser'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: Purchases & Keys */}
+            {profileTab === 'purchases' && (
+              <div className="profile-tab-content">
+                <div className="profile-purchases-wrap">
+                  {purchases?.length === 0 ? (
+                    <div className="profile-empty-state">
+                      <IconShoppingBag size={48} color="#666" />
+                      <p>ยังไม่มีประวัติการสั่งซื้อสินค้า</p>
+                      <button className="btn-primary" onClick={() => { setShowProfileModal(false); setView('store'); }}>
+                        เลือกซื้อสินค้าในร้าน
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="profile-purchases-table-wrap">
+                      <table className="profile-custom-table">
+                        <thead>
+                          <tr>
+                            <th>สินค้า / เกม</th>
+                            <th>ราคา</th>
+                            <th>รหัสคีย์ (License Key)</th>
+                            <th>วันที่สั่งซื้อ</th>
+                            <th>การจัดการ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {purchases.map((p) => (
+                            <tr key={p.id}>
+                              <td>
+                                <div className="profile-item-title-col">
+                                  <strong>{p.productName}</strong>
+                                  <span className="profile-item-cat">{p.productCategory || 'Game Key'}</span>
+                                </div>
+                              </td>
+                              <td className="profile-price-col">฿{p.price?.toLocaleString()}</td>
+                              <td>
+                                <div className="profile-key-box">
+                                  <code>{p.key || p.keyString || 'คีย์ถูกส่งมอบแล้ว'}</code>
+                                  {(p.key || p.keyString) && (
+                                    <button
+                                      className="profile-btn-copy"
+                                      onClick={() => handleCopyKey(p.key || p.keyString || '')}
+                                      title="คัดลอกคีย์"
+                                    >
+                                      <IconCopy size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="profile-date-col">
+                                {new Date(p.purchaseDate || p.createdAt || Date.now()).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td>
+                                {p.downloadUrl && (
+                                  <a
+                                    href={p.downloadUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="profile-btn-download"
+                                  >
+                                    <IconDownload size={14} />
+                                    <span>ดาวน์โหลด</span>
+                                  </a>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 3: Topup History */}
+            {profileTab === 'topups' && (
+              <div className="profile-tab-content">
+                <div className="profile-topups-wrap">
+                  {userTopups?.length === 0 ? (
+                    <div className="profile-empty-state">
+                      <IconWallet size={48} color="#666" />
+                      <p>ยังไม่มีประวัติการเติมเงิน</p>
+                      <button className="btn-primary" onClick={() => { setShowProfileModal(false); handleOpenTopup(); }}>
+                        เติมเงินเข้าสู่กระเป๋า
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="profile-purchases-table-wrap">
+                      <table className="profile-custom-table">
+                        <thead>
+                          <tr>
+                            <th>ช่องทางการเติม</th>
+                            <th>จำนวนเงิน</th>
+                            <th>สถานะ</th>
+                            <th>วันที่ทำรายการ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {userTopups.map((t, idx) => (
+                            <tr key={t.id || idx}>
+                              <td>
+                                <div className="profile-topup-method">
+                                  {t.method === 'slip' ? '🏦 โอนผ่านธนาคาร (สลิป)' : t.method === 'angpao' ? '🧧 ซองอั่งเปา TrueMoney' : '📱 PromptPay QR'}
+                                </div>
+                              </td>
+                              <td className="profile-price-col" style={{ color: '#00e676' }}>
+                                +฿{Number(t.amount || 0).toLocaleString()}
+                              </td>
+                              <td>
+                                <span className={`profile-status-pill status-${t.status}`}>
+                                  {t.status === 'approved' || t.status === 'paid' || t.status === 'completed' ? '✅ สำเร็จ' : t.status === 'rejected' ? '❌ ถูกปฏิเสธ' : '⏳ รอตรวจสอบ'}
+                                </span>
+                              </td>
+                              <td className="profile-date-col">
+                                {new Date(t.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 4: Change Password */}
+            {profileTab === 'password' && (
+              <div className="profile-tab-content">
+                <form className="profile-pwd-form" onSubmit={handleChangePassword}>
+                  <div className="profile-form-group">
+                    <label>รหัสผ่านปัจจุบัน:</label>
+                    <input
+                      type="password"
+                      required
+                      className="profile-input"
+                      placeholder="กรอกรหัสผ่านปัจจุบันของคุณ"
+                      value={pwdOld}
+                      onChange={(e) => setPwdOld(e.target.value)}
+                    />
+                  </div>
+                  <div className="profile-form-group">
+                    <label>รหัสผ่านใหม่:</label>
+                    <input
+                      type="password"
+                      required
+                      minLength={4}
+                      className="profile-input"
+                      placeholder="กำหนดรหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)"
+                      value={pwdNew}
+                      onChange={(e) => setPwdNew(e.target.value)}
+                    />
+                  </div>
+                  <div className="profile-form-group">
+                    <label>ยืนยันรหัสผ่านใหม่:</label>
+                    <input
+                      type="password"
+                      required
+                      minLength={4}
+                      className="profile-input"
+                      placeholder="กรอกรหัสผ่านใหม่อีกครั้งเพื่อยืนยัน"
+                      value={pwdConfirm}
+                      onChange={(e) => setPwdConfirm(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn-primary profile-btn-submit-pwd"
+                    disabled={pwdLoading}
+                  >
+                    {pwdLoading ? 'กำลังบันทึกรหัสผ่าน...' : '💾 บันทึกรหัสผ่านใหม่'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {showCartModal && (
         <div className="modal-overlay" onClick={() => setShowCartModal(false)}>
           <div className="modal-content" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>

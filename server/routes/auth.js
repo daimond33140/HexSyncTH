@@ -6,6 +6,7 @@ const { User, Log } = require('../models');
 const { getClientIp } = require('../middleware/ipBan');
 const { recordFailedLogin, clearFailedLogin, checkLoginLockout } = require('../middleware/wafSecurity');
 const { resolveIpLocation } = require('../utils/geoIp');
+const { verifyToken } = require('../middleware/auth');
 require('dotenv').config();
 
 const router = express.Router();
@@ -412,6 +413,48 @@ router.get('/check-status', async (req, res) => {
     });
   } catch (err) {
     return res.json({ loggedIn: false });
+  }
+});
+
+
+// POST /api/auth/change-password (Self-service change password)
+router.post('/change-password', verifyToken, async (req, res) => {
+  try {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: 'กรุณากรอกรหัสผ่านเดิมและรหัสผ่านใหม่' });
+    }
+    if (newPassword.length < 4) {
+      return res.status(400).json({ message: 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 ตัวอักษร' });
+    }
+    if (confirmPassword && newPassword !== confirmPassword) {
+      return res.status(400).json({ message: 'รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน' });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'ไม่พบบัญชีผู้ใช้นี้ในระบบ' });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'รหัสผ่านเดิมไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    await Log.create({
+      action: 'USER_CHANGE_PASSWORD',
+      detail: `ผู้ใช้ ${user.username} ทำการเปลี่ยนรหัสผ่านด้วยตนเองสำเร็จ`,
+      username: user.username,
+      ip: getClientIp(req)
+    });
+
+    return res.json({ success: true, message: 'เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    return res.status(500).json({ message: 'เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน: ' + err.message });
   }
 });
 
