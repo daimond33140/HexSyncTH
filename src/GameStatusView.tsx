@@ -11,7 +11,6 @@ import {
   Sparkles,
   AlertTriangle,
   Settings,
-  ExternalLink,
   X,
   Gamepad2,
   Bell,
@@ -24,7 +23,7 @@ import {
   Save
 } from 'lucide-react';
 
-export type GameStatus = 'undetected' | 'detected' | 'updating';
+export type GameStatus = 'undetected' | 'risk' | 'updating' | 'detected';
 
 export interface GameItem {
   id: string;
@@ -39,6 +38,7 @@ export interface GameItem {
   bannerUrl: string;
   downloadCount: number;
   driveNote: string;
+  isFree?: boolean;
 }
 
 export interface StatusSettings {
@@ -150,6 +150,27 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
   const [activeLicenses, setActiveLicenses] = useState<Record<string, { gameId: string; productName: string; expiresAt: string; remainingMs: number }>>({});
   const [isLicenseAdmin, setIsLicenseAdmin] = useState(false);
   const [lockedModalGame, setLockedModalGame] = useState<GameItem | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDirectDownload = (game: GameItem) => {
+    setIsDownloading(true);
+    const token = localStorage.getItem('hexsync_token') || '';
+    const downloadUrl = `/api/games/${game.id}/download?token=${encodeURIComponent(token)}`;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = downloadUrl;
+    document.body.appendChild(iframe);
+
+    setGames(prev => prev.map(g => g.id === game.id ? { ...g, downloadCount: (g.downloadCount || 0) + 1 } : g));
+
+    setTimeout(() => {
+      setIsDownloading(false);
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 3000);
+  };
 
   // Admin edit states
   const [editingGame, setEditingGame] = useState<GameItem | null>(null);
@@ -339,6 +360,7 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
   const counts = {
     all: games.length,
     undetected: games.filter(g => g.status === 'undetected').length,
+    risk: games.filter(g => g.status === 'risk').length,
     updating: games.filter(g => g.status === 'updating').length,
     detected: games.filter(g => g.status === 'detected').length,
   };
@@ -705,13 +727,14 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
         }}>
           {filteredGames.map(game => {
             const isUndetected = game.status === 'undetected';
+            const isRisk = game.status === 'risk';
             const isDetected = game.status === 'detected';
             const isUpdating = game.status === 'updating';
 
             const hasAdminPrivilege = isAdmin || isLicenseAdmin || user?.role === 'admin' || user?.role === 'superadmin';
             const licenseInfo = activeLicenses[game.id];
-            const hasRentalAccess = hasAdminPrivilege || Boolean(licenseInfo && new Date(licenseInfo.expiresAt).getTime() > Date.now());
-            const canDownload = game.isDownloadEnabled && !settings.globalMaintenance && isUndetected && hasRentalAccess;
+            const hasRentalAccess = Boolean(game.isFree) || hasAdminPrivilege || Boolean(licenseInfo && new Date(licenseInfo.expiresAt).getTime() > Date.now());
+            const canDownload = game.isDownloadEnabled && !settings.globalMaintenance && (isUndetected || isRisk) && hasRentalAccess;
 
             return (
               <div
@@ -719,10 +742,12 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                 style={{
                   background: 'rgba(20, 20, 25, 0.85)',
                   border: isUndetected 
-                    ? '1px solid rgba(16, 185, 129, 0.3)' 
+                    ? '1px solid rgba(16, 185, 129, 0.35)' 
+                    : isRisk
+                    ? '1px solid rgba(249, 115, 22, 0.45)'
                     : isDetected 
-                    ? '1px solid rgba(239, 68, 68, 0.3)' 
-                    : '1px solid rgba(245, 158, 11, 0.3)',
+                    ? '1px solid rgba(239, 68, 68, 0.35)' 
+                    : '1px solid rgba(245, 158, 11, 0.35)',
                   borderRadius: '16px',
                   overflow: 'hidden',
                   display: 'flex',
@@ -733,6 +758,24 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
               >
                 {/* Card Banner */}
                 <div style={{ position: 'relative', height: '140px', background: '#111' }}>
+                  {game.isFree && (
+                    <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 2 }}>
+                      <span style={{
+                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                        color: '#fff',
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        boxShadow: '0 2px 10px rgba(16, 185, 129, 0.5)'
+                      }}>
+                        🎁 แจกฟรี
+                      </span>
+                    </div>
+                  )}
                   <img
                     src={game.bannerUrl}
                     alt={game.title}
@@ -763,6 +806,22 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                         boxShadow: '0 0 12px rgba(16, 185, 129, 0.6)'
                       }}>
                         <ShieldCheck size={14} /> UNDETECTED
+                      </span>
+                    )}
+                    {isRisk && (
+                      <span style={{
+                        background: 'rgba(249, 115, 22, 0.95)',
+                        color: '#fff',
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        boxShadow: '0 0 12px rgba(249, 115, 22, 0.6)'
+                      }}>
+                        <AlertTriangle size={14} /> USE OWN RISK
                       </span>
                     )}
                     {isUpdating && (
@@ -878,7 +937,9 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                     }}>
                       {hasAdminPrivilege ? (
                         <><span>👑</span> <span>สิทธิ์แอดมิน (เข้าถึงได้ทุกเกม)</span></>
-                      ) : hasRentalAccess ? (
+                      ) : game.isFree ? (
+                        <><span>🎁</span> <span>แจกฟรี (ไม่ต้องเช่าเกม ดาวน์โหลดได้ทันที)</span></>
+                      ) : hasRentalAccess && licenseInfo ? (
                         <><span>✅</span> <span>สิทธิ์เช่าพร้อมใช้งาน ({formatRemaining(licenseInfo.expiresAt)})</span></>
                       ) : (
                         <><span>🔒</span> <span>ต้องเช่าเกมเพื่อปลดล็อกดาวน์โหลด</span></>
@@ -1240,39 +1301,81 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                 </div>
               )}
 
-              {/* Download Action */}
-              <a
-                href={selectedGameForDownload.downloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => {
-                  // Increment download count
-                  const updated = games.map(g => 
-                    g.id === selectedGameForDownload.id ? { ...g, downloadCount: g.downloadCount + 1 } : g
-                  );
-                  handleSaveGames(updated);
-                }}
+              {/* Use Own Risk Warning Banner in Modal */}
+              {selectedGameForDownload.status === 'risk' && (
+                <div style={{
+                  background: 'rgba(249, 115, 22, 0.12)',
+                  border: '1px solid rgba(249, 115, 22, 0.35)',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px'
+                }}>
+                  <AlertTriangle size={20} color="#f97316" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ fontSize: '0.85rem', color: '#fed7aa', lineHeight: 1.5 }}>
+                    ⚠️ สถานะเกม: <strong>Use At Own Risk (เสี่ยงใช้งานเอง)</strong> แนะนำให้ใช้ไอดีรอง/ไอดีไก่ และผู้ใช้งานต้องยอมรับความเสี่ยงด้วยตนเอง
+                  </div>
+                </div>
+              )}
+
+              {/* Free Game Banner in Modal */}
+              {selectedGameForDownload.isFree && (
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '10px',
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1.25rem',
+                  fontSize: '0.85rem',
+                  color: '#a7f3d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  🎁 <strong>เกมนี้แจกฟรี!</strong> สมาชิกทุกคนสามารถดาวน์โหลดไฟล์ไปใช้งานได้ทันทีโดยไม่ต้องเช่าสินค้า
+                </div>
+              )}
+
+              {/* Direct Download Action Button */}
+              <button
+                onClick={() => handleDirectDownload(selectedGameForDownload)}
+                disabled={isDownloading}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
                   width: '100%',
-                  padding: '12px',
+                  padding: '13px',
                   borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  background: isDownloading 
+                    ? 'rgba(16, 185, 129, 0.5)' 
+                    : selectedGameForDownload.status === 'risk'
+                    ? 'linear-gradient(135deg, #f97316, #ea580c)'
+                    : 'linear-gradient(135deg, #10b981, #059669)',
                   color: '#fff',
-                  textDecoration: 'none',
+                  border: 'none',
                   fontWeight: 700,
                   fontSize: '1rem',
+                  cursor: isDownloading ? 'wait' : 'pointer',
                   boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)'
                 }}
               >
-                <ExternalLink size={18} /> ไปยังหน้าดาวน์โหลด (Google Drive)
-              </a>
+                {isDownloading ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" /> กำลังเริ่มดาวน์โหลดไฟล์...
+                  </>
+                ) : (
+                  <>
+                    <Download size={18} /> ดาวน์โหลดไฟล์ทันที (Direct Download)
+                  </>
+                )}
+              </button>
 
-              <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#6b7280', marginTop: '10px', marginBottom: 0 }}>
-                * ลิงก์ดาวน์โหลดจะเปิดในแท็บใหม่ผ่านระบบเก็บไฟล์ที่ปลอดภัย
+              <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#9ca3af', marginTop: '10px', marginBottom: 0 }}>
+                * ระบบจะดาวน์โหลดไฟล์ลงเครื่องของคุณโดยตรง (ปลอดภัย 100%)
               </p>
             </div>
           </div>
@@ -1348,6 +1451,7 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                     style={{ width: '100%', background: '#09090b', border: '1px solid #3f3f46', color: '#fff', padding: '8px 10px', borderRadius: '6px' }}
                   >
                     <option value="undetected">🟢 Undetected (ปลอดภัย)</option>
+                    <option value="risk">🟠 Use At Own Risk (เสี่ยงใช้งานเอง)</option>
                     <option value="updating">🟡 Updating (กำลังอัปเดต)</option>
                     <option value="detected">🔴 Detected (ตรวจพบ/เสี่ยง)</option>
                   </select>
@@ -1363,6 +1467,32 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                     <option value="false">ปิดดาวน์โหลด</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Free vs Rental Gating Selector */}
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>
+                  สิทธิ์การดาวน์โหลด (แจกฟรี / ต้องเช่า)
+                </label>
+                <select
+                  value={editingGame.isFree ? 'true' : 'false'}
+                  onChange={(e) => setEditingGame({ ...editingGame, isFree: e.target.value === 'true' })}
+                  style={{
+                    width: '100%',
+                    background: '#09090b',
+                    border: editingGame.isFree ? '1px solid #10b981' : '1px solid #3f3f46',
+                    color: editingGame.isFree ? '#10b981' : '#fff',
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    fontWeight: 600
+                  }}
+                >
+                  <option value="false">🔒 ต้องเช่าสินค้าก่อนจึงจะดาวน์โหลดได้ (Rental Only)</option>
+                  <option value="true">🎁 แจกฟรี (ดาวน์โหลดได้เลยโดยไม่ต้องเช่า)</option>
+                </select>
+                <span style={{ fontSize: '0.72rem', color: '#71717a', marginTop: '4px', display: 'block' }}>
+                  {editingGame.isFree ? '✨ เกมนี้แจกฟรี: สมาชิกทุกคนสามารถกดดาวน์โหลดได้ทันที' : '🔒 ผู้ใช้งานต้องมีประวัติการเช่าเกมนี้ที่ยังไม่หมดอายุจึงจะดาวน์โหลดได้'}
+                </span>
               </div>
 
               <div>
