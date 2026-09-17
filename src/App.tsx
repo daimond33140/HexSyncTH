@@ -3316,13 +3316,13 @@ export default function App() {
 
   // Filter products
   const _filteredProducts = (products || []).filter((p) => {
-    void _filteredProducts;
     if (!p) return false;
     const matchesCategory = selectedCategory === 'all' || p.categoryId === selectedCategory;
     const matchesSearch = (p.name || '').toLowerCase().includes((searchQuery || '').toLowerCase()) ||
       (p.description || '').toLowerCase().includes((searchQuery || '').toLowerCase());
     return matchesCategory && matchesSearch;
   });
+  void _filteredProducts;
 
   // Cart operations
   const addToCart = (product: Product, quantityToAdd: number = 1) => {
