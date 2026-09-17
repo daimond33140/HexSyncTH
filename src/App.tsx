@@ -14923,6 +14923,7 @@ export default function App() {
 
           {/* MOBILE BOTTOM NAVIGATION BAR (iOS / Android Native App Bar) */}
           <nav className="mobile-bottom-nav">
+            {/* Slot 1 (Left 1): หน้าร้าน */}
             <button
               className={`mobile-nav-item ${view === 'store' ? 'active' : ''}`}
               onClick={() => setView('store')}
@@ -14931,22 +14932,8 @@ export default function App() {
               <span>หน้าร้าน</span>
             </button>
 
-            <button
-              className={`mobile-nav-item ${view === 'history' ? 'active' : ''}`}
-              onClick={() => {
-                if (!user) {
-                  setAuthTab('login');
-                  setAuthModalOpen(true);
-                } else {
-                  setView('history');
-                }
-              }}
-            >
-              <IconHistory size={20} />
-              <span>ประวัติ</span>
-            </button>
-
-            {user && (
+            {/* Slot 2 (Left 2): สถานะเกม หรือ ประวัติการซื้อ */}
+            {user ? (
               <button
                 className={`mobile-nav-item ${view === 'status' ? 'active' : ''}`}
                 onClick={() => setView('status')}
@@ -14954,8 +14941,20 @@ export default function App() {
                 <ShieldCheck size={20} color={view === 'status' ? '#10b981' : 'currentColor'} />
                 <span>สถานะเกม</span>
               </button>
+            ) : (
+              <button
+                className={`mobile-nav-item ${view === 'history' ? 'active' : ''}`}
+                onClick={() => {
+                  setAuthTab('login');
+                  setAuthModalOpen(true);
+                }}
+              >
+                <IconHistory size={20} />
+                <span>ประวัติ</span>
+              </button>
             )}
 
+            {/* Slot 3 (DEAD CENTER): ปุ่มเติมเงิน ลอยเด่นตรงกลางแบบ 1:1 เป๊ะ */}
             <button
               className="mobile-nav-item mobile-nav-highlight"
               onClick={handleOpenTopup}
@@ -14964,38 +14963,46 @@ export default function App() {
               <div className="mobile-highlight-icon">
                 <IconGift size={22} />
               </div>
-              <span>เติมเงิน</span>
+              <span style={{ fontWeight: 800, color: '#fff' }}>เติมเงิน</span>
             </button>
 
-            <button
-              className="mobile-nav-item"
-              onClick={() => setShowCartModal(true)}
-            >
-              <div style={{ position: 'relative', display: 'inline-flex' }}>
-                <IconCart size={20} />
-                {cart.length > 0 && (
-                  <span className="mobile-cart-badge">
-                    {cart.reduce((s, i) => s + i.quantity, 0)}
-                  </span>
-                )}
-              </div>
-              <span>ตะกร้า</span>
-            </button>
+            {/* Slot 4 (Right 1): ตะกร้าสินค้า หรือ ประวัติซื้อ */}
+            {user ? (
+              <button
+                className={`mobile-nav-item ${view === 'history' ? 'active' : ''}`}
+                onClick={() => setView('history')}
+              >
+                <IconHistory size={20} />
+                <span>ประวัติซื้อ</span>
+              </button>
+            ) : (
+              <button
+                className="mobile-nav-item"
+                onClick={() => setShowCartModal(true)}
+              >
+                <div style={{ position: 'relative', display: 'inline-flex' }}>
+                  <IconCart size={20} />
+                  {cart.length > 0 && (
+                    <span className="mobile-cart-badge">
+                      {cart.reduce((s, i) => s + i.quantity, 0)}
+                    </span>
+                  )}
+                </div>
+                <span>ตะกร้า</span>
+              </button>
+            )}
 
+            {/* Slot 5 (Right 2): แอดมินหลังบ้าน หรือ บัญชีสมาชิก/ล็อกอิน */}
             {(user?.role === 'admin' || user?.role === 'superadmin') ? (
               view === 'admin' ? (
                 <button
                   className="mobile-nav-item"
-                  onClick={() => {
-                    if (window.confirm('คุณต้องการออกจากระบบหรือไม่?')) {
-                      handleLogout();
-                    }
-                  }}
-                  style={{ color: '#ff4d6d' }}
-                  title="ออกจากระบบ"
+                  onClick={() => setView('store')}
+                  style={{ color: '#10b981' }}
+                  title="กลับหน้าร้าน"
                 >
-                  <IconLogOut size={20} />
-                  <span>ออกระบบ</span>
+                  <IconShoppingBag size={20} />
+                  <span>หน้าร้าน</span>
                 </button>
               ) : (
                 <button
