@@ -588,7 +588,21 @@ export function groupProductsByGame(
 export default function App() {
   useScreenSize();
   const [availableGames, setAvailableGames] = useState<Array<{ id: string; title: string }>>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const cached = localStorage.getItem('hexsync_cached_products');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return [];
+  });
+  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(() => {
+    try {
+      const cached = localStorage.getItem('hexsync_cached_products');
+      return !cached || JSON.parse(cached).length === 0;
+    } catch {
+      return true;
+    }
+  });
   
   // Game Packages Storefront & Admin States
   const [selectedGameGroup, setSelectedGameGroup] = useState<GameGroup | null>(null);
@@ -601,7 +615,13 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Category management states
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>(() => {
+    try {
+      const cached = localStorage.getItem('hexsync_cached_categories');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return [];
+  });
   // Custom Game Meta State (Banner, Icon, Description)
   const [editingGameMeta, setEditingGameMeta] = useState<GameGroup | null>(null);
   const [gameBannerInput, setGameBannerInput] = useState('');
@@ -909,47 +929,50 @@ export default function App() {
   const [productKeysList, setProductKeysList] = useState<ProductKeyItem[]>([]);
   const [inputKeysText, setInputKeysText] = useState('');
 
-  // Site customizer settings
-  const [siteSettings, setSiteSettings] = useState({
-    site_title: 'HexSyncTH — บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย',
-    hero_title: 'HexSyncTH บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย',
-    hero_subtitle: 'บริการโปรแกรมช่วยเล่น บอท สคริปต์ และคีย์แท้คุณภาพสูง ส่งออโต้ 24 ชั่วโมง',
-    banner_announcement: 'ระบบจัดส่งคีย์อัตโนมัติ 100% รวดเร็วใน 3 วินาที พร้อมรับประกันคีย์ทุกชิ้น',
-    brand_name: 'HexSyncTH',
-    brand_tag: 'No.1 in TH',
-    logo_url: '/logo.png',
+  // Site customizer settings (with instant localStorage cache hydration)
+  const [siteSettings, setSiteSettings] = useState(() => {
+    const defaultVals = {
+      site_title: 'HexSyncTH — บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย',
+      hero_title: 'HexSyncTH บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย',
+      hero_subtitle: 'บริการโปรแกรมช่วยเล่น บอท สคริปต์ และคีย์แท้คุณภาพสูง ส่งออโต้ 24 ชั่วโมง',
+      banner_announcement: 'ระบบจัดส่งคีย์อัตโนมัติ 100% รวดเร็วใน 3 วินาที พร้อมรับประกันคีย์ทุกชิ้น',
+      brand_name: 'HexSyncTH',
+      brand_tag: 'No.1 in TH',
+      logo_url: '/logo.png',
 
-    // 3 Hero Features (from user photo)
-    hero_feat_1: 'คีย์แท้ถาวร ส่งคีย์จริงจากสต็อก',
-    hero_feat_2: 'รับของทันที มีปุ่มดาวน์โหลด',
-    hero_feat_3: 'เติมเงินซองอั่งเปา TrueMoney อัตโนมัติ',
+      hero_feat_1: 'คีย์แท้ถาวร ส่งคีย์จริงจากสต็อก',
+      hero_feat_2: 'รับของทันที มีปุ่มดาวน์โหลด',
+      hero_feat_3: 'เติมเงินซองอั่งเปา TrueMoney อัตโนมัติ',
 
-    // Bank transfer details
-    bank_name: 'ธนาคารกสิกรไทย (KBank)',
-    bank_account_name: 'บจก. คีย์ช็อป ดิจิทัล (KeyShop Co., Ltd.)',
-    bank_account_number: '123-4-56789-0',
-    promptpay_number: '0812345678',
-    hexsync_game_custom_images: '{}',
+      bank_name: 'ธนาคารกสิกรไทย (KBank)',
+      bank_account_name: 'บจก. คีย์ช็อป ดิจิทัล (KeyShop Co., Ltd.)',
+      bank_account_number: '123-4-56789-0',
+      promptpay_number: '0812345678',
+      hexsync_game_custom_images: '{}',
 
-    // Dashboard custom stats
-    dashboard_override_enabled: 'false',
-    custom_stat_sales: '154,200',
-    custom_stat_orders: '1,280',
-    custom_stat_users: '450',
+      dashboard_override_enabled: 'false',
+      custom_stat_sales: '154,200',
+      custom_stat_orders: '1,280',
+      custom_stat_users: '450',
 
-    // SlipOK Bank Verification API credentials
-    slipok_branch_id: '',
-    slipok_api_key: '',
+      slipok_branch_id: '',
+      slipok_api_key: '',
+      webhook_secret: 'whsec_keyshop_2026_auto',
 
-    // Bank Webhook Secret for real auto-credit without slip
-    webhook_secret: 'whsec_keyshop_2026_auto',
+      bg_music_enabled: 'true',
+      bg_music_url: 'https://youtu.be/h_VCgsWLmY4?si=BvgFsmrHWlMFvwkT&t=8',
+      bg_music_title: 'MMM',
+      bg_music_volume: 30,
+      bg_music_autoplay: 'true',
+    };
 
-    // Background Music configuration (Editable from Admin)
-    bg_music_enabled: 'true',
-    bg_music_url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Tours/Enthusiast/Tours_-_01_-_Enthusiast.mp3',
-    bg_music_title: 'Cyberpunk Synthwave Beats',
-    bg_music_volume: '30',
-    bg_music_autoplay: 'true',
+    try {
+      const cached = localStorage.getItem('hexsync_cached_settings');
+      if (cached) {
+        return { ...defaultVals, ...JSON.parse(cached) };
+      }
+    } catch {}
+    return defaultVals;
   });
 
   // Grouped products by game (with custom image support)
@@ -1447,7 +1470,7 @@ export default function App() {
                   window.location.hash = '';
                 }
               }
-              setView((prev) => (prev === 'banned' ? 'store' : prev));
+              setView((prev: any) => (prev === 'banned' ? 'store' : prev));
             }
           }
         }
@@ -1698,7 +1721,11 @@ export default function App() {
       const res = await fetch('/api/products');
       if (res.ok) {
         const data = await res.json();
-        if (data.products) setProducts(data.products);
+        if (data.products) {
+          setProducts(data.products);
+          setIsLoadingProducts(false);
+          try { localStorage.setItem('hexsync_cached_products', JSON.stringify(data.products)); } catch {}
+        }
       }
     } catch {
       // Backend offline fallback
@@ -1724,7 +1751,10 @@ export default function App() {
       const res = await fetch('/api/categories');
       if (res.ok) {
         const data = await res.json();
-        if (data.categories) setCategories(data.categories);
+        if (data.categories) {
+          setCategories(data.categories);
+          try { localStorage.setItem('hexsync_cached_categories', JSON.stringify(data.categories)); } catch {}
+        }
       }
     } catch {
       // Backend offline fallback
@@ -1797,7 +1827,10 @@ export default function App() {
       const res = await fetch('/api/settings');
       if (res.ok) {
         const data = await res.json();
-        if (data.settings) setSiteSettings(data.settings);
+        if (data.settings) {
+          setSiteSettings(data.settings);
+          try { localStorage.setItem('hexsync_cached_settings', JSON.stringify(data.settings)); } catch {}
+        }
       }
       const phoneRes = await fetch('/api/topup/config');
       if (phoneRes.ok) {
@@ -2581,7 +2614,7 @@ export default function App() {
       });
 
       if (res.ok) {
-        setSiteSettings(prev => ({ ...prev, hexsync_game_custom_images: updatedJson }));
+        setSiteSettings((prev: any) => ({ ...prev, hexsync_game_custom_images: updatedJson }));
         showToast('บันทึกรูปภาพและข้อมูลเกมสำเร็จแล้ว');
         setEditingGameMeta(null);
       } else {
@@ -5371,7 +5404,7 @@ export default function App() {
                   <span>{siteSettings.banner_announcement}</span>
                 </div>
                 <h1 className="hero-title">
-                  {(siteSettings.hero_title || 'HexSyncTH บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย').split(' ').map((word, idx) =>
+                  {(siteSettings.hero_title || 'HexSyncTH บริการโปรเเกรมช่วยเล่นที่ดีที่สุดในไทย').split(' ').map((word: string, idx: number) =>
                     idx === 1 ? <span key={idx}>{word} </span> : word + ' '
                   )}
                 </h1>
@@ -5565,14 +5598,38 @@ export default function App() {
             </div>
 
             {filteredGameGroups.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '3.5rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '18px', border: '1px solid var(--border-subtle)', width: '100%', marginTop: '1rem' }}>
-                <IconShoppingBag size={48} color="#ff1a40" style={{ margin: '0 auto 1rem', opacity: 0.7 }} />
-                <h3 style={{ color: '#fff', marginBottom: '0.5rem' }}>ยังไม่มีรายการเกมในหมวดหมู่นี้</h3>
-                <p style={{ color: '#b89ca2', fontSize: '0.9rem', marginBottom: '1.25rem' }}>กำลังทยอยอัปเดตสต็อกสินค้าใหม่ กรุณาเลือกดูหมวดหมู่อื่นหรือย้อนกลับไปหน้าหลัก</p>
-                <button className="btn-primary" onClick={() => setSelectedCategory('all')} style={{ margin: '0 auto', display: 'inline-flex' }}>
-                  <span>← กลับไปดูสินค้าทั้งหมด</span>
-                </button>
-              </div>
+              isLoadingProducts ? (
+                <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', width: '100%' }}>
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} className="game-package-card skeleton-pulse-card">
+                      <div className="skeleton-box" style={{ height: '180px', width: '100%', background: 'rgba(255,255,255,0.04)' }} />
+                      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <div className="skeleton-box" style={{ width: '52px', height: '52px', borderRadius: '12px', background: 'rgba(255,255,255,0.06)' }} />
+                          <div style={{ flex: 1 }}>
+                            <div className="skeleton-box" style={{ height: '12px', width: '40%', marginBottom: '8px', background: 'rgba(255,255,255,0.05)' }} />
+                            <div className="skeleton-box" style={{ height: '20px', width: '70%', background: 'rgba(255,255,255,0.08)' }} />
+                          </div>
+                        </div>
+                        <div className="skeleton-box" style={{ height: '36px', width: '100%', background: 'rgba(255,255,255,0.04)' }} />
+                        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px' }}>
+                          <div className="skeleton-box" style={{ height: '28px', width: '30%', background: 'rgba(255,255,255,0.06)' }} />
+                          <div className="skeleton-box" style={{ height: '40px', width: '40%', borderRadius: '12px', background: 'rgba(255,255,255,0.06)' }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '3.5rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '18px', border: '1px solid var(--border-subtle)', width: '100%', marginTop: '1rem' }}>
+                  <IconShoppingBag size={48} color="#ff1a40" style={{ margin: '0 auto 1rem', opacity: 0.7 }} />
+                  <h3 style={{ color: '#fff', marginBottom: '0.5rem' }}>ยังไม่มีรายการเกมในระบบ</h3>
+                  <p style={{ color: '#b89ca2', fontSize: '0.9rem', marginBottom: '1.25rem' }}>กำลังทยอยอัปเดตสต็อกสินค้าใหม่</p>
+                  <button className="btn-primary" onClick={() => fetchProducts()} style={{ margin: '0 auto', display: 'inline-flex' }}>
+                    <span>🔄 รีเฟรชข้อมูล</span>
+                  </button>
+                </div>
+              )
             )}
           </main>
         </>

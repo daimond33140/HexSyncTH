@@ -4141,3 +4141,14 @@ html, body, #root, .app-container {
   color: #10b981;
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
 }
+
+
+/* Skeleton Pulse Loading Animation */
+@keyframes skeletonShimmer {
+  0% { opacity: 0.35; transform: scale(0.98); }
+  50% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0.35; transform: scale(0.98); }
+}
+.skeleton-pulse-card {
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}

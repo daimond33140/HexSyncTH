@@ -37,8 +37,8 @@ const DEFAULT_SETTINGS = {
 
   // Background Music configuration (Editable from Admin)
   bg_music_enabled: 'true',
-  bg_music_url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Tours/Enthusiast/Tours_-_01_-_Enthusiast.mp3',
-  bg_music_title: 'Cyberpunk Synthwave Beats',
+  bg_music_url: 'https://youtu.be/h_VCgsWLmY4?si=BvgFsmrHWlMFvwkT&t=8',
+  bg_music_title: 'MMM',
   bg_music_volume: '30',
   bg_music_autoplay: 'true',
 };
