@@ -542,9 +542,21 @@ export function groupProductsByGame(
   gameOrderJson?: string
 ): GameGroup[] {
   let customMap: Record<string, { bannerImage?: string; image?: string; description?: string; availabilityStatus?: string; maintenanceNote?: string }> = {};
+  
+  // 1. First parse from parameter if provided
   if (customImagesJson) {
     try {
       customMap = JSON.parse(customImagesJson);
+    } catch {}
+  }
+  
+  // 2. If customMap is empty, instantly hydrate from dedicated localStorage key (0ms delay)
+  if (Object.keys(customMap).length === 0 && typeof window !== 'undefined') {
+    try {
+      const dedicated = localStorage.getItem('hexsync_game_custom_images');
+      if (dedicated) {
+        customMap = JSON.parse(dedicated);
+      }
     } catch {}
   }
 
@@ -557,14 +569,31 @@ export function groupProductsByGame(
 
     const custom = customMap[baseTitle] || {};
 
+    // Only allow category banner if the category name or slug actually matches the game baseTitle
+    const isCatMatch = !!(cat && (
+      baseTitle.toLowerCase().includes(cat.name.toLowerCase()) ||
+      cat.name.toLowerCase().includes(baseTitle.toLowerCase()) ||
+      (cat.slug && baseTitle.toLowerCase().includes(cat.slug.toLowerCase()))
+    ));
+    const catBanner = isCatMatch ? (cat.bannerImage || '') : '';
+    const hasValidProdImage = !!(p.image && !p.image.includes('unsplash') && p.image.trim() !== '');
+
+    // Strict priority hierarchy:
+    // 1. custom.bannerImage (explicit admin setting for this game)
+    // 2. p.image (product's own custom uploaded image)
+    // 3. catBanner (only if category matches the game title!)
+    // 4. Default fallback
+    const resolvedBanner = custom.bannerImage || (hasValidProdImage ? p.image : '') || catBanner || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
+    const resolvedImage = custom.image || (hasValidProdImage ? p.image : '') || catBanner || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600';
+
     if (!map[baseTitle]) {
       map[baseTitle] = {
         id: baseTitle.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         title: baseTitle,
         categoryId: p.categoryId,
         categoryName: catName,
-        image: custom.image || p.image || (cat ? cat.bannerImage : '') || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600',
-        bannerImage: custom.bannerImage || (cat && cat.bannerImage) || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800',
+        image: resolvedImage,
+        bannerImage: resolvedBanner,
         description: custom.description || p.description || 'โปรเกมคุณภาพสูง ปลอดภัย 100% ส่งออโต้ 24 ชั่วโมง',
         startingPrice: p.price,
         maxPrice: p.price,
@@ -580,7 +609,19 @@ export function groupProductsByGame(
     grp.totalStock += (p.stock || 0);
     if (p.price < grp.startingPrice) grp.startingPrice = p.price;
     if (p.price > grp.maxPrice) grp.maxPrice = p.price;
-    if (p.image && (!grp.image || grp.image.includes('unsplash'))) grp.image = p.image;
+
+    // Keep icons and banners updated if product has valid image
+    if (custom.image) {
+      grp.image = custom.image;
+    } else if (hasValidProdImage && (!grp.image || grp.image.includes('unsplash') || grp.image === catBanner)) {
+      grp.image = p.image;
+    }
+
+    if (custom.bannerImage) {
+      grp.bannerImage = custom.bannerImage;
+    } else if (hasValidProdImage && (!grp.bannerImage || grp.bannerImage.includes('unsplash') || grp.bannerImage === catBanner)) {
+      grp.bannerImage = p.image;
+    }
   });
 
   const orderScore = (pkgName: string) => {
@@ -1256,13 +1297,20 @@ export default function App() {
       bg_music_autoplay: 'true',
     };
 
+    let initial = { ...defaultVals };
     try {
       const cached = localStorage.getItem('hexsync_cached_settings');
       if (cached) {
-        return { ...defaultVals, ...JSON.parse(cached) };
+        initial = { ...initial, ...JSON.parse(cached) };
       }
     } catch {}
-    return defaultVals;
+    try {
+      const customImgs = localStorage.getItem('hexsync_game_custom_images');
+      if (customImgs) {
+        initial.hexsync_game_custom_images = customImgs;
+      }
+    } catch {}
+    return initial;
   });
 
   // Grouped products by game (with custom image support)
@@ -2118,7 +2166,16 @@ export default function App() {
         const data = await res.json();
         if (data.settings) {
           setSiteSettings(data.settings);
-          try { localStorage.setItem('hexsync_cached_settings', JSON.stringify(data.settings)); } catch {}
+          if (data.settings.hexsync_game_custom_images) {
+            try {
+              localStorage.setItem('hexsync_game_custom_images', data.settings.hexsync_game_custom_images);
+            } catch {}
+          }
+          try {
+            const safeSettings = { ...data.settings };
+            delete safeSettings.hexsync_game_custom_images; // Prevent exceeding 5MB localStorage quota
+            localStorage.setItem('hexsync_cached_settings', JSON.stringify(safeSettings));
+          } catch {}
         }
       }
       const phoneRes = await fetch('/api/topup/config');
@@ -2936,7 +2993,43 @@ export default function App() {
       });
 
       if (res.ok) {
+        // 1. Immediately cache custom images in dedicated localStorage key
+        try {
+          localStorage.setItem('hexsync_game_custom_images', updatedJson);
+        } catch {}
+
+        // 2. Update siteSettings state
         setSiteSettings((prev: any) => ({ ...prev, hexsync_game_custom_images: updatedJson }));
+
+        // 3. Immediately update products in memory and in hexsync_cached_products
+        const newBanner = gameBannerInput.trim() || editingGameMeta.bannerImage;
+        const newIcon = gameIconInput.trim() || editingGameMeta.image;
+        setProducts((prev) => {
+          const updated = prev.map((prod) => {
+            if (getGameBaseTitle(prod.name) === editingGameMeta.title) {
+              return { ...prod, image: newBanner || newIcon || prod.image };
+            }
+            return prod;
+          });
+          try {
+            localStorage.setItem('hexsync_cached_products', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        // 4. Sync product image to backend for permanent persistence
+        if (editingGameMeta.packages && editingGameMeta.packages.length > 0) {
+          editingGameMeta.packages.forEach(async (pkg) => {
+            try {
+              await fetch(`/api/products/${pkg.id}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ image: newBanner || newIcon })
+              });
+            } catch {}
+          });
+        }
+
         showToast('บันทึกรูปภาพและข้อมูลเกมสำเร็จแล้ว');
         setEditingGameMeta(null);
       } else {
@@ -10891,7 +10984,7 @@ async function verifyLicense(key, hwid) {
                       min="0"
                       max="100"
                       value={siteSettings.bg_music_volume || 30}
-                      onChange={(e) => setSiteSettings({ ...siteSettings, bg_music_volume: e.target.value })}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, bg_music_volume: Number(e.target.value) })}
                       style={{ width: '100%', accentColor: '#ff1a40', cursor: 'pointer' }}
                     />
                   </div>
