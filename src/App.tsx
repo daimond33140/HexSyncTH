@@ -4091,6 +4091,64 @@ export default function App() {
     }
   };
 
+  // 1.5 Create ChillPay Automated Payment Order (No slip needed, auto-credited)
+  const handleCreateChillPayOrder = async (amountToTopup: number) => {
+    if (!user) {
+      setAuthModalOpen(true);
+      showToast('กรุณาเข้าสู่ระบบก่อนทำรายการเติมเงิน');
+      return;
+    }
+    const num = Number(amountToTopup);
+    if (!num || isNaN(num) || num < 20) {
+      showToast('ยอดชำระขั้นต่ำผ่าน ChillPay คือ 20 บาทขึ้นไป');
+      return;
+    }
+
+    setGeneratingQr(true);
+    try {
+      const res = await fetch('/api/topup/chillpay/create-order', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          username: user.username,
+          amount: num,
+          channelCode: 'creditcard'
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || 'ไม่สามารถสร้างรายการชำระเงิน ChillPay ได้');
+        return;
+      }
+
+      // Open ChillPay payment gateway in a popup window
+      const popup = window.open(data.paymentUrl, 'chillpay_payment', 'width=520,height=720,menubar=no,toolbar=no,location=no');
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        window.open(data.paymentUrl, '_blank');
+      }
+
+      setActiveQrOrder({
+        orderId: data.orderId,
+        amount: data.amount,
+        qrPayload: data.paymentUrl,
+        promptpayNumber: 'ChillPay Gateway (Auto)',
+        accountName: 'ChillPay (HexSyncTH)',
+        bankName: 'ChillPay Payment Gateway',
+        expiresAt: data.expiresAt,
+        durationSeconds: 1800
+      });
+      setQrCountdown(1800);
+      setQrPaymentSuccess(false);
+      setShowDynamicQrModal(true);
+      setShowAngpaoModal(false);
+      showToast('⚡ เปิดหน้าชำระเงิน ChillPay สำเร็จ (เมื่อโอนเสร็จ ยอดเงินจะเข้าอัตโนมัติทันที)');
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ ChillPay');
+    } finally {
+      setGeneratingQr(false);
+    }
+  };
+
   // 2. Process QR Modal Slip with Client-Side QR Scanner & Auto-Compression
   const handleQrSlipFileSelect = (file: File) => {
     if (!file) return;
@@ -14925,32 +14983,53 @@ async function verifyLicense(key, hwid) {
                     </div>
 
                     {/* Primary Action: Confirm & Generate 30-min Dynamic Single-Use QR */}
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={() => handleCreateQrOrder(bankAmount)}
-                      disabled={generatingQr || !bankAmount || bankAmount < 1}
-                      style={{
-                        width: '100%',
-                        justifyContent: 'center',
-                        background: 'linear-gradient(135deg, #00e676, #00b0ff)',
-                        color: '#050c14',
-                        fontSize: '1rem',
-                        fontWeight: 800,
-                        padding: '0.9rem 1.25rem',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 20px rgba(0, 230, 118, 0.4)',
-                        cursor: (generatingQr || !bankAmount || bankAmount < 1) ? 'not-allowed' : 'pointer',
-                        marginTop: '0.85rem',
-                        marginBottom: '0.5rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}
-                    >
-                      <IconQrCode size={20} />
-                      <span>{generatingQr ? 'กำลังสร้าง QR Code...' : `⚡ ยืนยัน / สร้าง QR ชำระเงิน ฿${Number(bankAmount || 0).toLocaleString()} (ใช้ครั้งเดียว 30 นาที)`}</span>
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '0.85rem', marginBottom: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        disabled={generatingQr || !bankAmount || bankAmount < 20}
+                        onClick={() => handleCreateChillPayOrder(bankAmount)}
+                        style={{
+                          width: '100%',
+                          justifyContent: 'center',
+                          background: 'linear-gradient(135deg, #00e676, #00b0ff)',
+                          color: '#050c14',
+                          fontSize: '1rem',
+                          fontWeight: 800,
+                          padding: '0.9rem 1.25rem',
+                          borderRadius: '12px',
+                          boxShadow: '0 4px 20px rgba(0, 230, 118, 0.4)',
+                          cursor: (generatingQr || !bankAmount || bankAmount < 20) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <IconZap size={20} color="#050c14" />
+                        <span>{generatingQr ? 'กำลังเปิดหน้าชำระเงิน...' : `⚡ เติมเงินผ่าน ChillPay (โอนเข้าออโต้ ไม่ต้องแนบสลิป) ฿${Number(bankAmount || 0).toLocaleString()}`}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={generatingQr || !bankAmount || bankAmount < 1}
+                        onClick={() => handleCreateQrOrder(bankAmount)}
+                        style={{
+                          width: '100%',
+                          justifyContent: 'center',
+                          fontSize: '0.9rem',
+                          padding: '0.75rem 1rem',
+                          borderRadius: '10px',
+                          cursor: (generatingQr || !bankAmount || bankAmount < 1) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <IconQrCode size={18} />
+                        <span>สร้าง QR พร้อมเพย์ / ธนาคารทั่วไป (แนบสลิป) ฿{Number(bankAmount || 0).toLocaleString()}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ textAlign: 'center', margin: '0.75rem 0', color: '#7a6368', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '8px' }}>

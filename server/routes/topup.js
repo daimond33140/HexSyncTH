@@ -998,19 +998,42 @@ router.post('/webhook', async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized: Missing or invalid webhook secret' });
     }
 
-    // Extract orderId, amount, transRef from various payment gateway / webhook standards
+    // Extract orderId, amount, transRef from various payment gateway / Android mobile notifier formats
     let orderId = payload.orderId || payload.order_id || payload.billPaymentRef1 || payload.ref1 || payload.referenceNo || payload.data?.orderId || payload.data?.order_id;
     let amount = parseFloat(payload.amount || payload.total_amount || payload.data?.amount || payload.transferAmount);
     let transRef = payload.transRef || payload.trans_ref || payload.transactionId || payload.txId || payload.data?.transRef || payload.data?.trans_ref;
+
+    // Intelligent Thai Banking push notification parser (K PLUS / SCB EASY / Krungthai / SMS)
+    const rawNotificationText = String(payload.message || payload.text || payload.title || payload.notification || payload.body || payload.content || '');
+    if (rawNotificationText && (isNaN(amount) || !amount)) {
+      const match = rawNotificationText.match(/(?:เงินเข้า|รับโอน|โอนเงินเข้า|ยอดเงินเข้า|ได้รับเงินโอน|โอนสำเร็จ|amount|\+)\s*[:=]?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i)
+        || rawNotificationText.match(/([0-9,]+(?:\.[0-9]{1,2})?)\s*(?:บาท|บ\.)/i);
+      if (match) {
+        const parsed = parseFloat(match[1].replace(/,/g, ''));
+        if (!isNaN(parsed) && parsed > 0) {
+          amount = parsed;
+        }
+      }
+    }
+
+    // Extract Order ID if present in text (e.g. QR123456789)
+    if (!orderId && rawNotificationText) {
+      const orderMatch = rawNotificationText.match(/\b(QR[0-9]{8,14})\b/i);
+      if (orderMatch) {
+        orderId = orderMatch[1];
+      }
+    }
 
     let order = null;
     if (orderId) {
       order = await PaymentOrder.findOne({ where: { orderId: String(orderId).trim() } });
     }
 
-    // Fallback: If orderId is missing, match by amount with pending order created within last 30 minutes
+    // Match by amount with active pending order within 30 minutes
     if (!order && !isNaN(amount) && amount > 0) {
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      
+      // 1. Exact amount match (including satang decimals)
       order = await PaymentOrder.findOne({
         where: {
           amount: amount,
@@ -1019,6 +1042,18 @@ router.post('/webhook', async (req, res) => {
         },
         order: [['createdAt', 'DESC']]
       });
+
+      // 2. Satang delta tolerance (within 0.99 satang if customer transferred base amount)
+      if (!order) {
+        const pendingOrders = await PaymentOrder.findAll({
+          where: {
+            status: 'pending',
+            createdAt: { [Op.gt]: thirtyMinutesAgo }
+          },
+          order: [['createdAt', 'DESC']]
+        });
+        order = pendingOrders.find(o => Math.abs(Number(o.amount) - amount) < 0.999) || null;
+      }
     }
 
     if (!order) {
@@ -1403,6 +1438,185 @@ router.get('/history', verifyToken, async (req, res) => {
   } catch (err) {
     console.error('Error fetching topup history:', err);
     res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงประวัติการเติมเงิน: ' + err.message });
+  }
+});
+
+
+// ==========================================
+// CHILLPAY PAYMENT GATEWAY INTEGRATION
+// ==========================================
+
+// 1. Create ChillPay Payment Order
+router.post('/chillpay/create-order', verifyToken, async (req, res) => {
+  try {
+    const { username, amount, channelCode = 'creditcard' } = req.body;
+    const numAmount = Number(amount);
+
+    if (!username) {
+      return res.status(400).json({ message: 'กรุณาระบุชื่อผู้ใช้งาน' });
+    }
+    if (req.user && req.user.username !== username && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      return res.status(403).json({ message: 'สิทธิ์การเข้าถึงถูกปฏิเสธ' });
+    }
+    if (!numAmount || isNaN(numAmount) || numAmount < 20) {
+      return res.status(400).json({ message: 'ยอดชำระขั้นต่ำของ ChillPay คือ 20 บาทขึ้นไป' });
+    }
+
+    const user = await User.findOne({ where: { username } });
+    if (!user) {
+      return res.status(404).json({ message: 'ไม่พบผู้ใช้ในระบบ' });
+    }
+
+    // Load ChillPay settings from DB
+    const [merchantCodeSetting, apiKeySetting, md5KeySetting, modeSetting] = await Promise.all([
+      Setting.findOne({ where: { key: 'chillpay_merchant_code' } }),
+      Setting.findOne({ where: { key: 'chillpay_api_key' } }),
+      Setting.findOne({ where: { key: 'chillpay_md5_key' } }),
+      Setting.findOne({ where: { key: 'chillpay_mode' } })
+    ]);
+
+    const merchantCode = merchantCodeSetting?.value?.trim() || 'M038849';
+    const apiKey = apiKeySetting?.value?.trim() || 'Do0A0pr4VAG1OThMqxb9oUfxZAYgdSe32xqU3A8JeoT62M0lNEHot9ISL2KlTMBe';
+    const md5Key = md5KeySetting?.value?.trim() || 'UJhJXSm9vLRhN6otYvLpT2TMb3Skb9VYsmdcavVSdsyGYblCAFLERNHyaRfIaZcF6VqbeCwqmoWNiB9ETnWUHAyP4yANDCYMhANSwEjiQA1dvtcY1NC4MdQ6CgqTydm5wpn59CxiRrJT44FGuMWl9p8GLHubngYXZL1Um';
+    const isProduction = modeSetting?.value?.trim() === 'production';
+
+    const orderNo = 'HX' + Math.floor(10000000 + Math.random() * 90000000);
+    const satangAmount = Math.round(numAmount * 100); // ChillPay uses satang (100 = 1 THB)
+    const customerId = (username || 'USER').slice(0, 20);
+    const phoneNumber = user.phoneNumber || '0953873075';
+    const description = `Topup credit ${numAmount} THB`;
+    const selectedChannel = channelCode || 'creditcard';
+    const currency = '764';
+    const langCode = 'TH';
+    const routeNo = 1;
+    const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim();
+
+    // Checksum: MerchantCode + OrderNo + CustomerId + Amount + PhoneNumber + Description + ChannelCode + Currency + LangCode + RouteNo + IPAddress + ApiKey + MD5Key
+    const checkString = merchantCode + orderNo + customerId + satangAmount + phoneNumber + description + selectedChannel + currency + langCode + routeNo + ipAddress + apiKey + md5Key;
+    const checkSum = crypto.createHash('md5').update(checkString).digest('hex');
+
+    const chillpayUrl = isProduction
+      ? 'https://appsrv.chillpay.co/api/v2/Payment/'
+      : 'https://sandbox-appsrv2.chillpay.co/api/v2/Payment/';
+
+    const payload = {
+      MerchantCode: merchantCode,
+      OrderNo: orderNo,
+      CustomerId: customerId,
+      Amount: satangAmount,
+      PhoneNumber: phoneNumber,
+      Description: description,
+      ChannelCode: selectedChannel,
+      Currency: currency,
+      LangCode: langCode,
+      RouteNo: routeNo,
+      IPAddress: ipAddress,
+      ApiKey: apiKey,
+      CheckSum: checkSum
+    };
+
+    const chillRes = await fetch(chillpayUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const chillData = await chillRes.json();
+
+    if (chillData.Status !== 0 && chillData.Code !== 200) {
+      return res.status(400).json({
+        success: false,
+        message: 'ChillPay Error: ' + (chillData.Message || 'ไม่สามารถสร้างรายการชำระเงินได้')
+      });
+    }
+
+    // Save pending payment order
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    await PaymentOrder.create({
+      orderId: orderNo,
+      username,
+      amount: numAmount,
+      qrPayload: chillData.PaymentUrl,
+      promptpayNumber: 'ChillPay Gateway',
+      accountName: 'ChillPay (HexSyncTH)',
+      status: 'pending',
+      expiresAt
+    });
+
+    res.json({
+      success: true,
+      orderId: orderNo,
+      amount: numAmount,
+      paymentUrl: chillData.PaymentUrl,
+      transactionId: chillData.TransactionId,
+      expiresAt: expiresAt.toISOString()
+    });
+  } catch (err) {
+    console.error('Error in chillpay create-order:', err);
+    res.status(500).json({ message: 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ ChillPay: ' + err.message });
+  }
+});
+
+// 2. ChillPay Dedicated Webhook
+router.post('/chillpay/webhook', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    console.log('[ChillPay Webhook Received]:', JSON.stringify(payload));
+
+    const orderNo = payload.OrderNo || payload.orderNo || payload.order_id || payload.orderno;
+    let rawAmount = parseFloat(payload.Amount || payload.amount);
+    const status = payload.Status !== undefined ? Number(payload.Status) : (payload.status !== undefined ? Number(payload.status) : null);
+    const code = Number(payload.Code || payload.code || 0);
+    const transRef = payload.TransactionId || payload.transactionId || payload.transRef;
+
+    if (!orderNo) {
+      return res.status(400).json({ message: 'Missing OrderNo' });
+    }
+
+    const order = await PaymentOrder.findOne({ where: { orderId: String(orderNo).trim() } });
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found: ' + orderNo });
+    }
+
+    if (order.status === 'paid') {
+      return res.json({ success: true, message: 'Already credited' });
+    }
+
+    // In ChillPay: Status 0 is success
+    const isSuccess = (status === 0 || code === 200 || payload.PaymentStatus === 'Success' || payload.payment_status === 'success');
+    if (!isSuccess) {
+      return res.json({ success: false, message: 'Payment not successful yet' });
+    }
+
+    // Mark as paid
+    order.status = 'paid';
+    order.paidAt = new Date();
+    if (transRef) order.transRef = String(transRef);
+    await order.save();
+
+    // Credit user wallet
+    const user = await User.findOne({ where: { username: order.username } });
+    if (user) {
+      const prev = Number(user.creditBalance || 0);
+      const added = Number(order.amount);
+      user.creditBalance = prev + added;
+      await user.save();
+
+      await Log.create({
+        action: 'TOPUP_DYNAMIC_QR',
+        detail: `[ChillPay Gateway] ชำระเงินสำเร็จ +฿${added.toLocaleString()} บาท (บิล: ${order.orderId}, Tx: ${transRef || '-'}) เข้ากระเป๋าผู้ใช้ ${order.username} อัตโนมัติ`,
+        username: order.username,
+        actionType: 'ChillPay Webhook'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment completed successfully',
+      orderId: order.orderId
+    });
+  } catch (err) {
+    console.error('Error in ChillPay webhook:', err);
+    res.status(500).json({ message: 'Error processing ChillPay webhook: ' + err.message });
   }
 });
 
