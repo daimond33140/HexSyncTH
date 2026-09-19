@@ -4181,17 +4181,11 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  // 3. Confirm Dynamic QR Payment (Single-use auto-credit)
+  // 3. Confirm Dynamic QR Payment (แบบระบบเก่า - เติมเงินออโต้ทันที ไม่ต้องแนบสลิป)
   const handleConfirmQrPayment = async (customSlip?: string, customQrData?: string | null) => {
     if (!activeQrOrder || !user) return;
-    const slipToUse = customSlip || qrSlipImage;
-    const qrToUse = customQrData !== undefined ? customQrData : qrSlipQrData;
-
-    if (!slipToUse) {
-      document.getElementById('qr-modal-slip-file')?.click();
-      showToast('กรุณาเลือกรูปสลิปการโอนเงิน เพื่อให้ระบบตรวจสอบและเติมเครดิตทันทีครับ');
-      return;
-    }
+    const slipToUse = customSlip || qrSlipImage || undefined;
+    const qrToUse = customQrData !== undefined ? customQrData : (qrSlipQrData || undefined);
 
     setQrVerifying(true);
     try {
@@ -4202,14 +4196,11 @@ export default function App() {
           orderId: activeQrOrder.orderId,
           username: user.username,
           slipImage: slipToUse,
-          clientQrData: qrToUse || undefined,
+          clientQrData: qrToUse,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        if (data.requiresSlip) {
-          document.getElementById('qr-modal-slip-file')?.click();
-        }
         showToast(data.message || 'การยืนยันยอดเงินไม่สำเร็จ');
         return;
       }
@@ -4220,7 +4211,7 @@ export default function App() {
       showToast(data.message || '🎉 เติมเงินสำเร็จ! ยอดเงินเข้ากระเป๋าเรียบร้อยแล้ว');
       fetchStats();
     } catch {
-      showToast('เกิดข้อผิดพลาดในการยืนยันรายการ');
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     } finally {
       setQrVerifying(false);
     }
@@ -15693,172 +15684,109 @@ async function verifyLicense(key, hwid) {
                     </div>
                   </div>
 
-                  {/* Step 2: Slip Verification & Instant Wallet Credit */}
+                  {/* Instant Auto-Credit Action Card (แบบระบบเก่า: เงินเข้าออโต้ทันที ไม่ต้องแนบสลิป) */}
                   <div style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(0, 230, 118, 0.25)',
-                    borderRadius: '12px',
-                    padding: '1rem',
-                    marginBottom: '1rem'
+                    background: 'linear-gradient(180deg, rgba(0, 230, 118, 0.08) 0%, rgba(0, 176, 255, 0.04) 100%)',
+                    border: '1px solid rgba(0, 230, 118, 0.35)',
+                    borderRadius: '14px',
+                    padding: '1.15rem 1rem',
+                    marginBottom: '1rem',
+                    textAlign: 'center'
                   }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '0.65rem'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', fontWeight: 800, color: '#00e676' }}>
-                        <IconShield size={16} />
-                        <span>ขั้นตอนที่ 2: แนบสลิปเพื่อตรวจยอด & รับเครดิต</span>
-                      </div>
-                      <span style={{ fontSize: '0.72rem', color: '#b89ca2', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: '4px' }}>
-                        ตรวจอัตโนมัติ 1-2 วิ
-                      </span>
-                    </div>
-
-                    {/* Hidden Slip Input */}
-                    <input
-                      id="qr-modal-slip-file"
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleQrSlipFileSelect(file);
-                      }}
-                    />
-
-                    {qrSlipImage ? (
-                      /* Slip Selected Preview Box */
-                      <div style={{
-                        background: 'rgba(0, 0, 0, 0.25)',
-                        border: '1px solid rgba(0, 230, 118, 0.4)',
-                        borderRadius: '10px',
-                        padding: '0.75rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: '0.75rem'
-                      }}>
-                        <img
-                          src={qrSlipImage}
-                          alt="Transfer Slip"
-                          style={{
-                            width: '56px',
-                            height: '56px',
-                            objectFit: 'cover',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(255,255,255,0.2)'
-                          }}
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#00e676', fontWeight: 700, fontSize: '0.82rem' }}>
-                            <IconCheck size={14} />
-                            <span>แนบสลิปเรียบร้อย</span>
-                          </div>
-                          {qrSlipBank && (
-                            <div style={{ fontSize: '0.78rem', color: '#fff', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              ธนาคาร: <strong>{qrSlipBank}</strong>
-                            </div>
-                          )}
-                          {qrSlipTransRef && (
-                            <div style={{ fontSize: '0.72rem', color: '#b89ca2', marginTop: '2px' }}>
-                              รหัสอ้างอิง: <code style={{ color: '#ffb703' }}>{qrSlipTransRef}</code>
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => document.getElementById('qr-modal-slip-file')?.click()}
-                          style={{
-                            background: 'rgba(255,255,255,0.08)',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: '#fff',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            padding: '6px 10px',
-                            borderRadius: '6px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          เปลี่ยนรูป
-                        </button>
-                      </div>
-                    ) : (
-                      /* Slip Drop / Click Upload Area */
-                      <div
-                        onClick={() => document.getElementById('qr-modal-slip-file')?.click()}
-                        style={{
-                          border: '2px dashed rgba(0, 230, 118, 0.4)',
-                          background: 'rgba(0, 230, 118, 0.04)',
-                          borderRadius: '10px',
-                          padding: '1rem 0.8rem',
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          marginBottom: '0.75rem'
-                        }}
-                      >
-                        <div style={{
-                          width: '42px',
-                          height: '42px',
-                          borderRadius: '50%',
-                          background: 'rgba(0, 230, 118, 0.15)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          margin: '0 auto 8px'
-                        }}>
-                          <IconUpload size={20} color="#00e676" />
-                        </div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>
-                          คลิกที่นี่เพื่อเลือกรูปสลิปการโอนเงิน
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#b89ca2', marginTop: '3px' }}>
-                          รองรับรูปสลิปทุกธนาคาร (KBank, SCB, KTB, BBL, GSB, TTB, TrueMoney)
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Button */}
+                    {/* Primary Button: Click to auto-credit immediately without slip */}
                     {qrCountdown > 0 ? (
                       <button
                         type="button"
                         className="btn-primary"
                         disabled={qrVerifying || qrSlipScanning}
-                        onClick={() => {
-                          if (qrSlipImage) {
-                            handleConfirmQrPayment(qrSlipImage, qrSlipQrData);
-                          } else {
-                            document.getElementById('qr-modal-slip-file')?.click();
-                            showToast('กรุณาเลือกรูปสลิปเพื่อตรวจสอบยอดเงินครับ');
-                          }
-                        }}
+                        onClick={() => handleConfirmQrPayment()}
                         style={{
                           width: '100%',
                           justifyContent: 'center',
                           background: 'linear-gradient(135deg, #00e676, #00b0ff)',
                           color: '#050c14',
-                          fontSize: '1rem',
-                          fontWeight: 800,
-                          padding: '0.9rem 1rem',
-                          borderRadius: '10px',
-                          boxShadow: '0 4px 20px rgba(0, 230, 118, 0.4)',
-                          cursor: (qrVerifying || qrSlipScanning) ? 'not-allowed' : 'pointer'
+                          fontSize: '1.05rem',
+                          fontWeight: 900,
+                          padding: '0.95rem 1rem',
+                          borderRadius: '12px',
+                          boxShadow: '0 4px 25px rgba(0, 230, 118, 0.5)',
+                          cursor: (qrVerifying || qrSlipScanning) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
                         }}
                       >
-                        <IconZap size={18} />
+                        <IconZap size={20} />
                         <span>
                           {qrVerifying
-                            ? 'กำลังตรวจสอบสลิปและเติมเครดิต...'
-                            : qrSlipScanning
-                            ? 'กำลังสแกนคิวอาร์บนสลิป...'
-                            : qrSlipImage
-                            ? `✅ ยืนยันสลิปและเติมเครดิต ฿${activeQrOrder.amount.toLocaleString()} ทันที`
-                            : '📸 โอนแล้ว แนบสลิปเพื่อรับเครดิตทันที'}
+                            ? 'กำลังเติมเงินเข้ากระเป๋า...'
+                            : `⚡ ฉันโอนเงินเรียบร้อยแล้ว (รับเครดิตทันที ฿${activeQrOrder.amount.toLocaleString()})`}
                         </span>
                       </button>
                     ) : null}
+
+                    <div style={{
+                      marginTop: '8px',
+                      fontSize: '0.8rem',
+                      color: '#00e676',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px'
+                    }}>
+                      <IconCheck size={14} />
+                      <span>ระบบเติมเงินอัตโนมัติทันที ไม่ต้องแนบสลิป</span>
+                    </div>
+
+                    {/* Optional: Slip Attachment (Not mandatory) */}
+                    <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <input
+                        id="qr-modal-slip-file"
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleQrSlipFileSelect(file);
+                        }}
+                      />
+                      {qrSlipImage ? (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          fontSize: '0.78rem',
+                          color: '#00e676',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          padding: '4px 10px',
+                          borderRadius: '6px'
+                        }}>
+                          <IconCheck size={13} />
+                          <span>แนบสลิปเก็บหลักฐานแล้ว ({qrSlipBank || 'สลิปโอนเงิน'}{qrSlipTransRef ? ` - ${qrSlipTransRef}` : ''})</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('qr-modal-slip-file')?.click()}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#b89ca2',
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <IconUpload size={13} color="#b89ca2" />
+                          <span>หรือ แนบรูปสลิปเพื่อบันทึกหลักฐาน (ไม่บังคับ)</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {qrCountdown <= 0 && (

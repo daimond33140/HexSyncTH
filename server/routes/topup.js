@@ -883,11 +883,9 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
     let transRef = null;
     let sendingBank = null;
 
-    // CASE A: Slip image attached (Instant QR slip auto-verification and immediate wallet credit)
+    // Optional: If customer attached a slip image, record and verify it
     if (slipImage && typeof slipImage === 'string' && slipImage.length > 50) {
       const slipHash = calculateSlipHash(slipImage);
-
-      // Prefer client-scanned QR data (100% fidelity from browser BarcodeDetector/canvas jsQR)
       let qrData = (clientQrData && typeof clientQrData === 'string' && clientQrData.trim())
         ? clientQrData.trim()
         : null;
@@ -900,7 +898,7 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       transRef = slipDetails?.transRef || null;
       sendingBank = slipDetails?.sendingBankName || null;
 
-      // Anti-duplicate check: reject if already approved in database
+      // Anti-duplicate check on slip
       const duplicateConditions = [{ slipHash }];
       if (transRef) duplicateConditions.push({ transRef });
       if (qrData) duplicateConditions.push({ qrData });
@@ -931,46 +929,37 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
         verifiedVia: qrData ? 'qr_slip_auto_verified' : 'slip_hash_verified',
         status: 'approved',
       });
-
-      // Mark order as PAID (Single-use consumed)
-      order.status = 'paid';
-      order.paidAt = new Date();
-      if (transRef) order.transRef = transRef;
-      await order.save();
-
-      // Credit immediately to user's wallet
-      const previousBalance = Number(user.creditBalance || 0);
-      const addedAmount = Number(order.amount);
-      user.creditBalance = previousBalance + addedAmount;
-      await user.save();
-
-      // Audit log
-      await Log.create({
-        action: 'TOPUP_DYNAMIC_QR',
-        detail: `ผู้ใช้ ${targetUsername} เติมเงินผ่าน PromptPay Dynamic QR (เลขที่บิล: ${order.orderId}) สำเร็จ +฿${addedAmount.toLocaleString()} บาท (อ้างอิง: ${transRef || slipHash.slice(0, 10)})`,
-        username: targetUsername,
-        actionType: 'Topup QR Single-Use'
-      });
-
-      return res.json({
-        success: true,
-        message: `🎉 เติมเงินสำเร็จเรียบร้อย! ยอดเงิน +฿${addedAmount.toLocaleString()} บาท เข้ากระเป๋าของคุณแล้ว`,
-        orderId: order.orderId,
-        amount: addedAmount,
-        balance: user.creditBalance,
-        transRef,
-        sendingBank,
-        paidAt: order.paidAt,
-      });
     }
 
-    // CASE B: Customer clicked confirm WITHOUT slip:
-    return res.status(400).json({
-      success: false,
-      requiresSlip: true,
-      status: 'pending',
+    // AUTO-CREDIT (แบบระบบเก่า): Single-Use Dynamic QR Order auto-credits upon clicking confirm!
+    order.status = 'paid';
+    order.paidAt = new Date();
+    if (transRef) order.transRef = transRef;
+    await order.save();
+
+    // Credit immediately to user's wallet
+    const previousBalance = Number(user.creditBalance || 0);
+    const addedAmount = Number(order.amount);
+    user.creditBalance = previousBalance + addedAmount;
+    await user.save();
+
+    // Audit log
+    await Log.create({
+      action: 'TOPUP_DYNAMIC_QR',
+      detail: `ผู้ใช้ ${targetUsername} โอนเงินผ่าน PromptPay Dynamic QR (เลขที่บิล: ${order.orderId}) เติมเงินออโต้สำเร็จ +฿${addedAmount.toLocaleString()} บาท`,
+      username: targetUsername,
+      actionType: 'Topup QR Single-Use'
+    });
+
+    return res.json({
+      success: true,
+      message: `🎉 เติมเงินสำเร็จเรียบร้อย! ยอดเงิน +฿${addedAmount.toLocaleString()} บาท เข้ากระเป๋าของคุณแล้ว`,
       orderId: order.orderId,
-      message: 'กรุณาแนบรูปสลิปการโอนเงิน เพื่อให้ระบบตรวจสอบยอดและเติมเครดิตเข้ากระเป๋าทันทีครับ'
+      amount: addedAmount,
+      balance: user.creditBalance,
+      transRef,
+      sendingBank,
+      paidAt: order.paidAt,
     });
   } catch (err) {
     console.error('Error confirming QR payment:', err);
