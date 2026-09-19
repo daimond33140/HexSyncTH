@@ -278,8 +278,9 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     if (req.user && req.user.username !== username && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ message: 'ไม่อนุญาตให้ทำรายการแทนบัญชีผู้อื่น' });
     }
-    if (!requestedAmount || requestedAmount <= 0) {
-      return res.status(400).json({ message: 'กรุณาระบุจำนวนเงินที่ต้องการเติมให้ถูกต้อง (มากกว่า 0 บาท)' });
+    if (!requestedAmount || isNaN(requestedAmount) || requestedAmount < 20) {
+      return res.status(400).json({ message: '⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)' });
+    });
     }
     if (!slipImage) {
       return res.status(400).json({ message: 'กรุณาอัปโหลดรูปภาพสลิปหลักฐานการโอนเงิน' });
@@ -722,8 +723,10 @@ router.post('/create-qr-order', verifyToken, async (req, res) => {
       return res.status(403).json({ message: 'ไม่อนุญาตให้สร้างรายการแทนบัญชีผู้อื่น' });
     }
 
-    if (!numAmount || isNaN(numAmount) || numAmount < 1) {
-      return res.status(400).json({ message: 'จำนวนเงินที่เติมต้องอย่างน้อย 1 บาทขึ้นไป' });
+    if (!numAmount || isNaN(numAmount) || numAmount < 20) {
+      return res.status(400).json({ message: '⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)' });
+    });
+    });
     }
 
     if (numAmount > 100000) {

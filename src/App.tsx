@@ -4052,8 +4052,8 @@ export default function App() {
       return;
     }
     const num = Number(amountToTopup);
-    if (!num || num < 1) {
-      showToast('กรุณาระบุจำนวนเงินอย่างน้อย 1 บาทขึ้นไป');
+    if (!num || num < 20) {
+      showToast('⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)');
       return;
     }
 
@@ -4100,7 +4100,7 @@ export default function App() {
     }
     const num = Number(amountToTopup);
     if (!num || isNaN(num) || num < 20) {
-      showToast('ยอดชำระขั้นต่ำผ่าน ChillPay คือ 20 บาทขึ้นไป');
+      showToast('⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)');
       return;
     }
 
@@ -14958,19 +14958,39 @@ async function verifyLicense(key, hwid) {
                       <span>1. ระบุจำนวนเงินที่ต้องการเติม (฿ บาท)</span>
                       <strong style={{ color: '#10b981' }}>฿{Number(bankAmount || 0).toLocaleString()}</strong>
                     </label>
-                    <input
+<input
                       type="number"
-                      min="1"
+                      min="20"
                       className="text-input"
                       style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}
-                      placeholder="ระบุจำนวนเงิน เช่น 100"
+                      placeholder="ระบุจำนวนเงิน (ขั้นต่ำ 20 บาทขึ้นไป)"
                       value={bankAmount || ''}
                       onChange={(e) => setBankAmount(Number(e.target.value))}
                     />
 
+                    {/* Warning banner when amount is less than 20 */}
+                    {bankAmount > 0 && bankAmount < 20 && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 26, 64, 0.15)',
+                        border: '1px solid rgba(255, 26, 64, 0.4)',
+                        color: '#ff4d6d',
+                        fontSize: '0.84rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <IconAlertTriangle size={18} color="#ff4d6d" />
+                        <span>⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)</span>
+                      </div>
+                    )}
+
                     {/* Quick Amount Buttons */}
                     <div className="quick-amount-grid">
-                      {[50, 100, 300, 500, 1000].map((amt) => (
+                      {[20, 50, 100, 300, 500, 1000].map((amt) => (
                         <button
                           key={amt}
                           type="button"
@@ -15012,7 +15032,7 @@ async function verifyLicense(key, hwid) {
                       <button
                         type="button"
                         className="btn-secondary"
-                        disabled={generatingQr || !bankAmount || bankAmount < 1}
+                        disabled={generatingQr || !bankAmount || bankAmount < 20}
                         onClick={() => handleCreateQrOrder(bankAmount)}
                         style={{
                           width: '100%',
