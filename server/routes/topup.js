@@ -280,7 +280,6 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     }
     if (!requestedAmount || isNaN(requestedAmount) || requestedAmount < 20) {
       return res.status(400).json({ message: '⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)' });
-    });
     }
     if (!slipImage) {
       return res.status(400).json({ message: 'กรุณาอัปโหลดรูปภาพสลิปหลักฐานการโอนเงิน' });
@@ -725,8 +724,6 @@ router.post('/create-qr-order', verifyToken, async (req, res) => {
 
     if (!numAmount || isNaN(numAmount) || numAmount < 20) {
       return res.status(400).json({ message: '⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)' });
-    });
-    });
     }
 
     if (numAmount > 100000) {
