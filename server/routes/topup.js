@@ -837,7 +837,7 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'ไม่พบรายการชำระเงินนี้' });
     }
 
-    // Check single use & status
+    // 1. Check single-use status
     if (order.status === 'paid') {
       const user = await User.findOne({ where: { username: order.username } });
       return res.json({
@@ -861,7 +861,7 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       return res.status(400).json({ message: `สถานะคำสั่งซื้อไม่ถูกต้อง (${order.status})` });
     }
 
-    // Check user & ownership
+    // 2. Check ownership
     if (!username) {
       return res.status(400).json({ message: 'กรุณาระบุชื่อผู้ใช้งานที่ยืนยัน' });
     }
@@ -880,80 +880,95 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'ไม่พบผู้ใช้ในระบบ' });
     }
 
-    let transRef = null;
-    let sendingBank = null;
-
-    // Optional: If customer attached a slip image, record and verify it
-    if (slipImage && typeof slipImage === 'string' && slipImage.length > 50) {
-      const slipHash = calculateSlipHash(slipImage);
-      let qrData = (clientQrData && typeof clientQrData === 'string' && clientQrData.trim())
-        ? clientQrData.trim()
-        : null;
-
-      if (!qrData) {
-        qrData = extractQrFromImage(slipImage);
-      }
-
-      const slipDetails = parseThaiSlipQr(qrData);
-      transRef = slipDetails?.transRef || null;
-      sendingBank = slipDetails?.sendingBankName || null;
-
-      // Anti-duplicate check on slip
-      const duplicateConditions = [{ slipHash }];
-      if (transRef) duplicateConditions.push({ transRef });
-      if (qrData) duplicateConditions.push({ qrData });
-
-      const existingSlip = await SlipTransaction.findOne({
-        where: {
-          [Op.or]: duplicateConditions,
-          status: 'approved'
-        }
-      });
-
-      if (existingSlip) {
-        const usedTime = new Date(existingSlip.createdAt).toLocaleString('th-TH');
-        return res.status(400).json({
-          message: `❌ สลิปนี้ถูกนำมาใช้งานในระบบแล้ว ไม่สามารถใช้งานซ้ำได้! (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 10)} เคยใช้เมื่อ ${usedTime})`
-        });
-      }
-
-      // Record slip transaction
-      await SlipTransaction.create({
-        username: targetUsername,
-        amount: order.amount,
-        slipImageUrl: slipImage.length > 500 ? slipImage.substring(0, 500) + '...[Image]' : slipImage,
-        slipHash,
-        transRef: transRef || null,
-        qrData: qrData || null,
-        sendingBank: sendingBank || null,
-        verifiedVia: qrData ? 'qr_slip_auto_verified' : 'slip_hash_verified',
-        status: 'approved',
+    // 3. SECURITY GUARD: Must attach slip to verify REAL bank transfer!
+    // (Prevents unauthorized free credit by just clicking confirm without transferring)
+    if (!slipImage || typeof slipImage !== 'string' || slipImage.length < 50) {
+      return res.status(400).json({
+        success: false,
+        requiresSlip: true,
+        status: 'pending',
+        orderId: order.orderId,
+        message: '⚠️ กรุณาแนบรูปสลิปการโอนเงิน เพื่อให้ระบบตรวจสอบความถูกต้องและยอดเงินจริงก่อนเติมเครดิตครับ'
       });
     }
 
-    // AUTO-CREDIT (แบบระบบเก่า): Single-Use Dynamic QR Order auto-credits upon clicking confirm!
+    // 4. Calculate SHA-256 slip hash to prevent reuse
+    const slipHash = calculateSlipHash(slipImage);
+
+    // 5. Decode QR code (Client-side native/jsQR or Server-side fallback)
+    let qrData = (clientQrData && typeof clientQrData === 'string' && clientQrData.trim())
+      ? clientQrData.trim()
+      : null;
+
+    if (!qrData) {
+      qrData = extractQrFromImage(slipImage);
+    }
+
+    const slipDetails = parseThaiSlipQr(qrData);
+    const transRef = slipDetails?.transRef || null;
+    const sendingBank = slipDetails?.sendingBankName || null;
+
+    // 6. Anti-Duplicate Check: Prevent slip reuse 100%
+    const duplicateConditions = [{ slipHash }];
+    if (transRef) duplicateConditions.push({ transRef });
+    if (qrData) duplicateConditions.push({ qrData });
+
+    const existingSlip = await SlipTransaction.findOne({
+      where: {
+        [Op.or]: duplicateConditions,
+        status: 'approved'
+      }
+    });
+
+    if (existingSlip) {
+      const usedTime = new Date(existingSlip.createdAt).toLocaleString('th-TH');
+      return res.status(400).json({
+        message: `❌ สลิปนี้ถูกนำมาใช้งานในระบบแล้ว ไม่สามารถใช้งานซ้ำได้! (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 10)} เคยใช้เมื่อ ${usedTime})`
+      });
+    }
+
+    // 7. Amount verification (if QR Tag 54 is present)
+    if (slipDetails?.tag54Amount && slipDetails.tag54Amount !== order.amount) {
+      return res.status(400).json({
+        message: `❌ ยอดเงินในสลิปไม่ตรงกับยอดที่สั่งเติม! สลิปมียอด ฿${slipDetails.tag54Amount.toLocaleString()} บาท แต่ออเดอร์นี้มียอด ฿${order.amount.toLocaleString()} บาท`
+      });
+    }
+
+    // 8. Record approved slip transaction
+    await SlipTransaction.create({
+      username: targetUsername,
+      amount: order.amount,
+      slipImageUrl: slipImage.length > 500 ? slipImage.substring(0, 500) + '...[Image]' : slipImage,
+      slipHash,
+      transRef: transRef || null,
+      qrData: qrData || null,
+      sendingBank: sendingBank || null,
+      verifiedVia: qrData ? 'qr_slip_verified' : 'slip_hash_verified',
+      status: 'approved',
+    });
+
+    // 9. Consume order (Single-use) and credit wallet
     order.status = 'paid';
     order.paidAt = new Date();
     if (transRef) order.transRef = transRef;
     await order.save();
 
-    // Credit immediately to user's wallet
     const previousBalance = Number(user.creditBalance || 0);
     const addedAmount = Number(order.amount);
     user.creditBalance = previousBalance + addedAmount;
     await user.save();
 
-    // Audit log
+    // 10. Audit log
     await Log.create({
       action: 'TOPUP_DYNAMIC_QR',
-      detail: `ผู้ใช้ ${targetUsername} โอนเงินผ่าน PromptPay Dynamic QR (เลขที่บิล: ${order.orderId}) เติมเงินออโต้สำเร็จ +฿${addedAmount.toLocaleString()} บาท`,
+      detail: `ผู้ใช้ ${targetUsername} โอนเงินผ่าน PromptPay Dynamic QR (เลขที่บิล: ${order.orderId}) ตรวจสลิปสำเร็จ +฿${addedAmount.toLocaleString()} บาท (อ้างอิง: ${transRef || slipHash.slice(0, 10)})`,
       username: targetUsername,
       actionType: 'Topup QR Single-Use'
     });
 
     return res.json({
       success: true,
-      message: `🎉 เติมเงินสำเร็จเรียบร้อย! ยอดเงิน +฿${addedAmount.toLocaleString()} บาท เข้ากระเป๋าของคุณแล้ว`,
+      message: `🎉 ตรวจสอบสลิปถูกต้อง! เติมเงิน +฿${addedAmount.toLocaleString()} บาท เข้ากระเป๋าเรียบร้อยแล้ว`,
       orderId: order.orderId,
       amount: addedAmount,
       balance: user.creditBalance,
