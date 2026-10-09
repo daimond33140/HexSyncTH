@@ -1036,8 +1036,101 @@ export default function App() {
     return 'store';
   });
   const [customAvatar, setCustomAvatar] = useState<string | null>(() => {
-    try { return localStorage.getItem('hexsync_custom_avatar'); } catch { return null; }
+    try {
+      const savedUserStr = localStorage.getItem('hexsync_user');
+      let usernameKey = '';
+      if (savedUserStr) {
+        const u = JSON.parse(savedUserStr);
+        if (u?.username) usernameKey = u.username;
+      }
+      return (
+        (usernameKey ? localStorage.getItem(`hexsync_custom_avatar_${usernameKey}`) : null) ||
+        localStorage.getItem('hexsync_custom_avatar')
+      );
+    } catch {
+      return null;
+    }
   });
+
+  // Automatically restore and sync avatar when user logs in or switches account
+  useEffect(() => {
+    if (user?.username) {
+      try {
+        const userAvatar = localStorage.getItem(`hexsync_custom_avatar_${user.username}`);
+        if (userAvatar) {
+          setCustomAvatar(userAvatar);
+          localStorage.setItem('hexsync_custom_avatar', userAvatar);
+        }
+      } catch { }
+    }
+  }, [user?.username]);
+
+  // Compress avatar image before saving to localStorage to prevent QuotaExceededError
+  const processAndSaveAvatar = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawDataUrl = event.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 256; // High quality 256x256 avatar
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.88);
+          setCustomAvatar(compressed);
+          try {
+            localStorage.setItem('hexsync_custom_avatar', compressed);
+            if (user?.username) {
+              localStorage.setItem(`hexsync_custom_avatar_${user.username}`, compressed);
+            }
+          } catch (err) {
+            console.error('Failed to save compressed avatar:', err);
+          }
+        } else {
+          setCustomAvatar(rawDataUrl);
+          try {
+            localStorage.setItem('hexsync_custom_avatar', rawDataUrl);
+          } catch { }
+        }
+        setShowAvatarUploadModal(false);
+      };
+      img.onerror = () => {
+        setCustomAvatar(rawDataUrl);
+        try {
+          localStorage.setItem('hexsync_custom_avatar', rawDataUrl);
+        } catch { }
+        setShowAvatarUploadModal(false);
+      };
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    setCustomAvatar(null);
+    try {
+      localStorage.removeItem('hexsync_custom_avatar');
+      if (user?.username) {
+        localStorage.removeItem(`hexsync_custom_avatar_${user.username}`);
+      }
+    } catch { }
+  };
   const [showAvatarUploadModal, setShowAvatarUploadModal] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -18697,29 +18790,19 @@ async function verifyLicense(key, hwid) {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      const res = event.target?.result as string;
-                      setCustomAvatar(res);
-                      localStorage.setItem('hexsync_custom_avatar', res);
-                      setShowAvatarUploadModal(false);
-                    };
-                    reader.readAsDataURL(file);
+                    processAndSaveAvatar(file);
                   }
                 }}
               />
               <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📁</div>
               <div style={{ fontWeight: 800, color: '#d8b4fe', fontSize: '0.95rem' }}>คลิกเพื่อเลือกไฟล์รูปภาพจากอุปกรณ์</div>
-              <div style={{ color: '#a5a3c4', fontSize: '0.78rem', marginTop: '4px' }}>รองรับไฟล์ PNG, JPG, GIF และ WebP</div>
+              <div style={{ color: '#a5a3c4', fontSize: '0.78rem', marginTop: '4px' }}>รองรับไฟล์ PNG, JPG, GIF และ WebP (ระบบย่อขนาดอัตโนมัติ)</div>
             </label>
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
               {customAvatar && (
                 <button
-                  onClick={() => {
-                    setCustomAvatar(null);
-                    localStorage.removeItem('hexsync_custom_avatar');
-                  }}
+                  onClick={handleRemoveAvatar}
                   style={{ padding: '9px 18px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#ef4444', fontWeight: 700, cursor: 'pointer' }}
                 >
                   🗑️ ลบรูปเดิม
