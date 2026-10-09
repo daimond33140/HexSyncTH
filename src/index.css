@@ -54,19 +54,7 @@
   box-shadow: 0 30px 80px -30px rgba(124, 58, 237, 0.55);
 }
 
-.glowCard::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  padding: 1.5px;
-  border-radius: inherit;
-  background: conic-gradient(from var(--angle), transparent 0deg, #8b5cf6 60deg, #22d3ee 120deg, #d946ef 180deg, transparent 240deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: borderSpin 6s linear infinite;
-  pointer-events: none;
-}
+
 
 *, *::before, *::after {
   box-sizing: border-box;
