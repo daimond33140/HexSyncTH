@@ -6784,20 +6784,7 @@ export default function App() {
               }}
               title="HexSyncTH - แตะ 5 ครั้งเพื่อเปิดทางเข้าลับ"
             >
-              {siteSettings.logo_url ? (
-                <img
-                  src={siteSettings.logo_url}
-                  alt={siteSettings.brand_name || 'HexSyncTH'}
-                  className="lockdown-logo-img"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/favicon.svg';
-                  }}
-                />
-              ) : (
-                <div style={{ width: 54, height: 54, borderRadius: 14, background: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <IconKey size={26} color="#fff" />
-                </div>
-              )}
+              <HexSyncLogo size={38} showVersion={true} />
               <div style={{ textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span className="lockdown-brand-name">{siteSettings.brand_name || 'HexSyncTH'}</span>
