@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { HexSyncLogo } from './HexSyncLogo';
 import {
   Upload,
   
@@ -441,6 +442,9 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                 <Settings size={14} /> {showAdminPanel ? 'ปิดระบบจัดการ' : '⚙️ จัดการสถานะเกม (Admin)'}
               </button>
             )}
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <HexSyncLogo size={42} showVersion={true} />
           </div>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '8px 0 4px', color: '#fff' }}>
             🎮 ระบบเช็คสถานะ & ศูนย์ดาวน์โหลดเกม

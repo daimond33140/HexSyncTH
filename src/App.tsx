@@ -1,5 +1,6 @@
 import { parseProductRentalAI, formatLinkedGamesSummary } from './rentalAiParser';
-﻿import { GameStatusView } from './GameStatusView';
+import { GameStatusView } from './GameStatusView';
+import { HexSyncLogo } from './HexSyncLogo';
 import { ShieldCheck } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -6768,26 +6769,7 @@ export default function App() {
           {/* Navbar */}
       <header className="navbar">
         <div className="brand-logo" onClick={() => setView('store')}>
-          <div className="brand-icon-wrapper" style={{ overflow: 'hidden', padding: 0 }}>
-            {siteSettings.logo_url ? (
-              <img
-                src={siteSettings.logo_url}
-                alt="Logo"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }}
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            ) : (
-              <IconKey size={22} color="#ffffff" />
-            )}
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="brand-name">{siteSettings.brand_name || 'HexSyncTH'}</span>
-              <span className="brand-tag">{siteSettings.brand_tag || 'No.1 in TH'}</span>
-            </div>
-          </div>
+          <HexSyncLogo size={36} showVersion={true} />
         </div>
 
         {/* Search bar moved to storefront body */ }
