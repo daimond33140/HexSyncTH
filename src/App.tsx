@@ -6452,7 +6452,7 @@ export default function App() {
         >
           <div
             style={{
-              background: 'linear-gradient(160deg, #18080d 0%, #0d0407 100%)',
+              background: 'linear-gradient(160deg, #180928 0%, #0c0418 100%)',
               border: '1.5px solid rgba(168, 85, 247, 0.55)',
               boxShadow: '0 0 50px rgba(168, 85, 247, 0.4), 0 20px 50px rgba(0,0,0,0.8)',
               borderRadius: '22px',
@@ -6485,7 +6485,7 @@ export default function App() {
               <div className="hexsync-loader-progress-bar-fill" style={{ width: `${purchaseProgress}%` }} />
             </div>
 
-            <div style={{ color: '#ffb3c1', fontSize: '0.88rem', fontWeight: 500 }}>
+            <div style={{ color: '#d8b4fe', fontSize: '0.88rem', fontWeight: 500 }}>
               {purchaseStatusText}
             </div>
           </div>
@@ -6508,7 +6508,7 @@ export default function App() {
         >
           <div
             style={{
-              background: 'linear-gradient(160deg, #18080d 0%, #0d0407 100%)',
+              background: 'linear-gradient(160deg, #180928 0%, #0c0418 100%)',
               border: '1.5px solid rgba(168, 85, 247, 0.65)',
               boxShadow: '0 0 50px rgba(168, 85, 247, 0.45), 0 20px 50px rgba(0,0,0,0.85)',
               borderRadius: '24px',
@@ -6544,7 +6544,7 @@ export default function App() {
               />
             </div>
 
-            <div style={{ color: '#ffb3c1', fontSize: '0.9rem', fontWeight: 600 }}>
+            <div style={{ color: '#d8b4fe', fontSize: '0.9rem', fontWeight: 600 }}>
               {saveStatusText}
             </div>
           </div>

@@ -4170,7 +4170,7 @@ html, body, #root, .app-container {
   position: fixed;
   inset: 0;
   z-index: 999999;
-  background: radial-gradient(circle at center, #1b060d 0%, #080305 100%);
+  background: radial-gradient(ellipse at top, #160b33 0%, #080312 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4234,12 +4234,12 @@ html, body, #root, .app-container {
 }
 
 .hexsync-loader-brand span {
-  color: #a855f7;
+  color: #d946ef;
 }
 
 .hexsync-loader-status-text {
   font-size: 0.92rem;
-  color: #fca5a5;
+  color: #d8b4fe;
   letter-spacing: 0.5px;
   display: flex;
   align-items: center;
