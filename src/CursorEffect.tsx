@@ -135,15 +135,11 @@ export const CursorEffect: React.FC = () => {
           continue;
         }
 
-        ctx.save();
         ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
       }
 
       animFrameId.current = requestAnimationFrame(render);
