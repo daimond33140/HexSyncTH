@@ -55,7 +55,7 @@ function getCanvasFingerprint(): string {
     ctx.fillText('Anti-VPN-Proxy-Pass!@#', 4, 35);
 
     const grad = ctx.createLinearGradient(0, 0, 240, 0);
-    grad.addColorStop(0, '#ff1a40');
+    grad.addColorStop(0, '#a855f7');
     grad.addColorStop(0.5, '#00d2ff');
     grad.addColorStop(1, '#ffdf00');
     ctx.strokeStyle = grad;

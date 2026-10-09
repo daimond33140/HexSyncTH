@@ -64,7 +64,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
           textAlign: 'center',
           fontFamily: 'sans-serif'
         }}>
-          <h2 style={{ color: '#ff1a40', marginBottom: '0.75rem', fontSize: '1.4rem' }}>
+          <h2 style={{ color: '#a855f7', marginBottom: '0.75rem', fontSize: '1.4rem' }}>
             ⚠️ เกิดข้อผิดพลาดในการโหลดหน้าเว็บ
           </h2>
           <p style={{ color: '#b89ca2', marginBottom: '1.5rem', maxWidth: '420px', fontSize: '0.9rem', lineHeight: 1.5 }}>
@@ -76,12 +76,12 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               padding: '0.75rem 1.75rem',
               borderRadius: '8px',
               border: 'none',
-              background: 'linear-gradient(135deg, #ff1a40, #b3001e)',
+              background: 'linear-gradient(135deg, #a855f7, #6b21a8)',
               color: '#fff',
               fontWeight: 700,
               fontSize: '0.95rem',
               cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(255, 26, 64, 0.4)'
+              boxShadow: '0 4px 15px rgba(168, 85, 247, 0.4)'
             }}
           >
             รีเฟรชหน้าเว็บ (Reload Page)

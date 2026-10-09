@@ -424,15 +424,15 @@ const RentalCountdown: React.FC<RentalCountdownProps> = ({ expiresAt, linkedGame
     <div style={{
       marginTop: '0.85rem',
       padding: '0.85rem 1.1rem',
-      background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.12) 0%, rgba(255, 77, 109, 0.05) 100%)',
-      border: '1px solid rgba(255, 26, 64, 0.35)',
+      background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(255, 77, 109, 0.05) 100%)',
+      border: '1px solid rgba(168, 85, 247, 0.35)',
       borderRadius: '14px',
-      boxShadow: '0 4px 15px rgba(255, 26, 64, 0.08)'
+      boxShadow: '0 4px 15px rgba(168, 85, 247, 0.08)'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ff4d6d', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <IconClock size={16} color="#ff1a40" />
+          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#d946ef', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <IconClock size={16} color="#a855f7" />
             ⏳ สิทธิ์การเช่า ({productName}):
           </span>
         </div>
@@ -454,7 +454,7 @@ const RentalCountdown: React.FC<RentalCountdownProps> = ({ expiresAt, linkedGame
           <span style={{ background: 'rgba(0,0,0,0.5)', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
             {String(timeLeft.minutes).padStart(2, '0')}<span style={{ fontSize: '0.75rem', color: '#b89ca2', marginLeft: '2px' }}>น.</span>
           </span>
-          <span style={{ background: 'rgba(255,26,64,0.3)', color: '#ff4d6d', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid rgba(255,26,64,0.5)' }}>
+          <span style={{ background: 'rgba(168, 85, 247,0.3)', color: '#d946ef', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid rgba(168, 85, 247,0.5)' }}>
             {String(timeLeft.seconds).padStart(2, '0')}<span style={{ fontSize: '0.75rem', color: '#ffaab9', marginLeft: '2px' }}>วิ</span>
           </span>
         </div>
@@ -5508,7 +5508,7 @@ export default function App() {
             transform: 'translate(-50%, -50%)',
             width: '550px',
             height: '380px',
-            background: 'radial-gradient(circle, rgba(255, 26, 64, 0.25) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, transparent 70%)',
             pointerEvents: 'none',
             zIndex: 0
           }}
@@ -5518,7 +5518,7 @@ export default function App() {
         <div style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 10 }}>
           <img src={siteSettings.logo_url || '/logo.png'} alt="" style={{ width: 32, height: 32, objectFit: 'contain' }} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
           <span style={{ fontWeight: 800, color: '#fff', fontSize: '1.1rem', letterSpacing: '0.5px' }}>{siteSettings.brand_name || 'HexSyncTH'}</span>
-          <span style={{ fontSize: '0.72rem', color: '#ff4d6d', background: 'rgba(255,26,64,0.15)', border: '1px solid rgba(255,26,64,0.3)', padding: '2px 8px', borderRadius: '12px', marginLeft: '6px' }}>
+          <span style={{ fontSize: '0.72rem', color: '#d946ef', background: 'rgba(168, 85, 247,0.15)', border: '1px solid rgba(168, 85, 247,0.3)', padding: '2px 8px', borderRadius: '12px', marginLeft: '6px' }}>
             🔒 SECURITY FIREWALL
           </span>
         </div>
@@ -5529,9 +5529,9 @@ export default function App() {
             width: '100%',
             maxWidth: '560px',
             background: 'linear-gradient(180deg, rgba(28, 8, 14, 0.98) 0%, rgba(16, 4, 8, 0.99) 100%)',
-            border: '1px solid rgba(255, 26, 64, 0.55)',
+            border: '1px solid rgba(168, 85, 247, 0.55)',
             borderRadius: '24px',
-            boxShadow: '0 0 60px rgba(255, 26, 64, 0.28), 0 25px 50px rgba(0, 0, 0, 0.85)',
+            boxShadow: '0 0 60px rgba(168, 85, 247, 0.28), 0 25px 50px rgba(0, 0, 0, 0.85)',
             padding: '2.5rem 2rem',
             textAlign: 'center',
             position: 'relative',
@@ -5546,16 +5546,16 @@ export default function App() {
               width: '84px',
               height: '84px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.25), rgba(255, 77, 109, 0.1))',
-              border: '2px solid #ff1a40',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(255, 77, 109, 0.1))',
+              border: '2px solid #a855f7',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 1.5rem',
-              boxShadow: '0 0 35px rgba(255, 26, 64, 0.5)'
+              boxShadow: '0 0 35px rgba(168, 85, 247, 0.5)'
             }}
           >
-            <IconLock size={40} color="#ff1a40" />
+            <IconLock size={40} color="#a855f7" />
           </div>
 
           {/* Title */}
@@ -5564,7 +5564,7 @@ export default function App() {
               fontSize: '0.85rem',
               fontWeight: 800,
               letterSpacing: '2.5px',
-              color: '#ff4d6d',
+              color: '#d946ef',
               textTransform: 'uppercase',
               marginBottom: '0.35rem'
             }}
@@ -5589,12 +5589,12 @@ export default function App() {
           {(bannedInfo?.banType === 'ip_evasion' || (bannedInfo?.oldIp && bannedInfo?.newIp)) && (
             <div
               style={{
-                background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.2), rgba(15, 0, 5, 0.9), rgba(255, 107, 0, 0.2))',
+                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(15, 0, 5, 0.9), rgba(255, 107, 0, 0.2))',
                 border: '2px solid #ff2a4b',
                 borderRadius: '18px',
                 padding: '1.5rem 1.6rem',
                 marginBottom: '1.75rem',
-                boxShadow: '0 0 35px rgba(255, 26, 64, 0.35), inset 0 0 20px rgba(255, 42, 75, 0.15)',
+                boxShadow: '0 0 35px rgba(168, 85, 247, 0.35), inset 0 0 20px rgba(255, 42, 75, 0.15)',
                 textAlign: 'center',
                 position: 'relative',
                 overflow: 'hidden'
@@ -5605,7 +5605,7 @@ export default function App() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                background: 'rgba(255, 26, 64, 0.25)',
+                background: 'rgba(168, 85, 247, 0.25)',
                 border: '1px solid rgba(255, 42, 75, 0.5)',
                 padding: '8px 18px',
                 borderRadius: '999px',
@@ -5615,11 +5615,11 @@ export default function App() {
                 marginBottom: '1rem',
                 flexWrap: 'wrap',
                 justifyContent: 'center',
-                boxShadow: '0 0 15px rgba(255, 26, 64, 0.25)'
+                boxShadow: '0 0 15px rgba(168, 85, 247, 0.25)'
               }}>
                 <span style={{ fontSize: '1.1rem' }}>🚨</span>
                 <span>IP เก่า : <span style={{ color: '#ffb3c1', fontFamily: 'monospace', textDecoration: 'line-through', background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: '4px' }}>{bannedInfo?.oldIp}</span></span>
-                <span style={{ color: '#ff4d6d', fontWeight: 900 }}>➔</span>
+                <span style={{ color: '#d946ef', fontWeight: 900 }}>➔</span>
                 <span>ได้เปลี่ยนเป็น IP ใหม่ : <span style={{ color: '#00e676', fontFamily: 'monospace', fontWeight: 800, background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '4px', textShadow: '0 0 10px rgba(0,230,118,0.6)' }}>{bannedInfo?.newIp}</span></span>
               </div>
 
@@ -5689,8 +5689,8 @@ export default function App() {
                 <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' }}>
                   <span
                     style={{
-                      background: 'rgba(255, 26, 64, 0.15)',
-                      border: '1px solid rgba(255, 26, 64, 0.35)',
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      border: '1px solid rgba(168, 85, 247, 0.35)',
                       color: '#ff88a3',
                       padding: '0.35rem 0.95rem',
                       borderRadius: '20px',
@@ -5710,8 +5710,8 @@ export default function App() {
             ) : (
               <span
                 style={{
-                  background: 'rgba(255, 26, 64, 0.15)',
-                  border: '1px solid rgba(255, 26, 64, 0.35)',
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  border: '1px solid rgba(168, 85, 247, 0.35)',
                   color: '#ff88a3',
                   padding: '0.35rem 0.95rem',
                   borderRadius: '20px',
@@ -5728,7 +5728,7 @@ export default function App() {
           <div
             style={{
               background: 'rgba(0, 0, 0, 0.45)',
-              border: '1px solid rgba(255, 26, 64, 0.3)',
+              border: '1px solid rgba(168, 85, 247, 0.3)',
               borderRadius: '16px',
               padding: '1.5rem',
               marginBottom: '1.75rem',
@@ -5754,12 +5754,12 @@ export default function App() {
                 style={{
                   fontSize: '1.25rem',
                   fontWeight: 800,
-                  color: '#ff4d6d',
+                  color: '#d946ef',
                   alignItems: 'center',
                   gap: '8px'
                 }}
               >
-                <IconShield size={18} color="#ff1a40" />
+                <IconShield size={18} color="#a855f7" />
                 <span>
                   {(bannedInfo ? bannedInfo.bannedBy : userBannedInfo?.bannedBy) || 'ผู้ดูแลระบบ (Admin)'}
                 </span>
@@ -5786,8 +5786,8 @@ export default function App() {
                   fontSize: '1.1rem',
                   fontWeight: 700,
                   color: '#ffffff',
-                  background: 'rgba(255, 26, 64, 0.08)',
-                  borderLeft: '4px solid #ff1a40',
+                  background: 'rgba(168, 85, 247, 0.08)',
+                  borderLeft: '4px solid #a855f7',
                   borderRadius: '8px',
                   padding: '0.85rem 1rem',
                   lineHeight: '1.5',
@@ -5812,8 +5812,8 @@ export default function App() {
           {/* Live Ban Countdown Timer */}
           {banCountdownInfo && (
             <div className="ban-countdown-container">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#ff4d6d', fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.5px' }}>
-                <IconZap size={20} color="#ff1a40" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#d946ef', fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.5px' }}>
+                <IconZap size={20} color="#a855f7" />
                 <span>ระยะเวลาคงเหลือในการถูกระงับสิทธิ์ (COUNTDOWN)</span>
               </div>
               {banCountdownInfo.expired ? (
@@ -5889,7 +5889,7 @@ export default function App() {
                   padding: '0.75rem 1rem',
                   fontSize: '0.88rem',
                   color: '#ff88a3',
-                  borderColor: 'rgba(255, 26, 64, 0.4)'
+                  borderColor: 'rgba(168, 85, 247, 0.4)'
                 }}
                 onClick={() => {
                   handleLogout();
@@ -5909,7 +5909,7 @@ export default function App() {
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#ff4d6d',
+                    color: '#d946ef',
                     fontSize: '0.82rem',
                     textDecoration: 'underline',
                     cursor: 'pointer',
@@ -6021,7 +6021,7 @@ export default function App() {
             transform: 'translate(-50%, -50%)',
             width: '600px',
             height: '420px',
-            background: 'radial-gradient(circle, rgba(255, 26, 64, 0.3) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 70%)',
             pointerEvents: 'none',
             zIndex: 0
           }}
@@ -6041,9 +6041,9 @@ export default function App() {
           <span
             style={{
               fontSize: '0.72rem',
-              color: '#ff4d6d',
-              background: 'rgba(255,26,64,0.15)',
-              border: '1px solid rgba(255,26,64,0.3)',
+              color: '#d946ef',
+              background: 'rgba(168, 85, 247,0.15)',
+              border: '1px solid rgba(168, 85, 247,0.3)',
               padding: '2px 8px',
               borderRadius: '12px',
               marginLeft: '6px'
@@ -6059,9 +6059,9 @@ export default function App() {
             width: '100%',
             maxWidth: '560px',
             background: 'linear-gradient(180deg, rgba(28, 8, 14, 0.98) 0%, rgba(16, 4, 8, 0.99) 100%)',
-            border: '1px solid rgba(255, 26, 64, 0.65)',
+            border: '1px solid rgba(168, 85, 247, 0.65)',
             borderRadius: '24px',
-            boxShadow: '0 0 65px rgba(255, 26, 64, 0.32), 0 25px 50px rgba(0, 0, 0, 0.85)',
+            boxShadow: '0 0 65px rgba(168, 85, 247, 0.32), 0 25px 50px rgba(0, 0, 0, 0.85)',
             padding: '2.5rem 2rem',
             textAlign: 'center',
             position: 'relative',
@@ -6076,16 +6076,16 @@ export default function App() {
               width: '88px',
               height: '88px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.28), rgba(255, 77, 109, 0.12))',
-              border: '2px solid #ff1a40',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.28), rgba(255, 77, 109, 0.12))',
+              border: '2px solid #a855f7',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 1.5rem',
-              boxShadow: '0 0 40px rgba(255, 26, 64, 0.55)'
+              boxShadow: '0 0 40px rgba(168, 85, 247, 0.55)'
             }}
           >
-            <IconShield size={44} color="#ff1a40" />
+            <IconShield size={44} color="#a855f7" />
           </div>
 
           {/* Sub Header / Warning Pill */}
@@ -6094,19 +6094,19 @@ export default function App() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'rgba(255, 26, 64, 0.16)',
-              border: '1px solid rgba(255, 26, 64, 0.45)',
+              background: 'rgba(168, 85, 247, 0.16)',
+              border: '1px solid rgba(168, 85, 247, 0.45)',
               padding: '0.35rem 1rem',
               borderRadius: '20px',
               fontSize: '0.8rem',
               fontWeight: 800,
-              color: '#ff4d6d',
+              color: '#d946ef',
               letterSpacing: '1.5px',
               textTransform: 'uppercase',
               marginBottom: '0.85rem'
             }}
           >
-            <IconAlertCircle size={15} color="#ff4d6d" />
+            <IconAlertCircle size={15} color="#d946ef" />
             <span>SECURITY VIOLATION DETECTED</span>
           </div>
 
@@ -6140,11 +6140,11 @@ export default function App() {
             <span>โดย</span>
             <span
               style={{
-                color: '#ff1a40',
-                background: 'rgba(255, 26, 64, 0.15)',
+                color: '#a855f7',
+                background: 'rgba(168, 85, 247, 0.15)',
                 padding: '2px 10px',
                 borderRadius: '8px',
-                border: '1px solid rgba(255, 26, 64, 0.35)',
+                border: '1px solid rgba(168, 85, 247, 0.35)',
                 fontWeight: 900,
                 letterSpacing: '0.5px'
               }}
@@ -6156,13 +6156,13 @@ export default function App() {
           {/* Strict Warning Alert Box */}
           <div
             style={{
-              background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.22) 0%, rgba(180, 10, 30, 0.18) 100%)',
-              border: '1.5px solid rgba(255, 26, 64, 0.65)',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.22) 0%, rgba(180, 10, 30, 0.18) 100%)',
+              border: '1.5px solid rgba(168, 85, 247, 0.65)',
               borderRadius: '14px',
               padding: '1rem 1.25rem',
               marginBottom: '1.5rem',
               textAlign: 'center',
-              boxShadow: '0 4px 20px rgba(255, 26, 64, 0.2)'
+              boxShadow: '0 4px 20px rgba(168, 85, 247, 0.2)'
             }}
           >
             <div
@@ -6226,8 +6226,8 @@ export default function App() {
                   fontSize: '0.98rem',
                   fontWeight: 700,
                   color: '#ffffff',
-                  background: 'rgba(255, 26, 64, 0.1)',
-                  borderLeft: '4px solid #ff1a40',
+                  background: 'rgba(168, 85, 247, 0.1)',
+                  borderLeft: '4px solid #a855f7',
                   borderRadius: '8px',
                   padding: '0.75rem 1rem',
                   lineHeight: '1.4'
@@ -6242,7 +6242,7 @@ export default function App() {
                 <span style={{ fontSize: '0.75rem', color: '#888', display: 'block', marginBottom: '2px' }}>
                   หมายเลข IP ของคุณ:
                 </span>
-                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ff4d6d' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#d946ef' }}>
                   {myCurrentIp || 'ตรวจพบแล้ว (Logged)'}
                 </span>
               </div>
@@ -6267,8 +6267,8 @@ export default function App() {
               padding: '0.85rem 1.5rem',
               fontSize: '0.98rem',
               fontWeight: 800,
-              background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.9), rgba(180, 10, 30, 0.95))',
-              boxShadow: '0 0 25px rgba(255, 26, 64, 0.45)',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(180, 10, 30, 0.95))',
+              boxShadow: '0 0 25px rgba(168, 85, 247, 0.45)',
               borderRadius: '12px',
               border: 'none',
               cursor: 'pointer',
@@ -6354,8 +6354,8 @@ export default function App() {
           <div
             style={{
               background: 'linear-gradient(160deg, #18080d 0%, #0d0407 100%)',
-              border: '1.5px solid rgba(255, 26, 64, 0.55)',
-              boxShadow: '0 0 50px rgba(255, 26, 64, 0.4), 0 20px 50px rgba(0,0,0,0.8)',
+              border: '1.5px solid rgba(168, 85, 247, 0.55)',
+              boxShadow: '0 0 50px rgba(168, 85, 247, 0.4), 0 20px 50px rgba(0,0,0,0.8)',
               borderRadius: '22px',
               padding: '2.2rem 2.2rem',
               textAlign: 'center',
@@ -6410,8 +6410,8 @@ export default function App() {
           <div
             style={{
               background: 'linear-gradient(160deg, #18080d 0%, #0d0407 100%)',
-              border: '1.5px solid rgba(255, 26, 64, 0.65)',
-              boxShadow: '0 0 50px rgba(255, 26, 64, 0.45), 0 20px 50px rgba(0,0,0,0.85)',
+              border: '1.5px solid rgba(168, 85, 247, 0.65)',
+              boxShadow: '0 0 50px rgba(168, 85, 247, 0.45), 0 20px 50px rgba(0,0,0,0.85)',
               borderRadius: '24px',
               padding: '2.5rem 2.25rem',
               textAlign: 'center',
@@ -6509,7 +6509,7 @@ export default function App() {
                   <span className="bar bar-3"></span>
                 </div>
               ) : (
-                <IconMusic size={16} color="#ff1a40" />
+                <IconMusic size={16} color="#a855f7" />
               )}
               <span className="folded-label">เพลง</span>
               <span className="folded-arrow">❯</span>
@@ -6528,7 +6528,7 @@ export default function App() {
                     <span className="bar bar-3"></span>
                   </div>
                 ) : (
-                  <IconMusic size={18} color="#ff1a40" />
+                  <IconMusic size={18} color="#a855f7" />
                 )}
               </button>
 
@@ -6546,7 +6546,7 @@ export default function App() {
                 onClick={togglePlayMusic}
                 title={isPlayingMusic ? 'พักเพลง' : 'เล่นเพลง'}
               >
-                {isPlayingMusic ? <IconPause size={14} color="#fff" /> : <IconPlay size={14} color="#ff1a40" />}
+                {isPlayingMusic ? <IconPause size={14} color="#fff" /> : <IconPlay size={14} color="#a855f7" />}
               </button>
 
               <button
@@ -6554,7 +6554,7 @@ export default function App() {
                 onClick={toggleMuteMusic}
                 title={isMusicMuted ? 'เปิดเสียง' : 'ปิดเสียง'}
               >
-                {isMusicMuted ? <IconVolumeX size={15} color="#ff4d6d" /> : <IconVolume2 size={15} color="#fff" />}
+                {isMusicMuted ? <IconVolumeX size={15} color="#d946ef" /> : <IconVolume2 size={15} color="#fff" />}
               </button>
 
               {/* Fold / Collapse Button */}
@@ -6605,13 +6605,13 @@ export default function App() {
           <span>เครดิตผู้สร้าง</span>
           <span
             style={{
-              background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.25), rgba(255, 77, 109, 0.15))',
-              color: '#ff4d6d',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(255, 77, 109, 0.15))',
+              color: '#d946ef',
               fontSize: '0.68rem',
               padding: '2px 7px',
               borderRadius: '8px',
               fontWeight: 800,
-              border: '1px solid rgba(255, 26, 64, 0.4)',
+              border: '1px solid rgba(168, 85, 247, 0.4)',
               letterSpacing: '0.5px'
             }}
           >
@@ -6642,7 +6642,7 @@ export default function App() {
         >
           <div className="toast-item" onClick={() => setToast(null)} title="คลิกเพื่อปิด">
             <div className="toast-icon-wrapper">
-              <IconSparkles size={20} color="#ff1a40" />
+              <IconSparkles size={20} color="#a855f7" />
             </div>
             <span className="toast-text">{toast}</span>
             <button
@@ -6695,7 +6695,7 @@ export default function App() {
                   }}
                 />
               ) : (
-                <div style={{ width: 54, height: 54, borderRadius: 14, background: '#ff1a40', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 54, height: 54, borderRadius: 14, background: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <IconKey size={26} color="#fff" />
                 </div>
               )}
@@ -6955,7 +6955,7 @@ export default function App() {
                             fetchAdminData();
                           }}
                         >
-                          <IconSettings size={16} color="#ff1a40" />
+                          <IconSettings size={16} color="#a855f7" />
                           <span>{user.role === "superadmin" ? "ระบบหลังบ้าน 👑" : "ระบบหลังบ้าน"}</span>
                         </button>
                       )}
@@ -7038,7 +7038,7 @@ export default function App() {
             <div className="store-stats-grid">
               <div className="stat-card">
                 <div className="stat-icon-wrapper stat-icon-sales">
-                  <IconCreditCard size={22} color="#ff1a40" />
+                  <IconCreditCard size={22} color="#a855f7" />
                 </div>
                 <div className="stat-info">
                   <span className="stat-label">ยอดขายสะสมทั้งหมด</span>
@@ -7078,7 +7078,7 @@ export default function App() {
             <div className="section-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <div className="section-title-group">
                 <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.45rem', fontWeight: 800 }}>
-                  <IconGamepad size={26} color="#ff1a40" />
+                  <IconGamepad size={26} color="#a855f7" />
                   <span style={{ background: 'linear-gradient(135deg, #fff, #ff8da1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     เลือกเกมที่ต้องการเช่าใช้งาน (Game Packages)
                   </span>
@@ -7090,7 +7090,7 @@ export default function App() {
 
               {/* Quick Search */}
               <div style={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
-                <IconSearch size={16} color="#ff4d6d" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <IconSearch size={16} color="#d946ef" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
                   type="text"
                   className="text-input"
@@ -7167,7 +7167,7 @@ export default function App() {
                             background: 'rgba(0,0,0,0.8)',
                             padding: '3px 6px',
                             borderRadius: '8px',
-                            border: '1px solid rgba(255,26,64,0.4)',
+                            border: '1px solid rgba(168, 85, 247,0.4)',
                             backdropFilter: 'blur(8px)',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
                           }}
@@ -7188,7 +7188,7 @@ export default function App() {
                               alignItems: 'center'
                             }}
                           >
-                            <IconArrowUp size={14} color="#ff4d6d" />
+                            <IconArrowUp size={14} color="#d946ef" />
                           </button>
                           <button
                             type="button"
@@ -7205,7 +7205,7 @@ export default function App() {
                               alignItems: 'center'
                             }}
                           >
-                            <IconArrowDown size={14} color="#ff4d6d" />
+                            <IconArrowDown size={14} color="#d946ef" />
                           </button>
                           <span style={{ fontSize: '0.68rem', color: '#ff8da1', fontWeight: 600, alignSelf: 'center' }}>
                             ย้ายช่อง
@@ -7307,7 +7307,7 @@ export default function App() {
                             <IconWrench size={26} color="#f59e0b" />
                           </span>
                           <span className="maintenance-gear-reverse">
-                            <IconAlertTriangle size={24} color="#ff1a40" />
+                            <IconAlertTriangle size={24} color="#a855f7" />
                           </span>
                         </div>
                         <div style={{ color: '#f59e0b', fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.5px', marginBottom: '4px' }}>
@@ -7363,7 +7363,7 @@ export default function App() {
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '3.5rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '18px', border: '1px solid var(--border-subtle)', width: '100%', marginTop: '1rem' }}>
-                  <IconShoppingBag size={48} color="#ff1a40" style={{ margin: '0 auto 1rem', opacity: 0.7 }} />
+                  <IconShoppingBag size={48} color="#a855f7" style={{ margin: '0 auto 1rem', opacity: 0.7 }} />
                   <h3 style={{ color: '#fff', marginBottom: '0.5rem' }}>ยังไม่มีรายการเกมในระบบ</h3>
                   <p style={{ color: '#b89ca2', fontSize: '0.9rem', marginBottom: '1.25rem' }}>กำลังทยอยอัปเดตสต็อกสินค้าใหม่</p>
                   <button className="btn-primary" onClick={() => fetchProducts()} style={{ margin: '0 auto', display: 'inline-flex' }}>
@@ -7383,7 +7383,7 @@ export default function App() {
           <div className="section-header">
             <div className="section-title-group">
               <h2>
-                <IconHistory size={26} color="#ff1a40" />
+                <IconHistory size={26} color="#a855f7" />
                 <span>ประวัติการซื้อของคุณ</span>
               </h2>
               <p>คีย์เฉพาะของคุณที่ดึงออกจากสต็อก สามารถกดไปดาวน์โหลดไฟล์ในหน้าระบบสถานะเกมได้ทันที</p>
@@ -7471,7 +7471,7 @@ export default function App() {
                         สั่งซื้อเมื่อ: {new Date(rec.purchaseDate).toLocaleString('th-TH')}
                       </span>
                     </div>
-                    <span style={{ color: '#ff4d6d', fontWeight: 800, fontSize: '1.2rem' }}>
+                    <span style={{ color: '#d946ef', fontWeight: 800, fontSize: '1.2rem' }}>
                       ฿{rec.price?.toLocaleString()}
                     </span>
                   </div>
@@ -7509,13 +7509,13 @@ export default function App() {
                           style={{
                             marginTop: '0.75rem',
                             padding: '0.75rem 1rem',
-                            background: 'rgba(255, 26, 64, 0.08)',
-                            border: '1px dashed rgba(255, 26, 64, 0.3)',
+                            background: 'rgba(168, 85, 247, 0.08)',
+                            border: '1px dashed rgba(168, 85, 247, 0.3)',
                             borderRadius: '10px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            color: '#ff4d6d',
+                            color: '#d946ef',
                             fontSize: '0.85rem',
                             fontWeight: 600
                           }}
@@ -7583,7 +7583,7 @@ export default function App() {
           <div className="section-header">
             <div className="section-title-group">
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <IconSettings size={28} color="#ff1a40" />
+                <IconSettings size={28} color="#a855f7" />
                 <span>แดชบอร์ดหลังบ้าน (Admin Panel)</span>
               </h2>
               <p>ควบคุมระบบจัดการผู้ใช้ ยศ เครดิต สต็อกคีย์แบบรายชิ้น ลิงก์ดาวน์โหลด รูปภาพสินค้า และโลโก้ร้านค้า</p>
@@ -7613,7 +7613,7 @@ export default function App() {
           {/* Admin Mobile Quick Dropdown Selector for Phones & Tablets */}
           <div className="admin-mobile-tab-selector-wrap">
             <label className="admin-mobile-tab-label">
-              <IconSettings size={14} color="#ff1a40" />
+              <IconSettings size={14} color="#a855f7" />
               <span>เลือกศูนย์การจัดการหลังบ้าน:</span>
             </label>
             <select
@@ -7716,11 +7716,11 @@ export default function App() {
               style={{
                 justifyContent: 'center',
                 padding: '0.65rem 0.85rem',
-                borderColor: ['bannedIps', 'banManager', 'threatLogs'].includes(adminTab) ? '#ff1a40' : 'rgba(255, 26, 64, 0.45)',
-                background: ['bannedIps', 'banManager', 'threatLogs'].includes(adminTab) ? 'linear-gradient(135deg, rgba(255, 26, 64, 0.35), rgba(200, 10, 40, 0.25))' : 'rgba(255, 26, 64, 0.08)'
+                borderColor: ['bannedIps', 'banManager', 'threatLogs'].includes(adminTab) ? '#a855f7' : 'rgba(168, 85, 247, 0.45)',
+                background: ['bannedIps', 'banManager', 'threatLogs'].includes(adminTab) ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(200, 10, 40, 0.25))' : 'rgba(168, 85, 247, 0.08)'
               }}
             >
-              <IconShield size={18} color="#ff1a40" />
+              <IconShield size={18} color="#a855f7" />
               <span>🛡️ ศูนย์ความปลอดภัย & แบน</span>
             </button>
 
@@ -7765,7 +7765,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'products' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'products' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -7781,7 +7781,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'categories' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'categories' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -7819,7 +7819,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'users' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'users' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -7918,7 +7918,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'giftcodes' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'giftcodes' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -7934,7 +7934,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'coupons' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'coupons' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -7956,7 +7956,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'bannedIps' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'bannedIps' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -8010,7 +8010,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'theme' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'theme' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -8026,7 +8026,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'stats' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'stats' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -8042,7 +8042,7 @@ export default function App() {
                     fontWeight: 700,
                     border: 'none',
                     cursor: 'pointer',
-                    background: adminTab === 'logs' ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                    background: adminTab === 'logs' ? '#a855f7' : 'rgba(255,255,255,0.08)',
                     color: '#fff'
                   }}
                 >
@@ -8192,7 +8192,7 @@ export default function App() {
                             </div>
                             <h4 className="admin-game-card-title">{group.title}</h4>
                             <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '2px' }}>
-                              ราคา: <strong style={{ color: '#ff4d6d' }}>฿{group.startingPrice} - ฿{group.maxPrice}</strong>
+                              ราคา: <strong style={{ color: '#d946ef' }}>฿{group.startingPrice} - ฿{group.maxPrice}</strong>
                             </div>
                           </div>
                         </div>
@@ -8258,7 +8258,7 @@ export default function App() {
                           <button
                             type="button"
                             className="btn-outline"
-                            style={{ padding: '8px 12px', fontSize: '0.82rem', borderColor: 'rgba(255, 77, 109, 0.4)', color: '#ff4d6d' }}
+                            style={{ padding: '8px 12px', fontSize: '0.82rem', borderColor: 'rgba(255, 77, 109, 0.4)', color: '#d946ef' }}
                             onClick={() => {
                               setEditingGameMeta(group);
                               setGameBannerInput(group.bannerImage);
@@ -8316,13 +8316,13 @@ export default function App() {
                               {categories.find((c) => c.slug === p.categoryId)?.name || p.categoryId}
                             </span>
                           </td>
-                          <td style={{ color: '#ff4d6d', fontWeight: 700 }}>฿{p.price}</td>
+                          <td style={{ color: '#d946ef', fontWeight: 700 }}>฿{p.price}</td>
                           <td>
                             <span
                               style={{
                                 padding: '0.25rem 0.6rem',
                                 borderRadius: '6px',
-                                background: p.stock > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(255,26,64,0.15)',
+                                background: p.stock > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(168, 85, 247,0.15)',
                                 color: p.stock > 0 ? '#10b981' : '#ff3333',
                                 fontWeight: 700,
                                 fontSize: '0.85rem'
@@ -8469,9 +8469,9 @@ export default function App() {
                     {adminLicenses.filter(k => k.status === 'unused').length} คีย์
                   </div>
                 </div>
-                <div style={{ background: 'rgba(255, 26, 64, 0.06)', border: '1px solid rgba(255, 26, 64, 0.25)', borderRadius: '12px', padding: '0.9rem' }}>
+                <div style={{ background: 'rgba(168, 85, 247, 0.06)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '12px', padding: '0.9rem' }}>
                   <div style={{ fontSize: '0.75rem', color: '#fca5a5' }}>หมดอายุ / ถูกระงับ</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ff4d6d', marginTop: '2px' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#d946ef', marginTop: '2px' }}>
                     {adminLicenses.filter(k => k.status === 'expired' || k.status === 'banned').length} คีย์
                   </div>
                 </div>
@@ -8660,7 +8660,7 @@ export default function App() {
               {/* Developer Real Integration API Documentation & Snippets */}
               <div style={{
                 background: 'linear-gradient(160deg, #11070b 0%, #0a0406 100%)',
-                border: '1px solid rgba(255, 26, 64, 0.3)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
                 borderRadius: '16px',
                 padding: '1.5rem',
                 boxShadow: '0 4px 25px rgba(0, 0, 0, 0.5)'
@@ -8668,7 +8668,7 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div>
                     <h4 style={{ margin: 0, color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
-                      <IconExternalLink size={18} color="#ff1a40" />
+                      <IconExternalLink size={18} color="#a855f7" />
                       <span>คู่มือการเชื่อมต่อ API ไปยังโปรแกรมของคุณ (REST API Documentation)</span>
                     </h4>
                     <p style={{ margin: '4px 0 0', color: '#9ca3af', fontSize: '0.8rem' }}>
@@ -8688,7 +8688,7 @@ export default function App() {
                           fontWeight: 700,
                           border: 'none',
                           cursor: 'pointer',
-                          background: apiDocLang === lang ? '#ff1a40' : 'rgba(255,255,255,0.08)',
+                          background: apiDocLang === lang ? '#a855f7' : 'rgba(255,255,255,0.08)',
                           color: '#fff',
                           textTransform: 'uppercase'
                         }}
@@ -9146,7 +9146,7 @@ async function verifyLicense(key, hwid) {
                 <div style={{ position: 'relative', flex: '1', minWidth: '260px', maxWidth: '480px' }}>
                   <IconSearch
                     size={18}
-                    style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#ff4d6d' }}
+                    style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#d946ef' }}
                   />
                   <input
                     type="text"
@@ -9181,7 +9181,7 @@ async function verifyLicense(key, hwid) {
 
                 <div style={{ color: '#b89ca2', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span>สมาชิกทั้งหมด:</span>
-                  <span style={{ color: '#ff1a40', fontWeight: 800, fontSize: '1.1rem' }}>
+                  <span style={{ color: '#a855f7', fontWeight: 800, fontSize: '1.1rem' }}>
                     {
                       adminUsers.filter((u) => {
                         const q = adminUserSearch.toLowerCase().trim();
@@ -9239,8 +9239,8 @@ async function verifyLicense(key, hwid) {
                               onClick={() => handleOpenUserPurchases(u)}
                               title="คลิกเพื่อดูประวัติการซื้อและคีย์ทั้งหมดของยูสเซอร์นี้"
                               style={{
-                                background: 'rgba(255, 26, 64, 0.08)',
-                                border: '1px solid rgba(255, 26, 64, 0.35)',
+                                background: 'rgba(168, 85, 247, 0.08)',
+                                border: '1px solid rgba(168, 85, 247, 0.35)',
                                 borderRadius: '8px',
                                 padding: '0.4rem 0.75rem',
                                 color: '#fff',
@@ -9253,17 +9253,17 @@ async function verifyLicense(key, hwid) {
                                 textAlign: 'left'
                               }}
                               onMouseEnter={(e) => {
-                                (e.currentTarget as HTMLElement).style.background = 'rgba(255, 26, 64, 0.2)';
-                                (e.currentTarget as HTMLElement).style.borderColor = '#ff1a40';
+                                (e.currentTarget as HTMLElement).style.background = 'rgba(168, 85, 247, 0.2)';
+                                (e.currentTarget as HTMLElement).style.borderColor = '#a855f7';
                               }}
                               onMouseLeave={(e) => {
-                                (e.currentTarget as HTMLElement).style.background = 'rgba(255, 26, 64, 0.08)';
-                                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255, 26, 64, 0.35)';
+                                (e.currentTarget as HTMLElement).style.background = 'rgba(168, 85, 247, 0.08)';
+                                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(168, 85, 247, 0.35)';
                               }}
                             >
-                              <IconUser size={15} color="#ff4d6d" />
+                              <IconUser size={15} color="#d946ef" />
                               <span style={{ color: '#ffffff', textDecoration: 'underline' }}>{u.username}</span>
-                              <span style={{ fontSize: '0.72rem', color: '#ff4d6d', background: 'rgba(255,26,64,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                              <span style={{ fontSize: '0.72rem', color: '#d946ef', background: 'rgba(168, 85, 247,0.15)', padding: '2px 6px', borderRadius: '4px' }}>
                                 📜 ดูประวัติซื้อ
                               </span>
                             </button>
@@ -9296,7 +9296,7 @@ async function verifyLicense(key, hwid) {
                                 <button
                                   type="button"
                                   className="btn-ip-action"
-                                  style={{ color: '#ff1a40', background: 'rgba(255,26,64,0.15)', borderColor: 'rgba(255,26,64,0.4)' }}
+                                  style={{ color: '#a855f7', background: 'rgba(168, 85, 247,0.15)', borderColor: 'rgba(168, 85, 247,0.4)' }}
                                   onClick={() => handleBanUserIpDirect(u)}
                                   title="กดเพื่อแบน IP นี้ทันที"
                                 >
@@ -9363,7 +9363,7 @@ async function verifyLicense(key, hwid) {
                               </span>
                             )}
                           </td>
-                          <td style={{ color: '#ff4d6d', fontWeight: 700, fontSize: '1rem' }}>฿{u.creditBalance?.toLocaleString()}</td>
+                          <td style={{ color: '#d946ef', fontWeight: 700, fontSize: '1rem' }}>฿{u.creditBalance?.toLocaleString()}</td>
                           <td style={{ minWidth: '230px' }}>
                             {u.role === 'superadmin' && user?.role !== 'superadmin' ? (
                               <div style={{ color: '#ffd700', fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', padding: '0.5rem', background: 'rgba(255, 215, 0, 0.1)', borderRadius: '8px', border: '1px solid rgba(255, 215, 0, 0.3)' }}>
@@ -9452,8 +9452,8 @@ async function verifyLicense(key, hwid) {
                                   style={{
                                     padding: '0.35rem 0.5rem',
                                     fontSize: '0.75rem',
-                                    background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.2), rgba(255, 85, 0, 0.15))',
-                                    borderColor: '#ff1a40',
+                                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(255, 85, 0, 0.15))',
+                                    borderColor: '#a855f7',
                                     color: '#fff',
                                     fontWeight: 600,
                                     display: 'inline-flex',
@@ -9464,7 +9464,7 @@ async function verifyLicense(key, hwid) {
                                   }}
                                   onClick={() => setEditingUserModal({ ...u, newPassword: '' })}
                                 >
-                                  <IconEdit size={13} color="#ff4d6d" />
+                                  <IconEdit size={13} color="#d946ef" />
                                   <span>แก้ไข User</span>
                                 </button>
 
@@ -9511,9 +9511,9 @@ async function verifyLicense(key, hwid) {
                                     style={{
                                       padding: '0.35rem 0.5rem',
                                       fontSize: '0.75rem',
-                                      color: '#ff4d6d',
-                                      borderColor: 'rgba(255,26,64,0.4)',
-                                      background: 'rgba(255,26,64,0.1)',
+                                      color: '#d946ef',
+                                      borderColor: 'rgba(168, 85, 247,0.4)',
+                                      background: 'rgba(168, 85, 247,0.1)',
                                       whiteSpace: 'nowrap',
                                       justifyContent: 'center'
                                     }}
@@ -9556,8 +9556,8 @@ async function verifyLicense(key, hwid) {
             <div style={{ background: 'rgba(25, 7, 12, 0.85)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', width: '100%', boxSizing: 'border-box' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem' }}>
                 <div>
-                  <h3 style={{ color: '#ff4d6d', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <IconShield size={22} color="#ff1a40" />
+                  <h3 style={{ color: '#d946ef', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <IconShield size={22} color="#a855f7" />
                     <span>ระบบความปลอดภัย & บัญชีดำ (Security Firewall)</span>
                   </h3>
                   <p style={{ color: '#b89ca2', fontSize: '0.85rem', marginTop: '0.35rem' }}>
@@ -9719,7 +9719,7 @@ async function verifyLicense(key, hwid) {
               {/* Quick Anti-DDoS Unjail & Network Defense Card */}
               <div
                 style={{
-                  background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.08) 0%, rgba(255, 171, 0, 0.05) 100%)',
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(255, 171, 0, 0.05) 100%)',
                   border: '1px solid rgba(255, 77, 109, 0.25)',
                   borderRadius: '16px',
                   padding: '1.25rem 1.5rem',
@@ -9736,7 +9736,7 @@ async function verifyLicense(key, hwid) {
                     <span style={{ fontSize: '1.2rem' }}>🛡️</span>
                     <strong style={{ color: '#fff', fontSize: '1rem' }}>ระบบ Anti-DDoS & ความปลอดภัยเครือข่าย</strong>
                     {jailedIpsList.length > 0 ? (
-                      <span style={{ background: '#ff1a40', color: '#fff', fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                      <span style={{ background: '#a855f7', color: '#fff', fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
                         ติดกักกัน {jailedIpsList.length} IP
                       </span>
                     ) : (
@@ -9756,7 +9756,7 @@ async function verifyLicense(key, hwid) {
                     disabled={isClearingJail}
                     onClick={handleClearAllJail}
                     style={{
-                      background: 'linear-gradient(135deg, #ff1a40, #ff4d6d)',
+                      background: 'linear-gradient(135deg, #a855f7, #d946ef)',
                       fontSize: '0.85rem',
                       padding: '0.6rem 1.15rem',
                       display: 'flex',
@@ -9802,10 +9802,10 @@ async function verifyLicense(key, hwid) {
                 <button
                   type="button"
                   className={`tab-btn ${blacklistSubTab === 'ddosJail' ? 'active' : ''}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1.25rem', fontSize: '0.9rem', ...(jailedIpsList.length > 0 ? { borderColor: '#ff4d6d', color: '#ff4d6d' } : {}) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1.25rem', fontSize: '0.9rem', ...(jailedIpsList.length > 0 ? { borderColor: '#d946ef', color: '#d946ef' } : {}) }}
                   onClick={() => { setBlacklistSubTab('ddosJail'); fetchJailedIps(); }}
                 >
-                  <IconZap size={16} color={jailedIpsList.length > 0 ? '#ff4d6d' : 'inherit'} />
+                  <IconZap size={16} color={jailedIpsList.length > 0 ? '#d946ef' : 'inherit'} />
                   <span>🛡️ การกักกัน DDoS ({jailedIpsList.length})</span>
                 </button>
               </div>
@@ -9814,9 +9814,9 @@ async function verifyLicense(key, hwid) {
               {blacklistSubTab === 'ips' && (
                 <div>
                   {/* Form to ban new IP */}
-                  <div style={{ background: 'rgba(255, 26, 64, 0.04)', border: '1px solid rgba(255, 26, 64, 0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.75rem' }}>
+                  <div style={{ background: 'rgba(168, 85, 247, 0.04)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.75rem' }}>
                     <h4 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <IconPlusCircle size={17} color="#ff1a40" />
+                      <IconPlusCircle size={17} color="#a855f7" />
                       <span>สั่งแบน IP ใหม่เข้าสู่ระบบ (Manual IP Ban)</span>
                     </h4>
                     <form
@@ -9924,8 +9924,8 @@ async function verifyLicense(key, hwid) {
                               <td>#{b.id}</td>
                               <td>
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                  <span className="ip-badge" style={{ color: '#ff4d6d', borderColor: 'rgba(255,26,64,0.4)', background: 'rgba(255,26,64,0.08)' }}>
-                                    <IconLock size={12} color="#ff1a40" />
+                                  <span className="ip-badge" style={{ color: '#d946ef', borderColor: 'rgba(168, 85, 247,0.4)', background: 'rgba(168, 85, 247,0.08)' }}>
+                                    <IconLock size={12} color="#a855f7" />
                                     {b.ip}
                                   </span>
                                   <button
@@ -9943,7 +9943,7 @@ async function verifyLicense(key, hwid) {
                               </td>
                               <td style={{ color: '#d8c4c8' }}>{b.reason || 'ละเมิดกฎของเว็บไซต์'}</td>
                               <td>
-                                <span style={{ fontSize: '0.78rem', color: '#ff758f', background: 'rgba(255,26,64,0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                                <span style={{ fontSize: '0.78rem', color: '#e879f9', background: 'rgba(168, 85, 247,0.1)', padding: '2px 8px', borderRadius: '4px' }}>
                                   {b.bannedBy || 'Admin'}
                                 </span>
                               </td>
@@ -9991,9 +9991,9 @@ async function verifyLicense(key, hwid) {
                   {/* Anti-VPN & Proxy Shield Banner */}
                   <div style={{
                     background: blockVpnSetting
-                      ? 'linear-gradient(135deg, rgba(255, 26, 64, 0.15), rgba(180, 0, 36, 0.25))'
+                      ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(180, 0, 36, 0.25))'
                       : 'rgba(255, 255, 255, 0.03)',
-                    border: blockVpnSetting ? '2px solid #ff1a40' : '1px solid rgba(255, 255, 255, 0.1)',
+                    border: blockVpnSetting ? '2px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.1)',
                     borderRadius: '16px',
                     padding: '1.25rem 1.5rem',
                     marginBottom: '1.5rem',
@@ -10002,15 +10002,15 @@ async function verifyLicense(key, hwid) {
                     alignItems: 'center',
                     flexWrap: 'wrap',
                     gap: '1rem',
-                    boxShadow: blockVpnSetting ? '0 0 25px rgba(255, 26, 64, 0.25)' : 'none'
+                    boxShadow: blockVpnSetting ? '0 0 25px rgba(168, 85, 247, 0.25)' : 'none'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       <div style={{
                         width: '48px',
                         height: '48px',
                         borderRadius: '12px',
-                        background: blockVpnSetting ? 'rgba(255, 26, 64, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                        border: blockVpnSetting ? '1.5px solid #ff1a40' : '1px solid rgba(255, 255, 255, 0.15)',
+                        background: blockVpnSetting ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                        border: blockVpnSetting ? '1.5px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.15)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -10028,7 +10028,7 @@ async function verifyLicense(key, hwid) {
                             fontWeight: 800,
                             padding: '2px 8px',
                             borderRadius: '999px',
-                            background: blockVpnSetting ? '#ff1a40' : 'rgba(255, 255, 255, 0.1)',
+                            background: blockVpnSetting ? '#a855f7' : 'rgba(255, 255, 255, 0.1)',
                             color: '#fff'
                           }}>
                             {blockVpnSetting ? 'เปิดใช้งาน (ACTIVE)' : 'ปิดอยู่ (OFF)'}
@@ -10052,9 +10052,9 @@ async function verifyLicense(key, hwid) {
                         border: 'none',
                         background: blockVpnSetting
                           ? 'linear-gradient(135deg, #10b981, #059669)'
-                          : 'linear-gradient(135deg, #ff1a40, #b91c1c)',
+                          : 'linear-gradient(135deg, #a855f7, #b91c1c)',
                         color: '#fff',
-                        boxShadow: blockVpnSetting ? '0 0 15px rgba(16, 185, 129, 0.4)' : '0 0 15px rgba(255, 26, 64, 0.4)',
+                        boxShadow: blockVpnSetting ? '0 0 15px rgba(16, 185, 129, 0.4)' : '0 0 15px rgba(168, 85, 247, 0.4)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
@@ -10212,7 +10212,7 @@ async function verifyLicense(key, hwid) {
                               </td>
                               <td style={{ color: '#d8c4c8' }}>{d.reason || 'แบนเลขเครื่องโดยแอดมิน'}</td>
                               <td>
-                                <span style={{ fontSize: '0.78rem', color: '#ff758f', background: 'rgba(255,26,64,0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                                <span style={{ fontSize: '0.78rem', color: '#e879f9', background: 'rgba(168, 85, 247,0.1)', padding: '2px 8px', borderRadius: '4px' }}>
                                   {d.bannedBy || 'Admin'}
                                 </span>
                               </td>
@@ -10399,7 +10399,7 @@ async function verifyLicense(key, hwid) {
                                 <button
                                   type="button"
                                   className="btn-outline"
-                                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', color: '#ff4d6d', borderColor: 'rgba(255,77,109,0.4)', background: 'rgba(255,77,109,0.08)' }}
+                                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem', color: '#d946ef', borderColor: 'rgba(255,77,109,0.4)', background: 'rgba(255,77,109,0.08)' }}
                                   onClick={() => handleRemoveWhitelist(w.id, w.ip)}
                                 >
                                   🗑️ นำออก
@@ -10433,10 +10433,10 @@ async function verifyLicense(key, hwid) {
               {/* SUB-TAB 4: DDOS AUTO-JAIL (IN-MEMORY QUARANTINE) */}
               {blacklistSubTab === 'ddosJail' && (
                 <div>
-                  <div style={{ background: 'rgba(255, 26, 64, 0.04)', border: '1px solid rgba(255, 77, 109, 0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ background: 'rgba(168, 85, 247, 0.04)', border: '1px solid rgba(255, 77, 109, 0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
                       <h4 style={{ color: '#fff', fontSize: '0.95rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <IconZap size={17} color="#ff4d6d" />
+                        <IconZap size={17} color="#d946ef" />
                         <span>การกักกันชั่วคราวอัตโนมัติ (Anti-DDoS In-Memory Jail)</span>
                       </h4>
                       <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
@@ -10457,7 +10457,7 @@ async function verifyLicense(key, hwid) {
                         className="btn-primary"
                         disabled={isClearingJail || jailedIpsList.length === 0}
                         onClick={handleClearAllJail}
-                        style={{ background: 'linear-gradient(135deg, #ff1a40, #ff4d6d)', padding: '0.5rem 1rem', fontSize: '0.82rem', gap: '6px' }}
+                        style={{ background: 'linear-gradient(135deg, #a855f7, #d946ef)', padding: '0.5rem 1rem', fontSize: '0.82rem', gap: '6px' }}
                       >
                         <IconZap size={14} />
                         <span>{isClearingJail ? 'กำลังปลด...' : '⚡ ปลดการกักกันทั้งหมด'}</span>
@@ -10484,12 +10484,12 @@ async function verifyLicense(key, hwid) {
                           <tr key={j.ip}>
                             <td style={{ color: '#888', fontSize: '0.8rem' }}>{index + 1}</td>
                             <td>
-                              <strong style={{ fontFamily: 'monospace', color: '#ff4d6d', fontSize: '0.95rem' }}>
+                              <strong style={{ fontFamily: 'monospace', color: '#d946ef', fontSize: '0.95rem' }}>
                                 {j.ip}
                               </strong>
                             </td>
                             <td>
-                              <span style={{ background: 'rgba(255, 26, 64, 0.15)', color: '#ff4d6d', border: '1px solid rgba(255,26,64,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
+                              <span style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#d946ef', border: '1px solid rgba(168, 85, 247,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
                                 🚨 ติดกักกัน DDoS
                               </span>
                             </td>
@@ -10552,7 +10552,7 @@ async function verifyLicense(key, hwid) {
                         {new Date(l.createdAt).toLocaleString('th-TH')}
                       </td>
                       <td>
-                        <span style={{ color: '#ff4d6d', fontWeight: 700, fontSize: '0.82rem' }}>
+                        <span style={{ color: '#d946ef', fontWeight: 700, fontSize: '0.82rem' }}>
                           {l.action}
                         </span>
                       </td>
@@ -10571,8 +10571,8 @@ async function verifyLicense(key, hwid) {
               <div style={{ marginBottom: '1.5rem', background: 'rgba(25, 7, 12, 0.85)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
-                    <h3 style={{ color: '#ff4d6d', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <IconBarChart size={20} color="#ff1a40" />
+                    <h3 style={{ color: '#d946ef', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <IconBarChart size={20} color="#a855f7" />
                       <span>ภาพรวมสถิติหน้าร้าน & แดชบอร์ด (Store & Admin Dashboard)</span>
                     </h3>
                     <p style={{ color: '#b89ca2', fontSize: '0.85rem', marginTop: '0.25rem' }}>
@@ -10586,7 +10586,7 @@ async function verifyLicense(key, hwid) {
 
                 {/* 3 Real vs Display Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
-                  <div style={{ background: 'rgba(255, 26, 64, 0.08)', border: '1px solid rgba(255, 26, 64, 0.25)', borderRadius: '12px', padding: '1.25rem' }}>
+                  <div style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '12px', padding: '1.25rem' }}>
                     <div style={{ fontSize: '0.85rem', color: '#ff6b8b', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
                       <span>ยอดขายสะสม</span>
                       <IconCreditCard size={18} />
@@ -10628,7 +10628,7 @@ async function verifyLicense(key, hwid) {
 
                 {/* Dashboard Override Settings Form */}
                 <form onSubmit={handleSaveDashboardStats} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '1.25rem' }}>
-                  <h4 style={{ color: '#ff4d6d', fontSize: '1rem', marginBottom: '0.75rem' }}>
+                  <h4 style={{ color: '#d946ef', fontSize: '1rem', marginBottom: '0.75rem' }}>
                     ⚙️ จัดการและปรับแต่งตัวเลขสถิติแดชบอร์ด (Custom Stats)
                   </h4>
                   <p style={{ fontSize: '0.82rem', color: '#b89ca2', marginBottom: '1.25rem' }}>
@@ -10695,8 +10695,8 @@ async function verifyLicense(key, hwid) {
             <div style={{ maxWidth: '840px' }}>
               <div style={{ background: 'rgba(25, 7, 12, 0.85)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' }}>
                 <div style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
-                  <h3 style={{ color: '#ff4d6d', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <IconGift size={20} color="#ff1a40" />
+                  <h3 style={{ color: '#d946ef', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IconGift size={20} color="#a855f7" />
                     <span>ระบบสร้างโค้ดแจกเครดิตฟรี (Gift / Redeem Codes)</span>
                   </h3>
                   <p style={{ color: '#b89ca2', fontSize: '0.85rem', marginTop: '0.25rem' }}>
@@ -10787,7 +10787,7 @@ async function verifyLicense(key, hwid) {
                         return (
                           <tr key={g.id}>
                             <td>
-                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#ff4d6d', letterSpacing: '0.5px' }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#d946ef', letterSpacing: '0.5px' }}>
                                 {g.code}
                               </span>
                             </td>
@@ -10843,8 +10843,8 @@ async function verifyLicense(key, hwid) {
             <div style={{ maxWidth: '840px' }}>
               <div style={{ background: 'rgba(25, 7, 12, 0.85)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' }}>
                 <div style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
-                  <h3 style={{ color: '#ff4d6d', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <IconTag size={20} color="#ff1a40" />
+                  <h3 style={{ color: '#d946ef', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IconTag size={20} color="#a855f7" />
                     <span>ระบบคูปองส่วนลดสินค้า (Discount Coupons)</span>
                   </h3>
                   <p style={{ color: '#b89ca2', fontSize: '0.85rem', marginTop: '0.25rem' }}>
@@ -10949,7 +10949,7 @@ async function verifyLicense(key, hwid) {
                         return (
                           <tr key={c.id}>
                             <td>
-                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#ff4d6d' }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#d946ef' }}>
                                 {c.code}
                               </span>
                             </td>
@@ -11006,7 +11006,7 @@ async function verifyLicense(key, hwid) {
           {adminTab === 'theme' && (
             <div style={{ background: 'rgba(25, 7, 12, 0.85)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem', maxWidth: '780px' }}>
               <div style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
-                <h3 style={{ color: '#ff4d6d', fontSize: '1.2rem' }}>ปรับแต่งโลโก้ร้าน และชื่อเว็บไซต์ (Browser Tab Title & Favicon)</h3>
+                <h3 style={{ color: '#d946ef', fontSize: '1.2rem' }}>ปรับแต่งโลโก้ร้าน และชื่อเว็บไซต์ (Browser Tab Title & Favicon)</h3>
                 <p style={{ color: '#b89ca2', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                   เมื่อแก้ไขโลโก้ รูปโลโก้ร้านและไอคอนบนแท็บเว็บ (Favicon ที่เดิมเป็นรูป Vite) จะเปลี่ยนทันที
                 </p>
@@ -11016,13 +11016,13 @@ async function verifyLicense(key, hwid) {
                 {/* 0. SITE LOCKDOWN & MAINTENANCE CONTROL CARD */}
                 <div style={{
                   background: siteSettings.site_lockdown_enabled === 'true'
-                    ? 'linear-gradient(135deg, rgba(255, 26, 64, 0.18) 0%, rgba(185, 28, 56, 0.1) 100%)'
+                    ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.18) 0%, rgba(185, 28, 56, 0.1) 100%)'
                     : 'rgba(255, 255, 255, 0.03)',
                   border: siteSettings.site_lockdown_enabled === 'true'
-                    ? '1.5px solid #ff1a40'
+                    ? '1.5px solid #a855f7'
                     : '1px solid var(--border-subtle)',
                   boxShadow: siteSettings.site_lockdown_enabled === 'true'
-                    ? '0 0 25px rgba(255, 26, 64, 0.25)'
+                    ? '0 0 25px rgba(168, 85, 247, 0.25)'
                     : 'none',
                   borderRadius: '14px',
                   padding: '1.25rem',
@@ -11036,7 +11036,7 @@ async function verifyLicense(key, hwid) {
                         <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span>ระบบปิดปรับปรุงเว็บไซต์ (Site Lockdown)</span>
                           {siteSettings.site_lockdown_enabled === 'true' ? (
-                            <span style={{ background: '#ff1a40', color: '#fff', fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
+                            <span style={{ background: '#a855f7', color: '#fff', fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 800 }}>
                               LOCKDOWN ทำงานอยู่
                             </span>
                           ) : (
@@ -11063,11 +11063,11 @@ async function verifyLicense(key, hwid) {
                         border: 'none',
                         background: siteSettings.site_lockdown_enabled === 'true'
                           ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                          : 'linear-gradient(135deg, #ff1a40 0%, #d90429 100%)',
+                          : 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
                         color: '#fff',
                         boxShadow: siteSettings.site_lockdown_enabled === 'true'
                           ? '0 0 15px rgba(16, 185, 129, 0.4)'
-                          : '0 0 15px rgba(255, 26, 64, 0.4)',
+                          : '0 0 15px rgba(168, 85, 247, 0.4)',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '6px',
@@ -11112,7 +11112,7 @@ async function verifyLicense(key, hwid) {
                       padding: '0.65rem 0.85rem',
                       fontSize: '0.78rem',
                       color: '#ffb3c1',
-                      border: '1px dashed rgba(255, 26, 64, 0.3)',
+                      border: '1px dashed rgba(168, 85, 247, 0.3)',
                       lineHeight: 1.5
                     }}>
                       💡 <strong>วิธีเข้าสู่ระบบสำหรับผู้ดูแล:</strong> เมื่อเปิดโหมด Lockdown แอดมินสามารถกดปุ่ม <strong>[Shift ขวา]</strong> หรือ <strong>[Insert]</strong> บนคีย์บอร์ด (หรือแตะโลโก้ร้าน 5 ครั้งบนมือถือ) เพื่อเปิดหน้าต่างล็อกอินลับเข้าสู่ระบบหลังบ้าน
@@ -11121,7 +11121,7 @@ async function verifyLicense(key, hwid) {
                 </div>
                 {/* 1. LOGO IMAGE CUSTOMIZATION & PREVIEW */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
-                  <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700, fontSize: '0.95rem' }}>
+                  <label className="input-label" style={{ color: '#d946ef', fontWeight: 700, fontSize: '0.95rem' }}>
                     🎨 โลโก้ร้านค้าและไอคอนบนแท็บเว็บ (Logo & Favicon)
                   </label>
 
@@ -11131,7 +11131,7 @@ async function verifyLicense(key, hwid) {
                         width: 65,
                         height: 65,
                         borderRadius: 14,
-                        border: '2px dashed #ff1a40',
+                        border: '2px dashed #a855f7',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -11150,7 +11150,7 @@ async function verifyLicense(key, hwid) {
                           }}
                         />
                       ) : (
-                        <IconKey size={28} color="#ff1a40" />
+                        <IconKey size={28} color="#a855f7" />
                       )}
                     </div>
 
@@ -11206,7 +11206,7 @@ async function verifyLicense(key, hwid) {
 
                 {/* 2. BROWSER TAB TITLE */}
                 <div className="input-field-group">
-                  <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700 }}>
+                  <label className="input-label" style={{ color: '#d946ef', fontWeight: 700 }}>
                     ชื่อเว็บไซต์บนแท็บเบราว์เซอร์ (Browser Tab Title / document.title)
                   </label>
                   <input
@@ -11284,7 +11284,7 @@ async function verifyLicense(key, hwid) {
 
                 {/* 3. HERO FEATURES (3 BULLET POINTS FROM USER PHOTO) */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', marginTop: '1rem' }}>
-                  <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700, fontSize: '0.95rem' }}>
+                  <label className="input-label" style={{ color: '#d946ef', fontWeight: 700, fontSize: '0.95rem' }}>
                     🎯 ข้อความจุดเด่น 3 ข้อบนแบนเนอร์ (Hero Bullet Points)
                   </label>
                   <p style={{ color: '#b89ca2', fontSize: '0.8rem', marginBottom: '1rem' }}>
@@ -11327,7 +11327,7 @@ async function verifyLicense(key, hwid) {
 
                 {/* 4. BANK TRANSFER & SLIP CONFIGURATION */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
-                  <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700, fontSize: '0.95rem' }}>
+                  <label className="input-label" style={{ color: '#d946ef', fontWeight: 700, fontSize: '0.95rem' }}>
                     🏦 ข้อมูลบัญชีธนาคารสำหรับรับเงินโอน (Bank Transfer & PromptPay)
                   </label>
                   <p style={{ color: '#b89ca2', fontSize: '0.8rem', marginBottom: '1rem' }}>
@@ -11479,12 +11479,12 @@ async function verifyLicense(key, hwid) {
                 </div>
 
                 {/* 6. BACKGROUND MUSIC CONFIGURATION */}
-                <div style={{ background: 'rgba(255, 26, 64, 0.05)', border: '1px solid rgba(255, 26, 64, 0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                <div style={{ background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700, fontSize: '0.95rem', margin: 0 }}>
+                    <label className="input-label" style={{ color: '#d946ef', fontWeight: 700, fontSize: '0.95rem', margin: 0 }}>
                       🎵 เพลงประกอบเว็บไซต์ (Background Music Player)
                     </label>
-                    <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: '12px', background: siteSettings.bg_music_enabled === 'true' ? 'rgba(255,26,64,0.2)' : 'rgba(255,255,255,0.08)', color: siteSettings.bg_music_enabled === 'true' ? '#ff4d6d' : '#888', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: '12px', background: siteSettings.bg_music_enabled === 'true' ? 'rgba(168, 85, 247,0.2)' : 'rgba(255,255,255,0.08)', color: siteSettings.bg_music_enabled === 'true' ? '#d946ef' : '#888', fontWeight: 600 }}>
                       {siteSettings.bg_music_enabled === 'true' ? '🟢 เปิดใช้งานเพลง' : '⚪ ปิดเพลง'}
                     </span>
                   </div>
@@ -11533,7 +11533,7 @@ async function verifyLicense(key, hwid) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <label className="input-label">ลิงก์เพลง (รองรับ YouTube และไฟล์ MP3/Audio ทุกชนิด)</label>
                       {isYouTube && (
-                        <span style={{ color: '#ff4d6d', fontSize: '0.75rem', fontWeight: 700 }}>
+                        <span style={{ color: '#d946ef', fontSize: '0.75rem', fontWeight: 700 }}>
                           ▶ ตรวจพบคลิป YouTube (ID: {ytVideoId})
                         </span>
                       )}
@@ -11550,7 +11550,7 @@ async function verifyLicense(key, hwid) {
                       <button
                         type="button"
                         className="btn-badge"
-                        style={{ fontSize: '0.72rem', padding: '3px 8px', cursor: 'pointer', background: 'rgba(255,0,0,0.15)', color: '#ff4d6d', border: '1px solid rgba(255,0,0,0.3)', borderRadius: '6px' }}
+                        style={{ fontSize: '0.72rem', padding: '3px 8px', cursor: 'pointer', background: 'rgba(255,0,0,0.15)', color: '#d946ef', border: '1px solid rgba(255,0,0,0.3)', borderRadius: '6px' }}
                         onClick={() => setSiteSettings({
                           ...siteSettings,
                           bg_music_url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk',
@@ -11562,7 +11562,7 @@ async function verifyLicense(key, hwid) {
                       <button
                         type="button"
                         className="btn-badge"
-                        style={{ fontSize: '0.72rem', padding: '3px 8px', cursor: 'pointer', background: 'rgba(255,26,64,0.15)', color: '#ff1a40', border: '1px solid rgba(255,26,64,0.3)', borderRadius: '6px' }}
+                        style={{ fontSize: '0.72rem', padding: '3px 8px', cursor: 'pointer', background: 'rgba(168, 85, 247,0.15)', color: '#a855f7', border: '1px solid rgba(168, 85, 247,0.3)', borderRadius: '6px' }}
                         onClick={() => setSiteSettings({
                           ...siteSettings,
                           bg_music_url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Tours/Enthusiast/Tours_-_01_-_Enthusiast.mp3',
@@ -11577,7 +11577,7 @@ async function verifyLicense(key, hwid) {
                   <div className="input-field-group" style={{ marginBottom: '0.5rem' }}>
                     <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>ระดับเสียงเริ่มต้น (Default Volume)</span>
-                      <span style={{ color: '#ff4d6d' }}>{siteSettings.bg_music_volume || 30}%</span>
+                      <span style={{ color: '#d946ef' }}>{siteSettings.bg_music_volume || 30}%</span>
                     </label>
                     <input
                       type="range"
@@ -11585,7 +11585,7 @@ async function verifyLicense(key, hwid) {
                       max="100"
                       value={siteSettings.bg_music_volume || 30}
                       onChange={(e) => setSiteSettings({ ...siteSettings, bg_music_volume: Number(e.target.value) })}
-                      style={{ width: '100%', accentColor: '#ff1a40', cursor: 'pointer' }}
+                      style={{ width: '100%', accentColor: '#a855f7', cursor: 'pointer' }}
                     />
                   </div>
 
@@ -11597,7 +11597,7 @@ async function verifyLicense(key, hwid) {
                       onClick={togglePlayMusic}
                       style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', gap: '0.4rem' }}
                     >
-                      {isPlayingMusic ? <IconPause size={14} color="#ff4d6d" /> : <IconPlay size={14} color="#ff4d6d" />}
+                      {isPlayingMusic ? <IconPause size={14} color="#d946ef" /> : <IconPlay size={14} color="#d946ef" />}
                       <span>{isPlayingMusic ? 'พักเพลงตัวอย่าง' : '▶ ทดลองฟังเพลงนี้'}</span>
                     </button>
                     <span style={{ color: '#888', fontSize: '0.75rem' }}>
@@ -11667,7 +11667,7 @@ async function verifyLicense(key, hwid) {
                       {siteSettings.slipok_api_key && siteSettings.slipok_branch_id ? '🟢 ตรวจยอดจริงอัตโนมัติ' : '⚪ ยังไม่ตั้งค่า SlipOK'}
                     </div>
                   </div>
-                  <div style={{ background: 'rgba(255, 26, 64, 0.08)', border: '1px solid rgba(255, 26, 64, 0.2)', borderRadius: '10px', padding: '0.75rem 1rem' }}>
+                  <div style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '10px', padding: '0.75rem 1rem' }}>
                     <div style={{ fontSize: '0.75rem', color: '#b89ca2' }}>ระบบป้องกันสลิปซ้ำ</div>
                     <div style={{ fontSize: '1rem', fontWeight: 700, color: '#10b981', marginTop: '4px' }}>
                       🛡️ SHA-256 + TransRef Active
@@ -11781,7 +11781,7 @@ async function verifyLicense(key, hwid) {
                       <button
                         type="button"
                         className="btn-outline"
-                        style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', color: '#ff4d6d', borderColor: 'rgba(255, 77, 109, 0.4)' }}
+                        style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', color: '#d946ef', borderColor: 'rgba(255, 77, 109, 0.4)' }}
                         onClick={() => {
                           setAdminTopupUserFilter('');
                           fetchAdminTopupHistory('');
@@ -11837,7 +11837,7 @@ async function verifyLicense(key, hwid) {
                       </div>
                     </div>
 
-                    <div style={{ background: 'rgba(255, 26, 64, 0.08)', border: '1px solid rgba(255, 26, 64, 0.25)', borderRadius: '12px', padding: '0.9rem 1.15rem' }}>
+                    <div style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '12px', padding: '0.9rem 1.15rem' }}>
                       <div style={{ fontSize: '0.75rem', color: '#ff88a3', fontWeight: 600 }}>จำนวนธุรกรรมทั้งหมด</div>
                       <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', letterSpacing: '0.5px', marginTop: '2px' }}>
                         {adminTopupSummary.totalRecords.toLocaleString()} <span style={{ fontSize: '0.9rem', color: '#b89ca2', fontWeight: 500 }}>รายการ</span>
@@ -11862,7 +11862,7 @@ async function verifyLicense(key, hwid) {
                     <span style={{ fontSize: '0.76rem', background: 'rgba(255, 183, 3, 0.12)', border: '1px solid rgba(255, 183, 3, 0.3)', padding: '3px 9px', borderRadius: '20px', color: '#ffb703', fontWeight: 600 }}>
                       🧧 อั่งเปา TrueMoney: ฿{adminTopupSummary.breakdown.angpao.amount.toLocaleString()} ({adminTopupSummary.breakdown.angpao.count})
                     </span>
-                    <span style={{ fontSize: '0.76rem', background: 'rgba(255, 77, 109, 0.12)', border: '1px solid rgba(255, 77, 109, 0.3)', padding: '3px 9px', borderRadius: '20px', color: '#ff4d6d', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.76rem', background: 'rgba(255, 77, 109, 0.12)', border: '1px solid rgba(255, 77, 109, 0.3)', padding: '3px 9px', borderRadius: '20px', color: '#d946ef', fontWeight: 600 }}>
                       🎁 โค้ดของขวัญ: ฿{adminTopupSummary.breakdown.giftcode.amount.toLocaleString()} ({adminTopupSummary.breakdown.giftcode.count})
                     </span>
                   </div>
@@ -11976,7 +11976,7 @@ async function verifyLicense(key, hwid) {
                           setAdminTopupUserFilter('');
                           fetchAdminTopupHistory('');
                         }}
-                        style={{ background: 'transparent', border: 'none', color: '#ff4d6d', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}
+                        style={{ background: 'transparent', border: 'none', color: '#d946ef', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}
                       >
                         ✕ ยกเลิกการกรอง (ดูทั้งเว็บ)
                       </button>
@@ -12038,8 +12038,8 @@ async function verifyLicense(key, hwid) {
                               {t.type === 'promptpay' && <IconQrCode size={15} color="#00e676" />}
                               {t.type === 'slip' && <IconCreditCard size={15} color="#00d2ff" />}
                               {t.type === 'angpao' && <IconGift size={15} color="#ffb703" />}
-                              {t.type === 'giftcode' && <IconTag size={15} color="#ff4d6d" />}
-                              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: t.type === 'promptpay' ? '#00e676' : (t.type === 'slip' ? '#00d2ff' : (t.type === 'angpao' ? '#ffb703' : '#ff4d6d')) }}>
+                              {t.type === 'giftcode' && <IconTag size={15} color="#d946ef" />}
+                              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: t.type === 'promptpay' ? '#00e676' : (t.type === 'slip' ? '#00d2ff' : (t.type === 'angpao' ? '#ffb703' : '#d946ef')) }}>
                                 {t.channelName}
                               </span>
                             </div>
@@ -12071,7 +12071,7 @@ async function verifyLicense(key, hwid) {
                               </span>
                             )}
                             {(t.status === 'expired' || t.status === 'cancelled') && (
-                              <span style={{ background: 'rgba(255, 77, 109, 0.12)', color: '#ff4d6d', border: '1px solid rgba(255, 77, 109, 0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
+                              <span style={{ background: 'rgba(255, 77, 109, 0.12)', color: '#d946ef', border: '1px solid rgba(255, 77, 109, 0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
                                 {t.statusLabel || 'หมดอายุ'}
                               </span>
                             )}
@@ -12118,7 +12118,7 @@ async function verifyLicense(key, hwid) {
                                     border: '1px solid rgba(255, 77, 109, 0.3)',
                                     borderRadius: '6px',
                                     padding: '3px 6px',
-                                    color: '#ff4d6d',
+                                    color: '#d946ef',
                                     fontSize: '0.74rem',
                                     fontWeight: 600,
                                     cursor: 'pointer'
@@ -12154,8 +12154,8 @@ async function verifyLicense(key, hwid) {
             <div style={{ maxWidth: '960px' }}>
               <div style={{ background: 'rgba(25, 7, 12, 0.85)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '1.5rem' }}>
                 <div style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
-                  <h3 style={{ color: '#ff4d6d', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <IconFileText size={20} color="#ff1a40" />
+                  <h3 style={{ color: '#d946ef', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IconFileText size={20} color="#a855f7" />
                     <span>ประวัติการทำงานของระบบ (System & Audit Logs)</span>
                   </h3>
                   <p style={{ color: '#b89ca2', fontSize: '0.85rem', marginTop: '0.25rem' }}>
@@ -12188,8 +12188,8 @@ async function verifyLicense(key, hwid) {
                               borderRadius: '6px',
                               fontSize: '0.72rem',
                               fontWeight: 700,
-                              background: 'rgba(255,26,64,0.15)',
-                              color: '#ff4d6d'
+                              background: 'rgba(168, 85, 247,0.15)',
+                              color: '#d946ef'
                             }}>
                               {l.action}
                             </span>
@@ -12218,8 +12218,8 @@ async function verifyLicense(key, hwid) {
             <div>
               {user?.role !== 'superadmin' && !isPasscodeUnlocked ? (
                 <div className="passcode-gate-card">
-                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255, 26, 64, 0.2)', border: '2px solid #ff1a40', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', boxShadow: '0 0 25px rgba(255, 26, 64, 0.5)' }}>
-                    <IconLock size={32} color="#ff1a40" />
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(168, 85, 247, 0.2)', border: '2px solid #a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', boxShadow: '0 0 25px rgba(168, 85, 247, 0.5)' }}>
+                    <IconLock size={32} color="#a855f7" />
                   </div>
                   <h3 style={{ color: '#fff', fontSize: '1.35rem', fontWeight: 800, marginBottom: '0.5rem' }}>
                     หน้านี้ถูกเข้ารหัสความปลอดภัย (Security Area)
@@ -12231,14 +12231,14 @@ async function verifyLicense(key, hwid) {
                     <input
                       type="password"
                       className="text-input"
-                      style={{ textAlign: 'center', fontSize: '1.2rem', letterSpacing: '4px', padding: '0.85rem', marginBottom: '1rem', background: 'rgba(0,0,0,0.6)', borderColor: passcodeError ? '#ff1a40' : 'rgba(255,77,109,0.4)' }}
+                      style={{ textAlign: 'center', fontSize: '1.2rem', letterSpacing: '4px', padding: '0.85rem', marginBottom: '1rem', background: 'rgba(0,0,0,0.6)', borderColor: passcodeError ? '#a855f7' : 'rgba(255,77,109,0.4)' }}
                       placeholder="กรอกรหัส Passcode..."
                       value={passcodeInput}
                       onChange={(e) => { setPasscodeInput(e.target.value); setPasscodeError(''); }}
                       autoFocus
                     />
                     {passcodeError && (
-                      <div style={{ color: '#ff4d6d', fontSize: '0.82rem', marginBottom: '1rem', fontWeight: 700 }}>
+                      <div style={{ color: '#d946ef', fontSize: '0.82rem', marginBottom: '1rem', fontWeight: 700 }}>
                         ⚠️ {passcodeError}
                       </div>
                     )}
@@ -12253,12 +12253,12 @@ async function verifyLicense(key, hwid) {
                   </form>
                 </div>
               ) : (
-                <div style={{ background: 'rgba(20, 5, 10, 0.9)', border: '1px solid rgba(255, 26, 64, 0.35)', borderRadius: '16px', padding: '1.5rem' }}>
+                <div style={{ background: 'rgba(20, 5, 10, 0.9)', border: '1px solid rgba(168, 85, 247, 0.35)', borderRadius: '16px', padding: '1.5rem' }}>
                   {/* Top Header & SuperAdmin Widget */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '1rem' }}>
                     <div>
-                      <h3 style={{ color: '#ff4d6d', fontSize: '1.35rem', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                        <IconAlertCircle size={24} color="#ff1a40" />
+                      <h3 style={{ color: '#d946ef', fontSize: '1.35rem', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                        <IconAlertCircle size={24} color="#a855f7" />
                         <span>บันทึกความปลอดภัย & สุ่มเสี่ยง (Security Threat Forensics)</span>
                       </h3>
                       <p style={{ color: '#b89ca2', fontSize: '0.85rem', marginTop: '0.35rem', marginBottom: 0 }}>
@@ -12307,7 +12307,7 @@ async function verifyLicense(key, hwid) {
                   {/* Filter by Username & Action Bar */}
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
                     <div style={{ position: 'relative', flex: 1, minWidth: '240px', maxWidth: '400px' }}>
-                      <IconSearch size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#ff4d6d' }} />
+                      <IconSearch size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#d946ef' }} />
                       <input
                         type="text"
                         className="text-input"
@@ -12375,7 +12375,7 @@ async function verifyLicense(key, hwid) {
                                     <button
                                       type="button"
                                       className="btn-ip-action"
-                                      style={{ padding: '1px 5px', fontSize: '0.68rem', color: '#ff4d6d' }}
+                                      style={{ padding: '1px 5px', fontSize: '0.68rem', color: '#d946ef' }}
                                       onClick={() => {
                                         setThreatUserFilter(item.username);
                                         fetchThreatLogs(item.username);
@@ -12430,7 +12430,7 @@ async function verifyLicense(key, hwid) {
                                   ครั้งที่ {item.strikeCount}/3
                                 </span>
                                 {item.banned ? (
-                                  <span style={{ fontSize: '0.7rem', color: '#ff4d6d', fontWeight: 800 }}>
+                                  <span style={{ fontSize: '0.7rem', color: '#d946ef', fontWeight: 800 }}>
                                     ⛔ แบนแล้ว
                                   </span>
                                 ) : (
@@ -12447,7 +12447,7 @@ async function verifyLicense(key, hwid) {
                                     <button
                                       type="button"
                                       className="btn-outline"
-                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem', borderColor: 'rgba(255,26,64,0.4)', color: '#ff88a3' }}
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem', borderColor: 'rgba(168, 85, 247,0.4)', color: '#ff88a3' }}
                                       onClick={() => setViewingScreenshotModal(item)}
                                     >
                                       📷 ดูภาพแคป
@@ -12489,7 +12489,7 @@ async function verifyLicense(key, hwid) {
                             <td style={{ textAlign: 'center' }}>
                               {item.banned ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                                  <span style={{ fontSize: '0.72rem', background: 'rgba(255,26,64,0.15)', border: '1px solid rgba(255,26,64,0.35)', color: '#ff4d6d', padding: '3px 8px', borderRadius: '6px', fontWeight: 800 }}>
+                                  <span style={{ fontSize: '0.72rem', background: 'rgba(168, 85, 247,0.15)', border: '1px solid rgba(168, 85, 247,0.35)', color: '#d946ef', padding: '3px 8px', borderRadius: '6px', fontWeight: 800 }}>
                                     ⛔ แบน 10 ปี 9 ด. เรียบร้อย
                                   </span>
                                   {item.bannedUntil && (
@@ -12503,7 +12503,7 @@ async function verifyLicense(key, hwid) {
                                   <button
                                     type="button"
                                     className="btn-primary"
-                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', background: 'linear-gradient(135deg, #ff1a40, #b40a1e)', width: '100%', justifyContent: 'center' }}
+                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', background: 'linear-gradient(135deg, #a855f7, #b40a1e)', width: '100%', justifyContent: 'center' }}
                                     onClick={() => handleBanFromLog(item, 'both', 10)}
                                     title="สั่งแบนทั้ง IP และ เครื่อง ทันที 10 ปี 9 เดือน 9 วัน 9 ชม 9 นาที 9 วินาที"
                                   >
@@ -12513,7 +12513,7 @@ async function verifyLicense(key, hwid) {
                                     <button
                                       type="button"
                                       className="btn-outline"
-                                      style={{ padding: '0.25rem 0.4rem', fontSize: '0.68rem', flex: 1, borderColor: '#ff4d6d', color: '#ff88a3' }}
+                                      style={{ padding: '0.25rem 0.4rem', fontSize: '0.68rem', flex: 1, borderColor: '#d946ef', color: '#ff88a3' }}
                                       onClick={() => handleBanFromLog(item, 'ip', 10)}
                                       title="แบนเฉพาะ IP"
                                     >
@@ -12568,14 +12568,14 @@ async function verifyLicense(key, hwid) {
                     <input
                       type="password"
                       className="text-input"
-                      style={{ textAlign: 'center', fontSize: '1.2rem', letterSpacing: '4px', padding: '0.85rem', marginBottom: '1rem', background: 'rgba(0,0,0,0.6)', borderColor: passcodeError ? '#ff1a40' : 'rgba(255,170,0,0.4)' }}
+                      style={{ textAlign: 'center', fontSize: '1.2rem', letterSpacing: '4px', padding: '0.85rem', marginBottom: '1rem', background: 'rgba(0,0,0,0.6)', borderColor: passcodeError ? '#a855f7' : 'rgba(255,170,0,0.4)' }}
                       placeholder="กรอกรหัส Passcode..."
                       value={passcodeInput}
                       onChange={(e) => { setPasscodeInput(e.target.value); setPasscodeError(''); }}
                       autoFocus
                     />
                     {passcodeError && (
-                      <div style={{ color: '#ff4d6d', fontSize: '0.82rem', marginBottom: '1rem', fontWeight: 700 }}>
+                      <div style={{ color: '#d946ef', fontSize: '0.82rem', marginBottom: '1rem', fontWeight: 700 }}>
                         ⚠️ {passcodeError}
                       </div>
                     )}
@@ -12658,9 +12658,9 @@ async function verifyLicense(key, hwid) {
                                   borderRadius: '6px',
                                   fontSize: '0.72rem',
                                   fontWeight: 800,
-                                  background: b.banType === 'ip' ? 'rgba(255,26,64,0.15)' : (b.banType === 'device' ? 'rgba(0,210,255,0.15)' : 'rgba(255,170,0,0.15)'),
-                                  color: b.banType === 'ip' ? '#ff4d6d' : (b.banType === 'device' ? '#00d2ff' : '#ffaa00'),
-                                  border: `1px solid ${b.banType === 'ip' ? 'rgba(255,26,64,0.4)' : (b.banType === 'device' ? 'rgba(0,210,255,0.4)' : 'rgba(255,170,0,0.4)')}`
+                                  background: b.banType === 'ip' ? 'rgba(168, 85, 247,0.15)' : (b.banType === 'device' ? 'rgba(0,210,255,0.15)' : 'rgba(255,170,0,0.15)'),
+                                  color: b.banType === 'ip' ? '#d946ef' : (b.banType === 'device' ? '#00d2ff' : '#ffaa00'),
+                                  border: `1px solid ${b.banType === 'ip' ? 'rgba(168, 85, 247,0.4)' : (b.banType === 'device' ? 'rgba(0,210,255,0.4)' : 'rgba(255,170,0,0.4)')}`
                                 }}>
                                   {b.banType === 'ip' ? '🌐 IP BAN' : (b.banType === 'device' ? '📱 DEVICE BAN' : '👤 USER BAN')}
                                 </span>
@@ -12694,7 +12694,7 @@ async function verifyLicense(key, hwid) {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                   {b.bannedUntil ? (
                                     <>
-                                      <span style={{ fontSize: '0.82rem', color: '#ff4d6d', fontWeight: 800 }}>
+                                      <span style={{ fontSize: '0.82rem', color: '#d946ef', fontWeight: 800 }}>
                                         ⏳ {formatCountdownShort(b.bannedUntil)}
                                       </span>
                                       <span style={{ fontSize: '0.7rem', color: '#888' }}>
@@ -12781,7 +12781,7 @@ async function verifyLicense(key, hwid) {
                           letterSpacing: '4px',
                           padding: '0.9rem',
                           background: 'rgba(0,0,0,0.65)',
-                          borderColor: superAdminSecretError ? '#ff1a40' : 'rgba(255,215,0,0.5)',
+                          borderColor: superAdminSecretError ? '#a855f7' : 'rgba(255,215,0,0.5)',
                           color: '#ffd700',
                           fontWeight: 700
                         }}
@@ -12792,7 +12792,7 @@ async function verifyLicense(key, hwid) {
                       />
                     </div>
                     {superAdminSecretError && (
-                      <div style={{ color: '#ff4d6d', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 700 }}>
+                      <div style={{ color: '#d946ef', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 700 }}>
                         ⚠️ {superAdminSecretError}
                       </div>
                     )}
@@ -12845,7 +12845,7 @@ async function verifyLicense(key, hwid) {
                           <button
                             type="button"
                             className="btn-outline"
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: '#ff4d6d', color: '#ff4d6d' }}
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: '#d946ef', color: '#d946ef' }}
                             onClick={handleRelockSuperAdmin}
                           >
                             🔒 ล็อกกลับทันที
@@ -13085,8 +13085,8 @@ async function verifyLicense(key, hwid) {
             className="modal-content"
             style={{
               maxWidth: '520px',
-              border: '2px solid #ff1a40',
-              boxShadow: '0 0 50px rgba(255, 26, 64, 0.6), inset 0 0 20px rgba(255, 26, 64, 0.2)',
+              border: '2px solid #a855f7',
+              boxShadow: '0 0 50px rgba(168, 85, 247, 0.6), inset 0 0 20px rgba(168, 85, 247, 0.2)',
               animation: 'fadeIn 0.25s ease-out',
               textAlign: 'center'
             }}
@@ -13096,26 +13096,26 @@ async function verifyLicense(key, hwid) {
                 width: '72px',
                 height: '72px',
                 borderRadius: '50%',
-                background: 'rgba(255, 26, 64, 0.25)',
-                border: '2px solid #ff1a40',
+                background: 'rgba(168, 85, 247, 0.25)',
+                border: '2px solid #a855f7',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '1.5rem auto 1rem',
-                boxShadow: '0 0 30px rgba(255, 26, 64, 0.6)'
+                boxShadow: '0 0 30px rgba(168, 85, 247, 0.6)'
               }}
             >
-              <IconAlertCircle size={38} color="#ff1a40" />
+              <IconAlertCircle size={38} color="#a855f7" />
             </div>
 
-            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ff4d6d', letterSpacing: '2px', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#d946ef', letterSpacing: '2px', textTransform: 'uppercase' }}>
               SECURITY VIOLATION WARNING
             </div>
             <h2 style={{ color: '#ffffff', fontSize: '1.45rem', fontWeight: 900, margin: '0.35rem 0 1rem' }}>
               ⚠️ คำเตือนความปลอดภัยครั้งที่ {securityWarning.strikeCount} / 3
             </h2>
 
-            <div style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,26,64,0.3)', borderRadius: '12px', padding: '1rem', margin: '0 1.5rem 1.25rem', textAlign: 'left' }}>
+            <div style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(168, 85, 247,0.3)', borderRadius: '12px', padding: '1rem', margin: '0 1.5rem 1.25rem', textAlign: 'left' }}>
               <div style={{ fontSize: '0.78rem', color: '#ff88a3', fontWeight: 700, marginBottom: '0.25rem' }}>
                 พฤติกรรมที่ตรวจพบ:
               </div>
@@ -13136,7 +13136,7 @@ async function verifyLicense(key, hwid) {
               <button
                 type="button"
                 className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center', padding: '0.85rem 1.5rem', fontSize: '0.95rem', background: 'linear-gradient(135deg, #ff1a40, #b40a1e)' }}
+                style={{ width: '100%', justifyContent: 'center', padding: '0.85rem 1.5rem', fontSize: '0.95rem', background: 'linear-gradient(135deg, #a855f7, #b40a1e)' }}
                 onClick={() => setSecurityWarning(null)}
               >
                 รับทราบและเข้าใจแล้ว (เหลือโอกาสอีก {3 - securityWarning.strikeCount} ครั้ง)
@@ -13152,7 +13152,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '820px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconEye color="#ff4d6d" size={20} />
+                <IconEye color="#d946ef" size={20} />
                 <span>ภาพสกรีนช็อตหลักฐาน (Forensic Screenshot #{viewingScreenshotModal.id})</span>
               </div>
               <button className="btn-close-modal" onClick={() => setViewingScreenshotModal(null)}>
@@ -13171,7 +13171,7 @@ async function verifyLicense(key, hwid) {
                   💾 ดาวน์โหลดภาพ (.jpg)
                 </button>
               </div>
-              <div style={{ maxHeight: '520px', overflow: 'auto', border: '1px solid rgba(255,26,64,0.3)', borderRadius: '8px' }}>
+              <div style={{ maxHeight: '520px', overflow: 'auto', border: '1px solid rgba(168, 85, 247,0.3)', borderRadius: '8px' }}>
                 <img
                   src={viewingScreenshotModal.screenshot || ''}
                   alt="Security Screenshot"
@@ -13453,7 +13453,7 @@ async function verifyLicense(key, hwid) {
               </form>
 
               {/* List of Keys in Pool */}
-              <h4 style={{ fontSize: '0.95rem', color: '#ff4d6d', marginBottom: '0.75rem' }}>รายการคีย์ทั้งหมดในระบบ:</h4>
+              <h4 style={{ fontSize: '0.95rem', color: '#d946ef', marginBottom: '0.75rem' }}>รายการคีย์ทั้งหมดในระบบ:</h4>
               {productKeysList.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2rem', color: '#7a6368' }}>
                   ยังไม่มีคีย์ในสต็อก กรุณากรอกคีย์ด้านบนเพื่อเติมสินค้า
@@ -13517,7 +13517,7 @@ async function verifyLicense(key, hwid) {
             <div className="modal-rgb-inner">
               <div className="modal-header">
                 <div className="modal-title">
-                  <IconLock color="#ff1a40" size={20} />
+                  <IconLock color="#a855f7" size={20} />
                   <span>
                     {authTab === 'login' && 'เข้าสู่ระบบ'}
                     {authTab === 'register' && 'สมัครสมาชิกใหม่'}
@@ -13817,7 +13817,7 @@ async function verifyLicense(key, hwid) {
                     </div>
                   )}
                   <div className="profile-overview-card">
-                    <div className="profile-card-icon"><IconWallet size={24} color="#ff1a40" /></div>
+                    <div className="profile-card-icon"><IconWallet size={24} color="#a855f7" /></div>
                     <div className="profile-card-data">
                       <span className="profile-card-lbl">ยอดเงินคงเหลือปัจจุบัน</span>
                       <span className="profile-card-num">฿{user.balance?.toLocaleString()}</span>
@@ -14038,7 +14038,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconCart color="#ff1a40" size={22} />
+                <IconCart color="#a855f7" size={22} />
                 <span>ตะกร้าสินค้าของคุณ ({cart.length} รายการ)</span>
               </div>
               <button className="btn-close-modal" onClick={() => setShowCartModal(false)}>
@@ -14064,7 +14064,7 @@ async function verifyLicense(key, hwid) {
                         />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{item.product.name}</div>
-                          <div style={{ color: '#ff4d6d', fontSize: '0.85rem' }}>฿{item.product.price} / ชิ้น</div>
+                          <div style={{ color: '#d946ef', fontSize: '0.85rem' }}>฿{item.product.price} / ชิ้น</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div className="cart-qty-ctrl">
@@ -14086,7 +14086,7 @@ async function verifyLicense(key, hwid) {
 
                   {/* Coupon Input Box */}
                   <div className="coupon-box" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '0.85rem', marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '0.82rem', color: '#ff4d6d', fontWeight: 600, marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontSize: '0.82rem', color: '#d946ef', fontWeight: 600, marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <IconTag size={15} />
                       <span>โค้ดส่วนลด (Coupon Code)</span>
                     </div>
@@ -14152,7 +14152,7 @@ async function verifyLicense(key, hwid) {
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-subtle)' }}>
                       <span style={{ fontSize: '1rem', color: '#fff', fontWeight: 700 }}>ยอดชำระสุทธิ:</span>
-                      <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ff1a40' }}>
+                      <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#a855f7' }}>
                         ฿{Math.max(0, cartTotal - couponDiscount).toLocaleString()}
                       </span>
                     </div>
@@ -14193,7 +14193,7 @@ async function verifyLicense(key, hwid) {
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <div className="modal-title">
-                  <IconAlertCircle color="#ff1a40" size={24} />
+                  <IconAlertCircle color="#a855f7" size={24} />
                   <span>ยืนยันการสั่งซื้อ (ขั้นตอนยืนยัน 2 ชั้น)</span>
                 </div>
                 <button className="btn-close-modal" onClick={() => { setShowConfirm2Step(false); setShowDirectBuyConfirm(null); }}>
@@ -14210,13 +14210,13 @@ async function verifyLicense(key, hwid) {
                   {showDirectBuyConfirm ? (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <strong>{showDirectBuyConfirm.name} (x{directBuyQuantity})</strong>
-                      <span style={{ color: '#ff4d6d', fontWeight: 700 }}>฿{(showDirectBuyConfirm.price * directBuyQuantity).toLocaleString()}</span>
+                      <span style={{ color: '#d946ef', fontWeight: 700 }}>฿{(showDirectBuyConfirm.price * directBuyQuantity).toLocaleString()}</span>
                     </div>
                   ) : (
                     cart.map((i) => (
                       <div key={i.product.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                         <span>{i.product.name} (x{i.quantity})</span>
-                        <span style={{ color: '#ff4d6d' }}>฿{(i.product.price * i.quantity).toLocaleString()}</span>
+                        <span style={{ color: '#d946ef' }}>฿{(i.product.price * i.quantity).toLocaleString()}</span>
                       </div>
                     ))
                   )}
@@ -14230,7 +14230,7 @@ async function verifyLicense(key, hwid) {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
                     <strong>ยอดที่ต้องชำระสุทธิ:</strong>
-                    <strong style={{ color: '#ff1a40', fontSize: '1.2rem' }}>
+                    <strong style={{ color: '#a855f7', fontSize: '1.2rem' }}>
                       ฿{netToPay.toLocaleString()}
                     </strong>
                   </div>
@@ -14336,7 +14336,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <IconEdit color="#ff1a40" size={20} />
+                <IconEdit color="#a855f7" size={20} />
                 <span>ตั้งค่ารูปภาพพื้นหลัง & ข้อมูลเกม: {editingGameMeta.title}</span>
               </div>
               <button className="btn-close-modal" onClick={() => setEditingGameMeta(null)}>
@@ -14528,7 +14528,7 @@ async function verifyLicense(key, hwid) {
                   style={{
                     flex: 2,
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #ff1a40, #d90429)',
+                    background: 'linear-gradient(135deg, #a855f7, #7e22ce)',
                     opacity: isSaving ? 0.7 : 1,
                     cursor: isSaving ? 'not-allowed' : 'pointer'
                   }}
@@ -14668,7 +14668,7 @@ async function verifyLicense(key, hwid) {
                   type="button"
                   className="btn-primary"
                   disabled={!selectedPackageTier || selectedPackageTier.stock <= 0}
-                  style={{ flex: 2, justifyContent: 'center', padding: '12px', background: 'linear-gradient(135deg, #ff1a40, #d90429)', boxShadow: '0 4px 18px rgba(255, 26, 64, 0.45)' }}
+                  style={{ flex: 2, justifyContent: 'center', padding: '12px', background: 'linear-gradient(135deg, #a855f7, #7e22ce)', boxShadow: '0 4px 18px rgba(168, 85, 247, 0.45)' }}
                   onClick={() => {
                     if (!user) {
                       showToast('กรุณาเข้าสู่ระบบก่อนสั่งซื้อสินค้า');
@@ -14698,7 +14698,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content detail-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconSparkles color="#ff1a40" size={20} />
+                <IconSparkles color="#a855f7" size={20} />
                 <span>รายละเอียดสินค้า</span>
               </div>
               <button className="btn-close-modal" onClick={() => setSelectedProductDetail(null)}>
@@ -14778,7 +14778,7 @@ async function verifyLicense(key, hwid) {
                   {/* Trust guarantees */}
                   <div className="detail-trust-grid">
                     <div className="detail-trust-item">
-                      <IconZap size={14} color="#ff1a40" />
+                      <IconZap size={14} color="#a855f7" />
                       <span>ส่งคีย์ออโต้ 3 วิ</span>
                     </div>
                     <div className="detail-trust-item">
@@ -14796,7 +14796,7 @@ async function verifyLicense(key, hwid) {
               {/* Full Description Box */}
               <div className="detail-desc-card">
                 <div className="detail-desc-title">
-                  <IconFileText size={16} color="#ff4d6d" />
+                  <IconFileText size={16} color="#d946ef" />
                   <span>ข้อมูลรายละเอียดสินค้า</span>
                 </div>
                 <div className="detail-desc-body">
@@ -14808,7 +14808,7 @@ async function verifyLicense(key, hwid) {
               <div className="detail-qty-row">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600 }}>จำนวนที่ต้องการ:</span>
-                  <span style={{ fontSize: '0.78rem', color: '#ff4d6d' }}>
+                  <span style={{ fontSize: '0.78rem', color: '#d946ef' }}>
                     ราคารวม: ฿{(selectedProductDetail.price * detailQty).toLocaleString()} บาท
                   </span>
                 </div>
@@ -14974,16 +14974,16 @@ async function verifyLicense(key, hwid) {
                         marginTop: '8px',
                         padding: '8px 12px',
                         borderRadius: '8px',
-                        background: 'rgba(255, 26, 64, 0.15)',
-                        border: '1px solid rgba(255, 26, 64, 0.4)',
-                        color: '#ff4d6d',
+                        background: 'rgba(168, 85, 247, 0.15)',
+                        border: '1px solid rgba(168, 85, 247, 0.4)',
+                        color: '#d946ef',
                         fontSize: '0.84rem',
                         fontWeight: 700,
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px'
                       }}>
-                        <IconAlertTriangle size={18} color="#ff4d6d" />
+                        <IconAlertTriangle size={18} color="#d946ef" />
                         <span>⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)</span>
                       </div>
                     )}
@@ -15136,7 +15136,7 @@ async function verifyLicense(key, hwid) {
                   {/* Step 3: Slip Upload & Submission */}
                   <form onSubmit={handleBankSlipSubmit}>
                     <div className="input-field-group">
-                      <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700 }}>
+                      <label className="input-label" style={{ color: '#d946ef', fontWeight: 700 }}>
                         2. แนบรูปสลิปหลักฐานการโอนเงิน (Slip Verification & ป้องกันสลิปซ้ำ)
                       </label>
 
@@ -15193,7 +15193,7 @@ async function verifyLicense(key, hwid) {
                           </div>
                         ) : (
                           <label className="slip-drop-zone">
-                            <IconUpload size={28} color="#ff1a40" />
+                            <IconUpload size={28} color="#a855f7" />
                             <span style={{ fontWeight: 600, color: '#fff', marginTop: '4px', fontSize: '0.88rem' }}>
                               คลิกเพื่อเลือกไฟล์รูปภาพสลิป
                             </span>
@@ -15257,7 +15257,7 @@ async function verifyLicense(key, hwid) {
                       />
                     </div>
 
-                    <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #ff5500, #cc2200)' }}>
+                    <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #8b5cf6, #cc2200)' }}>
                       ตรวจสอบและเติมเงินเข้าบัญชีทันที
                     </button>
                   </form>
@@ -15267,8 +15267,8 @@ async function verifyLicense(key, hwid) {
               {/* TAB 3: REDEEM GIFT CODE */}
               {topupTab === 'giftcode' && (
                 <div>
-                  <div style={{ background: 'rgba(255, 26, 64, 0.08)', border: '1px solid rgba(255, 26, 64, 0.25)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
-                    <div style={{ fontSize: '0.9rem', color: '#ff4d6d', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
+                    <div style={{ fontSize: '0.9rem', color: '#d946ef', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <IconGift size={18} />
                       <span>แลกรับโค้ดแจกเครดิตฟรี (Gift Code)</span>
                     </div>
@@ -15295,7 +15295,7 @@ async function verifyLicense(key, hwid) {
                       type="submit"
                       disabled={redeemingCode || !giftCodeInput.trim()}
                       className="btn-primary"
-                      style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #ff1a40, #ff4d6d)' }}
+                      style={{ width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #a855f7, #d946ef)' }}
                     >
                       <IconSparkles size={16} />
                       <span>{redeemingCode ? 'กำลังตรวจสอบโค้ด...' : 'แลกรับเครดิตเข้ากระเป๋าทันที'}</span>
@@ -15372,7 +15372,7 @@ async function verifyLicense(key, hwid) {
                             {item.type === 'promptpay' && <IconQrCode size={18} color="#00e676" />}
                             {item.type === 'slip' && <IconCreditCard size={18} color="#00d2ff" />}
                             {item.type === 'angpao' && <IconGift size={18} color="#ffb703" />}
-                            {item.type === 'giftcode' && <IconTag size={18} color="#ff4d6d" />}
+                            {item.type === 'giftcode' && <IconTag size={18} color="#d946ef" />}
                           </div>
                           <div>
                             <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>
@@ -15408,7 +15408,7 @@ async function verifyLicense(key, hwid) {
                               </span>
                             )}
                             {(item.status === 'expired' || item.status === 'cancelled') && (
-                              <span style={{ background: 'rgba(255, 77, 109, 0.12)', color: '#ff4d6d', border: '1px solid rgba(255, 77, 109, 0.3)', padding: '1px 7px', borderRadius: '10px', fontSize: '0.68rem', fontWeight: 700 }}>
+                              <span style={{ background: 'rgba(255, 77, 109, 0.12)', color: '#d946ef', border: '1px solid rgba(255, 77, 109, 0.3)', padding: '1px 7px', borderRadius: '10px', fontSize: '0.68rem', fontWeight: 700 }}>
                                 {item.statusLabel || 'หมดอายุ'}
                               </span>
                             )}
@@ -15605,7 +15605,7 @@ async function verifyLicense(key, hwid) {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: qrCountdown <= 300 ? '#ff4d6d' : '#00e676' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: qrCountdown <= 300 ? '#d946ef' : '#00e676' }}>
                       <IconClock size={18} />
                       <span>{qrCountdown === 0 ? 'หมดเวลาการชำระเงิน' : 'กรุณาชำระเงินภายใน:'}</span>
                     </div>
@@ -15613,7 +15613,7 @@ async function verifyLicense(key, hwid) {
                       fontFamily: 'monospace',
                       fontSize: '1.2rem',
                       fontWeight: 900,
-                      color: qrCountdown <= 300 ? '#ff1a40' : '#00e676',
+                      color: qrCountdown <= 300 ? '#a855f7' : '#00e676',
                       letterSpacing: '1px'
                     }}>
                       {Math.floor(qrCountdown / 60).toString().padStart(2, '0')}:{(qrCountdown % 60).toString().padStart(2, '0')} นาที
@@ -15633,7 +15633,7 @@ async function verifyLicense(key, hwid) {
                     <div style={{
                       width: `${Math.max(0, Math.min(100, (qrCountdown / 1800) * 100))}%`,
                       height: '100%',
-                      background: qrCountdown <= 300 ? 'linear-gradient(90deg, #ff1a40, #ff4d6d)' : 'linear-gradient(90deg, #00e676, #00b0ff)',
+                      background: qrCountdown <= 300 ? 'linear-gradient(90deg, #a855f7, #d946ef)' : 'linear-gradient(90deg, #00e676, #00b0ff)',
                       transition: 'width 1s linear'
                     }} />
                   </div>
@@ -15973,7 +15973,7 @@ async function verifyLicense(key, hwid) {
                       style={{
                         width: '100%',
                         justifyContent: 'center',
-                        background: 'linear-gradient(135deg, #ff1a40, #ff4d6d)',
+                        background: 'linear-gradient(135deg, #a855f7, #d946ef)',
                         fontSize: '1rem',
                         fontWeight: 700,
                         padding: '0.85rem',
@@ -16006,8 +16006,8 @@ async function verifyLicense(key, hwid) {
             className="modal-content"
             style={{
               maxWidth: '540px',
-              border: '1.5px solid rgba(255, 26, 64, 0.45)',
-              boxShadow: '0 0 50px rgba(255, 26, 64, 0.35), 0 25px 60px rgba(0, 0, 0, 0.9)',
+              border: '1.5px solid rgba(168, 85, 247, 0.45)',
+              boxShadow: '0 0 50px rgba(168, 85, 247, 0.35), 0 25px 60px rgba(0, 0, 0, 0.9)',
               background: 'linear-gradient(160deg, #13060a 0%, #0c0407 100%)',
               borderRadius: '18px',
               padding: '1.75rem',
@@ -16021,26 +16021,26 @@ async function verifyLicense(key, hwid) {
               width: '72px',
               height: '72px',
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255, 26, 64, 0.25) 0%, rgba(255, 26, 64, 0.05) 70%)',
-              border: '2px solid #ff1a40',
+              background: 'radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, rgba(168, 85, 247, 0.05) 70%)',
+              border: '2px solid #a855f7',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 1rem',
-              boxShadow: '0 0 30px rgba(255, 26, 64, 0.5)'
+              boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)'
             }}>
-              <IconShield size={38} color="#ff1a40" />
+              <IconShield size={38} color="#a855f7" />
             </div>
 
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'rgba(255, 26, 64, 0.12)',
-              border: '1px solid rgba(255, 26, 64, 0.35)',
+              background: 'rgba(168, 85, 247, 0.12)',
+              border: '1px solid rgba(168, 85, 247, 0.35)',
               borderRadius: '20px',
               padding: '3px 12px',
-              color: '#ff4d6d',
+              color: '#d946ef',
               fontSize: '0.74rem',
               fontWeight: 800,
               letterSpacing: '1px',
@@ -16057,7 +16057,7 @@ async function verifyLicense(key, hwid) {
               marginBottom: '0.35rem',
               letterSpacing: '0.5px'
             }}>
-              ป้องกันโดย <span style={{ color: '#ff1a40', textShadow: '0 0 15px rgba(255, 26, 64, 0.6)' }}>HexSyncTH Security MAX</span>
+              ป้องกันโดย <span style={{ color: '#a855f7', textShadow: '0 0 15px rgba(168, 85, 247, 0.6)' }}>HexSyncTH Security MAX</span>
             </h2>
 
             <p style={{
@@ -16088,7 +16088,7 @@ async function verifyLicense(key, hwid) {
                 borderRadius: '10px',
                 padding: '0.75rem 0.9rem'
               }}>
-                <div style={{ background: 'rgba(255, 26, 64, 0.2)', padding: '5px', borderRadius: '7px', color: '#ff1a40', marginTop: '2px', display: 'flex' }}>
+                <div style={{ background: 'rgba(168, 85, 247, 0.2)', padding: '5px', borderRadius: '7px', color: '#a855f7', marginTop: '2px', display: 'flex' }}>
                   <IconShield size={16} />
                 </div>
                 <div>
@@ -16169,13 +16169,13 @@ async function verifyLicense(key, hwid) {
                 style={{
                   width: '100%',
                   justifyContent: 'center',
-                  background: 'linear-gradient(135deg, #ff1a40, #b3001e)',
+                  background: 'linear-gradient(135deg, #a855f7, #6b21a8)',
                   color: '#fff',
                   fontSize: '1rem',
                   fontWeight: 800,
                   padding: '0.95rem 1.25rem',
                   borderRadius: '12px',
-                  boxShadow: '0 4px 25px rgba(255, 26, 64, 0.45)',
+                  boxShadow: '0 4px 25px rgba(168, 85, 247, 0.45)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -16207,7 +16207,7 @@ async function verifyLicense(key, hwid) {
                     gap: '8px'
                   }}
                 >
-                  <IconUser size={16} color="#ff4d6d" />
+                  <IconUser size={16} color="#d946ef" />
                   <span>ฉันเข้าใจและยอมรับ (ไปหน้าเข้าสู่ระบบ / Login)</span>
                 </button>
               )}
@@ -16224,7 +16224,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '560px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconEdit color="#ff1a40" size={20} />
+                <IconEdit color="#a855f7" size={20} />
                 <span>แก้ไขสินค้า รูปภาพ & ลิงก์ดาวน์โหลด</span>
               </div>
               <button className="btn-close-modal" onClick={() => setEditingProduct(null)}>
@@ -16236,7 +16236,7 @@ async function verifyLicense(key, hwid) {
               <form onSubmit={handleSaveProductEdit}>
                 {/* Product Image Preview & Customizer */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
-                  <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700 }}>
+                  <label className="input-label" style={{ color: '#d946ef', fontWeight: 700 }}>
                     🖼️ รูปภาพสินค้า (Product Image)
                   </label>
 
@@ -16244,7 +16244,7 @@ async function verifyLicense(key, hwid) {
                     <img
                       src={editingProduct.image}
                       alt="Preview"
-                      style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, border: '1px solid #ff1a40' }}
+                      style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, border: '1px solid #a855f7' }}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
                       }}
@@ -16325,7 +16325,7 @@ async function verifyLicense(key, hwid) {
                       type="checkbox"
                       checked={Boolean(editingProduct.isFeatured)}
                       onChange={(e) => setEditingProduct({ ...editingProduct, isFeatured: e.target.checked })}
-                      style={{ width: 18, height: 18, accentColor: '#ff1a40' }}
+                      style={{ width: 18, height: 18, accentColor: '#a855f7' }}
                     />
                     <span>⭐ แสดงเป็นสินค้าแนะนำที่หน้าหลัก (Featured Product)</span>
                   </label>
@@ -16586,8 +16586,8 @@ async function verifyLicense(key, hwid) {
       {/* CONFIRM DELETE PRODUCT MODAL */}
       {productToDelete && (
         <div className="modal-overlay" onClick={() => !isDeletingProduct && setProductToDelete(null)} style={{ zIndex: 1200 }}>
-          <div className="modal-content" style={{ maxWidth: '450px', border: '1px solid rgba(255, 26, 64, 0.4)' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header" style={{ borderBottom: '1px solid rgba(255, 26, 64, 0.2)' }}>
+          <div className="modal-content" style={{ maxWidth: '450px', border: '1px solid rgba(168, 85, 247, 0.4)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ borderBottom: '1px solid rgba(168, 85, 247, 0.2)' }}>
               <div className="modal-title" style={{ color: '#ff3333' }}>
                 <IconTrash size={20} color="#ff3333" />
                 <span>ยืนยันการลบสินค้า</span>
@@ -16602,7 +16602,7 @@ async function verifyLicense(key, hwid) {
             </div>
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', padding: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255, 26, 64, 0.08)', border: '1px solid rgba(255, 26, 64, 0.2)', borderRadius: '12px', padding: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '12px', padding: '0.85rem' }}>
                 <img
                   src={productToDelete.image}
                   alt=""
@@ -16613,7 +16613,7 @@ async function verifyLicense(key, hwid) {
                 />
                 <div style={{ textAlign: 'left', flex: 1, overflow: 'hidden' }}>
                   <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.98rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{productToDelete.name}</div>
-                  <div style={{ color: '#ff4d6d', fontWeight: 700, fontSize: '0.9rem', marginTop: 2 }}>฿{productToDelete.price}</div>
+                  <div style={{ color: '#d946ef', fontWeight: 700, fontSize: '0.9rem', marginTop: 2 }}>฿{productToDelete.price}</div>
                   <div style={{ fontSize: '0.78rem', color: '#b89ca2', marginTop: 2 }}>สต็อกคีย์คงเหลือ: {productToDelete.stock} คีย์</div>
                 </div>
               </div>
@@ -16641,9 +16641,9 @@ async function verifyLicense(key, hwid) {
                   style={{
                     flex: 1.4,
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #ff1a40, #b3001e)',
-                    borderColor: '#ff1a40',
-                    boxShadow: '0 4px 15px rgba(255, 26, 64, 0.4)',
+                    background: 'linear-gradient(135deg, #a855f7, #6b21a8)',
+                    borderColor: '#a855f7',
+                    boxShadow: '0 4px 15px rgba(168, 85, 247, 0.4)',
                     gap: '0.4rem'
                   }}
                   disabled={isDeletingProduct}
@@ -16923,7 +16923,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '560px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconPlusCircle color="#ff1a40" size={20} />
+                <IconPlusCircle color="#a855f7" size={20} />
                 <span>เพิ่มสินค้าใหม่เข้าร้าน</span>
               </div>
               <button className="btn-close-modal" onClick={() => setShowAddProductModal(false)}>
@@ -16973,7 +16973,7 @@ async function verifyLicense(key, hwid) {
               >
                 {/* Image Section */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '0.85rem 1rem', marginBottom: '1.25rem' }}>
-                  <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700 }}>
+                  <label className="input-label" style={{ color: '#d946ef', fontWeight: 700 }}>
                     🖼️ รูปภาพสินค้า
                   </label>
                   <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', margin: '0.4rem 0' }}>
@@ -17032,7 +17032,7 @@ async function verifyLicense(key, hwid) {
                     <input
                       name="isFeatured"
                       type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: '#ff1a40' }}
+                      style={{ width: 18, height: 18, accentColor: '#a855f7' }}
                     />
                     <span>⭐ แสดงเป็นสินค้าแนะนำที่หน้าหลัก (Featured Product)</span>
                   </label>
@@ -17178,7 +17178,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '560px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconGamepad color="#ff1a40" size={20} />
+                <IconGamepad color="#a855f7" size={20} />
                 <span>เพิ่มหมวดหมู่เกมใหม่</span>
               </div>
               <button className="btn-close-modal" onClick={() => setShowAddCategoryModal(false)}>
@@ -17221,7 +17221,7 @@ async function verifyLicense(key, hwid) {
               >
                 {/* Banner Section */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '0.85rem 1rem', marginBottom: '1.25rem' }}>
-                  <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700 }}>
+                  <label className="input-label" style={{ color: '#d946ef', fontWeight: 700 }}>
                     🖼️ รูปแบนเนอร์หมวดหมู่ (Banner Image)
                   </label>
                   <div style={{ margin: '0.5rem 0' }}>
@@ -17294,7 +17294,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '560px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconEdit color="#ff1a40" size={20} />
+                <IconEdit color="#a855f7" size={20} />
                 <span>แก้ไขหมวดหมู่เกม: {editingCategory.name}</span>
               </div>
               <button className="btn-close-modal" onClick={() => setEditingCategory(null)}>
@@ -17327,7 +17327,7 @@ async function verifyLicense(key, hwid) {
               >
                 {/* Banner Section */}
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '0.85rem 1rem', marginBottom: '1.25rem' }}>
-                  <label className="input-label" style={{ color: '#ff4d6d', fontWeight: 700 }}>
+                  <label className="input-label" style={{ color: '#d946ef', fontWeight: 700 }}>
                     🖼️ รูปแบนเนอร์หมวดหมู่ (Banner Image)
                   </label>
                   <div style={{ margin: '0.5rem 0' }}>
@@ -17422,7 +17422,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '780px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconHistory color="#ff1a40" size={20} />
+                <IconHistory color="#a855f7" size={20} />
                 <span>ประวัติการซื้อของสมาชิก: <strong style={{ color: '#fff' }}>{viewingUserPurchases.username}</strong></span>
               </div>
               <button className="btn-close-modal" onClick={() => setViewingUserPurchases(null)}>
@@ -17462,11 +17462,11 @@ async function verifyLicense(key, hwid) {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.72rem', color: '#888' }}>จำนวนครั้งที่ซื้อ</div>
-                  <div style={{ fontWeight: 700, color: '#ff4d6d' }}>{userPurchasesList.length} รายการ</div>
+                  <div style={{ fontWeight: 700, color: '#d946ef' }}>{userPurchasesList.length} รายการ</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.72rem', color: '#888' }}>ยอดสั่งซื้อรวม</div>
-                  <div style={{ fontWeight: 700, color: '#ff1a40', fontSize: '1.05rem' }}>
+                  <div style={{ fontWeight: 700, color: '#a855f7', fontSize: '1.05rem' }}>
                     ฿{userPurchasesList.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}
                   </div>
                 </div>
@@ -17518,7 +17518,7 @@ async function verifyLicense(key, hwid) {
                             วันที่ซื้อ: {new Date(rec.purchaseDate).toLocaleString('th-TH')}
                           </span>
                         </div>
-                        <span style={{ color: '#ff4d6d', fontWeight: 800, fontSize: '1.1rem' }}>
+                        <span style={{ color: '#d946ef', fontWeight: 800, fontSize: '1.1rem' }}>
                           ฿{rec.price?.toLocaleString()}
                         </span>
                       </div>
@@ -17583,7 +17583,7 @@ async function verifyLicense(key, hwid) {
           <div className="modal-content" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">
-                <IconEdit color="#ff1a40" size={20} />
+                <IconEdit color="#a855f7" size={20} />
                 <span>แก้ไขข้อมูลสมาชิก #{editingUserModal.id}</span>
               </div>
               <button className="btn-close-modal" onClick={() => setEditingUserModal(null)}>
@@ -17594,12 +17594,12 @@ async function verifyLicense(key, hwid) {
             <div className="modal-body">
               <form onSubmit={handleSaveUserEdit}>
                 {/* IP & Status Info Box */}
-                <div style={{ background: 'rgba(255, 26, 64, 0.05)', border: '1px solid rgba(255, 26, 64, 0.25)', borderRadius: '10px', padding: '0.85rem', marginBottom: '1.25rem' }}>
+                <div style={{ background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: '10px', padding: '0.85rem', marginBottom: '1.25rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                     <div>
                       <span style={{ fontSize: '0.75rem', color: '#b89ca2', display: 'block' }}>IP ล่าสุดที่เข้าสู่ระบบ:</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                        <span className="ip-badge" style={{ color: '#ff4d6d', fontWeight: 700 }}>
+                        <span className="ip-badge" style={{ color: '#d946ef', fontWeight: 700 }}>
                           {editingUserModal.lastIp || '127.0.0.1'}
                         </span>
                         {editingUserModal.lastIp && (
@@ -17646,7 +17646,7 @@ async function verifyLicense(key, hwid) {
                     <button
                       type="button"
                       className="btn-ip-action"
-                      style={{ color: '#ff1a40', background: 'rgba(255,26,64,0.15)', borderColor: 'rgba(255,26,64,0.4)', padding: '0.3rem 0.65rem' }}
+                      style={{ color: '#a855f7', background: 'rgba(168, 85, 247,0.15)', borderColor: 'rgba(168, 85, 247,0.4)', padding: '0.3rem 0.65rem' }}
                       onClick={() => handleBanUserIpDirect(editingUserModal)}
                     >
                       🛡️ สั่งแบน IP นี้
@@ -17781,8 +17781,8 @@ async function verifyLicense(key, hwid) {
               {/* Nuclear Action Banner: Ban All Devices */}
               <div
                 style={{
-                  background: 'linear-gradient(135deg, rgba(255, 26, 64, 0.15), rgba(150, 0, 30, 0.25))',
-                  border: '2px solid rgba(255, 26, 64, 0.5)',
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(150, 0, 30, 0.25))',
+                  border: '2px solid rgba(168, 85, 247, 0.5)',
                   borderRadius: '14px',
                   padding: '1.1rem 1.25rem',
                   marginBottom: '1.25rem',
@@ -17791,7 +17791,7 @@ async function verifyLicense(key, hwid) {
                   alignItems: 'center',
                   flexWrap: 'wrap',
                   gap: '1rem',
-                  boxShadow: '0 0 25px rgba(255, 26, 64, 0.2)'
+                  boxShadow: '0 0 25px rgba(168, 85, 247, 0.2)'
                 }}
               >
                 <div>
@@ -17803,11 +17803,11 @@ async function verifyLicense(key, hwid) {
                     <span style={{
                       fontSize: '0.75rem',
                       fontWeight: 800,
-                      background: 'rgba(255, 26, 64, 0.25)',
-                      border: '1px solid #ff1a40',
+                      background: 'rgba(168, 85, 247, 0.25)',
+                      border: '1px solid #a855f7',
                       padding: '2px 8px',
                       borderRadius: '999px',
-                      color: '#ff758f'
+                      color: '#e879f9'
                     }}>
                       พบ {viewingUserDevice.devicesList?.length || 1} เครื่อง
                     </span>
@@ -17864,7 +17864,7 @@ async function verifyLicense(key, hwid) {
                           key={dev.id || idx}
                           style={{
                             background: isDevBanned ? 'rgba(40, 10, 16, 0.85)' : 'rgba(25, 7, 14, 0.75)',
-                            border: isDevBanned ? '1.5px solid #ff1a40' : '1px solid rgba(0, 210, 255, 0.3)',
+                            border: isDevBanned ? '1.5px solid #a855f7' : '1px solid rgba(0, 210, 255, 0.3)',
                             borderRadius: '14px',
                             padding: '1.15rem',
                             position: 'relative'
@@ -17877,7 +17877,7 @@ async function verifyLicense(key, hwid) {
                                 {dev.deviceType === 'mobile' ? '📱' : dev.deviceType === 'tablet' ? '📟' : '💻'}
                               </span>
                               <div>
-                                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: isDevBanned ? '#ff4d6d' : '#00d2ff' }}>
+                                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: isDevBanned ? '#d946ef' : '#00d2ff' }}>
                                   #{idx + 1} {dev.deviceModel || 'Unknown Device'}
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: '#b89ca2' }}>
@@ -17889,9 +17889,9 @@ async function verifyLicense(key, hwid) {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               {isDevBanned ? (
                                 <span style={{
-                                  background: 'rgba(255, 26, 64, 0.25)',
-                                  border: '1px solid #ff1a40',
-                                  color: '#ff4d6d',
+                                  background: 'rgba(168, 85, 247, 0.25)',
+                                  border: '1px solid #a855f7',
+                                  color: '#d946ef',
                                   padding: '3px 10px',
                                   borderRadius: '6px',
                                   fontSize: '0.75rem',
@@ -17904,9 +17904,9 @@ async function verifyLicense(key, hwid) {
                                   type="button"
                                   onClick={() => handleBanDevice(dev.deviceId, dev.deviceModel || 'Unknown', `แบนอุปกรณ์ของ @${viewingUserDevice.user.username}`)}
                                   style={{
-                                    background: 'rgba(255, 26, 64, 0.15)',
-                                    border: '1px solid #ff1a40',
-                                    color: '#ff4d6d',
+                                    background: 'rgba(168, 85, 247, 0.15)',
+                                    border: '1px solid #a855f7',
+                                    color: '#d946ef',
                                     padding: '4px 10px',
                                     borderRadius: '6px',
                                     fontSize: '0.75rem',
@@ -17938,11 +17938,11 @@ async function verifyLicense(key, hwid) {
                             )}
                             <div>
                               <span style={{ fontSize: '0.7rem', color: '#888', display: 'block' }}>IP ล่าสุด:</span>
-                              <span className="ip-badge" style={{ color: '#ff4d6d', fontSize: '0.78rem' }}>
+                              <span className="ip-badge" style={{ color: '#d946ef', fontSize: '0.78rem' }}>
                                 {dev.lastIp || '127.0.0.1'}
                               </span>
                               {dev.isVpn && (
-                                <span style={{ marginLeft: '4px', fontSize: '0.68rem', background: '#ff1a40', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>
+                                <span style={{ marginLeft: '4px', fontSize: '0.68rem', background: '#a855f7', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>
                                   VPN/Proxy
                                 </span>
                               )}
@@ -17978,9 +17978,9 @@ async function verifyLicense(key, hwid) {
                           if (did) handleBanDevice(did, viewingUserDevice.info?.model || 'Unknown', `แบนอุปกรณ์ของ @${viewingUserDevice.user.username}`);
                         }}
                         style={{
-                          background: 'rgba(255, 26, 64, 0.15)',
-                          border: '1px solid #ff1a40',
-                          color: '#ff4d6d',
+                          background: 'rgba(168, 85, 247, 0.15)',
+                          border: '1px solid #a855f7',
+                          color: '#d946ef',
                           padding: '4px 12px',
                           borderRadius: '6px',
                           fontSize: '0.78rem',
@@ -17995,7 +17995,7 @@ async function verifyLicense(key, hwid) {
                       Device ID: <code style={{ color: '#00e676', fontFamily: 'monospace' }}>{viewingUserDevice.info?.deviceId || viewingUserDevice.user.deviceFingerprint || 'N/A'}</code>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '4px' }}>
-                      IP ล่าสุด: <strong style={{ color: '#ff4d6d' }}>{viewingUserDevice.user.lastIp || '127.0.0.1'}</strong>
+                      IP ล่าสุด: <strong style={{ color: '#d946ef' }}>{viewingUserDevice.user.lastIp || '127.0.0.1'}</strong>
                     </div>
                   </div>
                 )}
@@ -18107,7 +18107,7 @@ async function verifyLicense(key, hwid) {
                     </div>
                     <div style={{ background: 'rgba(0,0,0,0.45)', padding: '0.85rem 1rem', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <span style={{ fontSize: '0.74rem', color: '#888', display: 'block', marginBottom: '2px' }}>🌐 หมายเลข IP ล่าสุด:</span>
-                      <span style={{ fontSize: '0.95rem', color: '#ff4d6d', fontWeight: 800 }}>
+                      <span style={{ fontSize: '0.95rem', color: '#d946ef', fontWeight: 800 }}>
                         {lastIp}
                       </span>
                     </div>
@@ -18189,8 +18189,8 @@ async function verifyLicense(key, hwid) {
               maxWidth: '520px',
               width: '92%',
               background: 'linear-gradient(180deg, #18080f 0%, #0d0306 100%)',
-              border: '1.5px solid rgba(255, 26, 64, 0.55)',
-              boxShadow: '0 0 60px rgba(255, 26, 64, 0.35), 0 25px 60px rgba(0, 0, 0, 0.9)',
+              border: '1.5px solid rgba(168, 85, 247, 0.55)',
+              boxShadow: '0 0 60px rgba(168, 85, 247, 0.35), 0 25px 60px rgba(0, 0, 0, 0.9)',
               borderRadius: '24px',
               padding: '2.25rem 1.75rem',
               textAlign: 'center',
@@ -18210,7 +18210,7 @@ async function verifyLicense(key, hwid) {
                 transform: 'translateX(-50%)',
                 width: '320px',
                 height: '240px',
-                background: 'radial-gradient(circle, rgba(255, 26, 64, 0.28) 0%, transparent 70%)',
+                background: 'radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, transparent 70%)',
                 pointerEvents: 'none',
                 zIndex: 0
               }}
@@ -18238,7 +18238,7 @@ async function verifyLicense(key, hwid) {
                 transition: 'all 0.2s ease',
                 zIndex: 2
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255, 26, 64, 0.3)'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(168, 85, 247, 0.3)'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.08)'; (e.currentTarget as HTMLElement).style.color = '#aaa'; }}
             >
               ✕
@@ -18260,7 +18260,7 @@ async function verifyLicense(key, hwid) {
                   position: 'absolute',
                   inset: '-5px',
                   borderRadius: '50%',
-                  background: 'conic-gradient(from 0deg, #ff1a40, #ff0077, #f09433, #00d2ff, #ff1a40)',
+                  background: 'conic-gradient(from 0deg, #a855f7, #ff0077, #f09433, #00d2ff, #a855f7)',
                   animation: 'avatarSpinAura 6s linear infinite',
                   opacity: 0.85,
                   filter: 'blur(2px)'
@@ -18278,7 +18278,7 @@ async function verifyLicense(key, hwid) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 0 30px rgba(255, 26, 64, 0.5)',
+                  boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)',
                   animation: 'avatarFloatBounce 3s ease-in-out infinite'
                 }}
               >
@@ -18290,7 +18290,7 @@ async function verifyLicense(key, hwid) {
                     height: '100%',
                     borderRadius: '50%',
                     objectFit: 'contain',
-                    background: 'rgba(255, 26, 64, 0.1)'
+                    background: 'rgba(168, 85, 247, 0.1)'
                   }}
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
@@ -18330,19 +18330,19 @@ async function verifyLicense(key, hwid) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: 'rgba(255, 26, 64, 0.15)',
-                  border: '1px solid rgba(255, 26, 64, 0.4)',
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  border: '1px solid rgba(168, 85, 247, 0.4)',
                   padding: '0.3rem 0.9rem',
                   borderRadius: '20px',
                   fontSize: '0.78rem',
                   fontWeight: 800,
-                  color: '#ff4d6d',
+                  color: '#d946ef',
                   letterSpacing: '1px',
                   textTransform: 'uppercase',
                   marginBottom: '0.65rem'
                 }}
               >
-                <IconSparkles size={14} color="#ff4d6d" />
+                <IconSparkles size={14} color="#d946ef" />
                 <span>PROJECT CREATOR & LEAD DEV</span>
               </div>
 
@@ -18372,7 +18372,7 @@ async function verifyLicense(key, hwid) {
                 }}
               >
                 <span style={{ color: '#b89ca2', fontSize: '0.9rem' }}>Instagram (IG):</span>
-                <span style={{ color: '#ff4d6d', fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.5px' }}>
+                <span style={{ color: '#d946ef', fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.5px' }}>
                   mmnnxx._nx
                 </span>
               </div>
@@ -18425,7 +18425,7 @@ async function verifyLicense(key, hwid) {
                   borderTop: '1px solid rgba(255, 255, 255, 0.08)'
                 }}
               >
-                <span style={{ fontSize: '0.74rem', background: 'rgba(255,26,64,0.12)', border: '1px solid rgba(255,26,64,0.3)', color: '#ff88a3', padding: '3px 9px', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.74rem', background: 'rgba(168, 85, 247,0.12)', border: '1px solid rgba(168, 85, 247,0.3)', color: '#ff88a3', padding: '3px 9px', borderRadius: '12px' }}>
                   ⚡ Full-Stack Architect
                 </span>
                 <span style={{ fontSize: '0.74rem', background: 'rgba(0,210,255,0.1)', border: '1px solid rgba(0,210,255,0.3)', color: '#00d2ff', padding: '3px 9px', borderRadius: '12px' }}>
@@ -18454,7 +18454,7 @@ async function verifyLicense(key, hwid) {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#ff4d6d',
+                    color: '#d946ef',
                     cursor: 'pointer',
                     fontSize: '0.82rem',
                     fontWeight: 700,
@@ -18581,7 +18581,7 @@ async function verifyLicense(key, hwid) {
 
             <form onSubmit={handleSecretAdminLogin}>
               <div className="input-field-group" style={{ marginBottom: '1rem' }}>
-                <label className="input-label" style={{ color: '#ff758f', fontSize: '0.85rem' }}>
+                <label className="input-label" style={{ color: '#e879f9', fontSize: '0.85rem' }}>
                   ชื่อผู้ใช้ (Admin Username)
                 </label>
                 <input
@@ -18596,7 +18596,7 @@ async function verifyLicense(key, hwid) {
               </div>
 
               <div className="input-field-group" style={{ marginBottom: '1.5rem' }}>
-                <label className="input-label" style={{ color: '#ff758f', fontSize: '0.85rem' }}>
+                <label className="input-label" style={{ color: '#e879f9', fontSize: '0.85rem' }}>
                   รหัสผ่าน (Password)
                 </label>
                 <input
@@ -18618,8 +18618,8 @@ async function verifyLicense(key, hwid) {
                   padding: '0.85rem',
                   fontWeight: 800,
                   fontSize: '0.95rem',
-                  background: 'linear-gradient(135deg, #ff1a40 0%, #d90429 100%)',
-                  boxShadow: '0 0 20px rgba(255, 26, 64, 0.4)'
+                  background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
+                  boxShadow: '0 0 20px rgba(168, 85, 247, 0.4)'
                 }}
               >
                 {isSecretSubmitting ? 'กำลังตรวจสอบสิทธิ์...' : '⚡ ปลดล็อก & เข้าสู่ระบบหลังบ้าน'}

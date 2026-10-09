@@ -346,13 +346,13 @@ export function initClientSecurity() {
         user-select: none;
       `;
       curtain.innerHTML = `
-        <div style="width: 86px; height: 86px; border-radius: 50%; background: rgba(255, 26, 64, 0.15); border: 2.5px solid #ff1a40; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; box-shadow: 0 0 40px rgba(255, 26, 64, 0.55);">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ff1a40" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <div style="width: 86px; height: 86px; border-radius: 50%; background: rgba(168, 85, 247, 0.15); border: 2.5px solid #a855f7; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; box-shadow: 0 0 40px rgba(168, 85, 247, 0.55);">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10" />
             <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
           </svg>
         </div>
-        <div style="display: inline-block; background: rgba(255, 26, 64, 0.15); border: 1px solid rgba(255, 26, 64, 0.45); border-radius: 20px; padding: 4px 14px; color: #ff4d6d; font-size: 0.76rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 1rem; text-transform: uppercase;">
+        <div style="display: inline-block; background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.45); border-radius: 20px; padding: 4px 14px; color: #d946ef; font-size: 0.76rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 1rem; text-transform: uppercase;">
           HexSyncTH Security MAX — Access Prohibited
         </div>
         <h1 style="color: #ffffff; font-size: 1.85rem; font-weight: 900; margin-bottom: 0.6rem; letter-spacing: 0.5px;">
@@ -361,10 +361,10 @@ export function initClientSecurity() {
         <p style="color: #b89ca2; font-size: 0.95rem; max-width: 500px; line-height: 1.6; margin-bottom: 1.5rem;">
           ระบบตรวจพบว่าคุณกำลังเปิดเครื่องมือนักพัฒนา (Inspect / Console / Network) เพื่อความปลอดภัยสูงสุด ระบบได้ทำการระงับการเข้าถึงหน้าร้านค้าและล็อกการทำงานทั้งหมดทันที
         </p>
-        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 0.8rem 1.4rem; font-size: 0.82rem; color: #ff4d6d; margin-bottom: 1.75rem;">
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 0.8rem 1.4rem; font-size: 0.82rem; color: #d946ef; margin-bottom: 1.75rem;">
           ⚠️ กรุณาปิดเครื่องมือนักพัฒนา (DevTools) ให้สนิท แล้วกดปุ่มด้านล่างเพื่อรีเฟรชเข้าใช้งานใหม่
         </div>
-        <button onclick="window.location.reload()" style="padding: 0.9rem 2.5rem; background: linear-gradient(135deg, #ff1a40, #b3001e); color: #fff; border: none; border-radius: 12px; font-weight: 800; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 25px rgba(255, 26, 64, 0.5);">
+        <button onclick="window.location.reload()" style="padding: 0.9rem 2.5rem; background: linear-gradient(135deg, #a855f7, #6b21a8); color: #fff; border: none; border-radius: 12px; font-weight: 800; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 25px rgba(168, 85, 247, 0.5);">
           รีเฟรชหน้าเว็บ (Reload Page)
         </button>
       `;
