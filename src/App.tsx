@@ -1035,6 +1035,10 @@ export default function App() {
     } catch { }
     return 'store';
   });
+  const [customAvatar, setCustomAvatar] = useState<string | null>(() => {
+    try { return localStorage.getItem('hexsync_custom_avatar'); } catch { return null; }
+  });
+  const [showAvatarUploadModal, setShowAvatarUploadModal] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'login' | 'register' | 'forgot'>('login');
   const [showAngpaoModal, setShowAngpaoModal] = useState(false);
@@ -6743,31 +6747,63 @@ export default function App() {
           </div>
         </div>
       ) : (
-        <>
-          {/* Admin Emergency Lockdown Banner (Sticky on top when admin is bypassed and lockdown is active) */}
-          {siteSettings.site_lockdown_enabled === 'true' && user && (user.role === 'admin' || user.role === 'superadmin') && (
-            <div className="admin-lockdown-emergency-banner">
-              <div className="admin-lockdown-banner-content">
-                <span className="pulse-lockdown-dot" />
-                <div>
-                  <strong>🚨 เว็บไซต์กำลังอยู่ในสถานะ LOCKDOWN (ปิดปรับปรุงทั้งเว็บ)</strong>
-                  <span style={{ marginLeft: '8px', opacity: 0.9, fontSize: '0.82rem' }}>
-                    (ผู้ใช้ทั่วไปจะมองเห็นเฉพาะหน้าแจ้งปิดปรับปรุง ไม่สามารถเข้าชมสินค้าหรือสั่งซื้อได้)
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn-unlock-site"
-                onClick={handleDisableLockdown}
-              >
-                🟢 ปลดล็อก & เปิดเว็บไซต์ตามปกติ
-              </button>
+        <div className="hex-app-layout">
+          {/* HexSyncTH 2.0 Left Navigation Sidebar */}
+          <aside className="hex-sidebar">
+            <div className="hex-sidebar-logo" onClick={() => setView('store')}>
+              <HexSyncLogo size={32} showVersion={true} />
             </div>
-          )}
+            <div className="hex-sidebar-menu">
+              <button className={`hex-sidebar-item ${view === 'store' ? 'active' : ''}`} onClick={() => setView('store')}>
+                <div className="item-icon"><IconGamepad size={18} /></div>
+                <span>DASHBOARD</span>
+              </button>
+              <button className={`hex-sidebar-item ${view === 'status' ? 'active' : ''}`} onClick={() => setView('status')}>
+                <div className="item-icon"><ShieldCheck size={18} /></div>
+                <span>GAMES LIBRARY</span>
+              </button>
+              <button className={`hex-sidebar-item ${view === 'history' ? 'active' : ''}`} onClick={() => setView('history')}>
+                <div className="item-icon"><IconHistory size={18} /></div>
+                <span>SYNC TOOLS</span>
+              </button>
+              <button className="hex-sidebar-item" onClick={() => alert(siteSettings.banner_announcement || 'ยินดีต้อนรับสู่ HexSyncTH v2.0!')}>
+                <div className="item-icon"><IconZap size={18} /></div>
+                <span>NEWS</span>
+              </button>
+              {user && (user.role === 'admin' || user.role === 'superadmin') && (
+                <button className={`hex-sidebar-item ${view === 'admin' ? 'active' : ''}`} onClick={() => { setView('admin'); fetchAdminData(); }}>
+                  <div className="item-icon"><IconSettings size={18} /></div>
+                  <span>SETTINGS</span>
+                </button>
+              )}
+            </div>
+          </aside>
 
-          {/* Navbar */}
-      <header className="navbar">
+          <div className="hex-main-wrapper">
+            {/* Admin Emergency Lockdown Banner (Sticky on top when admin is bypassed and lockdown is active) */}
+            {siteSettings.site_lockdown_enabled === 'true' && user && (user.role === 'admin' || user.role === 'superadmin') && (
+              <div className="admin-lockdown-emergency-banner">
+                <div className="admin-lockdown-banner-content">
+                  <span className="pulse-lockdown-dot" />
+                  <div>
+                    <strong>🚨 เว็บไซต์กำลังอยู่ในสถานะ LOCKDOWN (ปิดปรับปรุงทั้งเว็บ)</strong>
+                    <span style={{ marginLeft: '8px', opacity: 0.9, fontSize: '0.82rem' }}>
+                      (ผู้ใช้ทั่วไปจะมองเห็นเฉพาะหน้าแจ้งปิดปรับปรุง ไม่สามารถเข้าชมสินค้าหรือสั่งซื้อได้)
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-unlock-site"
+                  onClick={handleDisableLockdown}
+                >
+                  🟢 ปลดล็อก & เปิดเว็บไซต์ตามปกติ
+                </button>
+              </div>
+            )}
+
+            {/* Navbar */}
+            <header className="navbar">
         <div className="brand-logo" onClick={() => setView('store')}>
           <HexSyncLogo size={36} showVersion={true} />
         </div>
@@ -6845,8 +6881,12 @@ export default function App() {
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
                   title="เมนูผู้ใช้งาน"
                 >
-                  <div className="profile-mini-avatar">
-                    {user.role === "superadmin" ? "👑" : user.role === "admin" ? "🛡️" : "👤"}
+                  <div className="profile-mini-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                    {customAvatar ? (
+                      <img src={customAvatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      user.role === "superadmin" ? "👑" : user.role === "admin" ? "🛡️" : "👤"
+                    )}
                   </div>
                   <div className="profile-mini-info">
                     <span className="profile-mini-name">{user.username}</span>
@@ -6866,6 +6906,18 @@ export default function App() {
                       </div>
                       <div className="user-dropdown-email">{user.email || "สมาชิก HexSyncTH"}</div>
                     </div>
+
+                    <button
+                      className="user-dropdown-item"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        setShowAvatarUploadModal(true);
+                      }}
+                      style={{ color: '#d946ef', fontWeight: 700 }}
+                    >
+                      <IconSparkles size={16} color="#d946ef" />
+                      <span>📷 อัปโหลดรูปโปรไฟล์</span>
+                    </button>
 
                     <button
                       className="user-dropdown-item"
@@ -18535,8 +18587,6 @@ async function verifyLicense(key, hwid) {
           </nav>
         </>
       )}
-        </>
-      )}
 
       {/* SECRET ADMIN BYPASS GATEWAY MODAL (Accessible via Right Shift, Insert, or 5 logo clicks) */}
       {showSecretAdminLogin && (
@@ -18607,6 +18657,79 @@ async function verifyLicense(key, hwid) {
                 {isSecretSubmitting ? 'กำลังตรวจสอบสิทธิ์...' : '⚡ ปลดล็อก & เข้าสู่ระบบหลังบ้าน'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Avatar Upload Modal */}
+      {showAvatarUploadModal && (
+        <div className="modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowAvatarUploadModal(false)}>
+          <div className="avatar-modal-card glowCard" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.3rem', color: '#fff', marginBottom: '0.5rem', fontWeight: 800 }}>
+              📷 อัปโหลดรูปโปรไฟล์ (Profile Avatar)
+            </h3>
+            <p style={{ color: '#a5a3c4', fontSize: '0.88rem' }}>
+              เลือกไฟล์รูปภาพ PNG หรือ JPG จากเครื่องของคุณเพื่อตั้งเป็นรูปประจำตัวใน HexSyncTH 2.0
+            </p>
+            
+            <div style={{ margin: '1.5rem 0' }}>
+              <div className="profile-avatar-circle" style={{ width: '96px', height: '96px', margin: '0 auto', border: '3px solid #d946ef', boxShadow: '0 0 25px rgba(217, 70, 239, 0.6)' }}>
+                {customAvatar ? (
+                  <img src={customAvatar} alt="Profile Preview" className="profile-avatar-img" />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>
+                    {user?.role === "superadmin" ? "👑" : user?.role === "admin" ? "🛡️" : "👤"}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <label className="avatar-dropzone" style={{ display: 'block' }}>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const res = event.target?.result as string;
+                      setCustomAvatar(res);
+                      localStorage.setItem('hexsync_custom_avatar', res);
+                      setShowAvatarUploadModal(false);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📁</div>
+              <div style={{ fontWeight: 800, color: '#d8b4fe', fontSize: '0.95rem' }}>คลิกเพื่อเลือกไฟล์รูปภาพจากอุปกรณ์</div>
+              <div style={{ color: '#a5a3c4', fontSize: '0.78rem', marginTop: '4px' }}>รองรับไฟล์ PNG, JPG, GIF และ WebP</div>
+            </label>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              {customAvatar && (
+                <button
+                  onClick={() => {
+                    setCustomAvatar(null);
+                    localStorage.removeItem('hexsync_custom_avatar');
+                  }}
+                  style={{ padding: '9px 18px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#ef4444', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  🗑️ ลบรูปเดิม
+                </button>
+              )}
+              <button
+                onClick={() => setShowAvatarUploadModal(false)}
+                style={{ padding: '9px 22px', borderRadius: '12px', background: '#3f3f46', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
           </div>
         </div>
       )}
