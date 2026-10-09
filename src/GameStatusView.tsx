@@ -622,7 +622,7 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
       {/* Announcement Banner */}
       {settings.announcementActive && !settings.globalMaintenance && settings.announcementText && (
         <div style={{
-          background: 'linear-gradient(90deg, rgba(255, 26, 64, 0.15), rgba(16, 185, 129, 0.15))',
+          background: 'linear-gradient(90deg, rgba(168, 85, 247, 0.2), rgba(217, 70, 239, 0.15))',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           borderRadius: '12px',
           padding: '0.75rem 1.25rem',
@@ -652,9 +652,9 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
             style={{
               padding: '8px 16px',
               borderRadius: '20px',
-              border: selectedFilter === 'all' ? '1px solid #ff1a40' : '1px solid rgba(255, 255, 255, 0.1)',
-              background: selectedFilter === 'all' ? 'rgba(255, 26, 64, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-              color: selectedFilter === 'all' ? '#ff4d6d' : '#9ca3af',
+              border: selectedFilter === 'all' ? '1px solid #a855f7' : '1px solid rgba(255, 255, 255, 0.1)',
+              background: selectedFilter === 'all' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+              color: selectedFilter === 'all' ? '#d8b4fe' : '#9ca3af',
               fontWeight: 600,
               fontSize: '0.85rem',
               cursor: 'pointer'
@@ -1236,7 +1236,7 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 4px 15px rgba(255, 26, 64, 0.4)'
+                    boxShadow: '0 4px 15px rgba(168, 85, 247, 0.5)'
                   }}
                 >
                   <Sparkles size={18} />

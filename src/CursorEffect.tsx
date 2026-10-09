@@ -57,7 +57,7 @@ export const CursorEffect: React.FC = () => {
     handleResize();
     window.addEventListener('resize', handleResize);
 
-    const colors = ['#ff1a40', '#ff4d6d', '#ff0055', '#ff758f', '#ffffff'];
+    const colors = ['#a855f7', '#d946ef', '#c084fc', '#8b5cf6', '#06b6d4', '#ffffff'];
 
     // Mouse Move
     const handleMouseMove = (e: MouseEvent) => {
@@ -198,7 +198,7 @@ export const CursorEffect: React.FC = () => {
           marginTop: '-3px',
           marginLeft: '-3px',
           opacity: isVisible ? 1 : 0,
-          boxShadow: '0 0 10px #ff1a40, 0 0 20px #ff0055',
+          boxShadow: '0 0 10px #a855f7, 0 0 20px #d946ef',
           transition: 'opacity 0.2s ease',
         }}
       />
@@ -212,8 +212,8 @@ export const CursorEffect: React.FC = () => {
           left: 0,
           width: isHovering ? '48px' : isClicking ? '26px' : '36px',
           height: isHovering ? '48px' : isClicking ? '26px' : '36px',
-          border: isHovering ? '1.5px solid #ff4d6d' : '1px solid rgba(255, 26, 64, 0.75)',
-          backgroundColor: isHovering ? 'rgba(255, 26, 64, 0.12)' : isClicking ? 'rgba(255, 26, 64, 0.25)' : 'transparent',
+          border: isHovering ? '1.5px solid #d946ef' : '1px solid rgba(168, 85, 247, 0.75)',
+          backgroundColor: isHovering ? 'rgba(168, 85, 247, 0.15)' : isClicking ? 'rgba(217, 70, 239, 0.25)' : 'transparent',
           borderRadius: '50%',
           pointerEvents: 'none',
           zIndex: 99999,
@@ -222,8 +222,8 @@ export const CursorEffect: React.FC = () => {
           marginLeft: isHovering ? '-24px' : isClicking ? '-13px' : '-18px',
           opacity: isVisible ? 1 : 0,
           boxShadow: isHovering
-            ? '0 0 20px rgba(255, 26, 64, 0.5), inset 0 0 10px rgba(255, 26, 64, 0.3)'
-            : '0 0 12px rgba(255, 26, 64, 0.3)',
+            ? '0 0 20px rgba(217, 70, 239, 0.6), inset 0 0 10px rgba(168, 85, 247, 0.4)'
+            : '0 0 12px rgba(168, 85, 247, 0.35)',
           transition: 'width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1), margin 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border 0.2s ease, opacity 0.2s ease',
         }}
       />
