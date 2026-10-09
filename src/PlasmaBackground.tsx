@@ -1,4 +1,14 @@
 import React, { useEffect, useRef } from 'react';
+import './PlasmaBackground.css';
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  r: number;
+  c: string;
+}
 
 export const PlasmaBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -6,157 +16,112 @@ export const PlasmaBackground: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let animId: number;
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    let width: number;
+    let height: number;
+    let particles: Particle[] = [];
+    let frameId: number;
+    const mouse = { x: -9999, y: -9999 };
+    const colors = ['139,92,246', '34,211,238', '236,72,153'];
 
-    const handleResize = () => {
+    function resize() {
       if (!canvas) return;
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', handleResize, { passive: true });
+      const count = Math.min(90, Math.floor((width * height) / 18000));
+      particles = Array.from({ length: count }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        r: Math.random() * 1.8 + 0.6,
+        c: colors[Math.floor(Math.random() * colors.length)],
+      }));
+    }
 
-    // Floating Plasma Dust Particles (Optimized)
-    const particleCount = 35;
-    const particles = Array.from({ length: particleCount }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      size: Math.random() * 2.5 + 1.2,
-      speedX: (Math.random() - 0.5) * 0.4,
-      speedY: (Math.random() - 0.5) * 0.4,
-      alpha: Math.random() * 0.7 + 0.3,
-      color: Math.random() > 0.4 ? '#a855f7' : Math.random() > 0.5 ? '#d946ef' : '#06b6d4',
-    }));
+    function draw() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, width, height);
 
-    let time = 0;
+      // Draw and update particles
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
 
-    const render = () => {
-      time += 0.007;
+        // Mouse repulsion effect
+        const dx = p.x - mouse.x;
+        const dy = p.y - mouse.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 120) {
+          p.x += (dx / dist) * 1.5;
+          p.y += (dy / dist) * 1.5;
+        }
 
-      // Fill background
-      ctx.fillStyle = '#07020d';
-      ctx.fillRect(0, 0, width, height);
-
-      // --- Wave 1: Deep Amethyst Energy Plasma Stream ---
-      for (let layer = 0; layer < 3; layer++) {
         ctx.beginPath();
-        const startY = height * (0.2 + layer * 0.2);
-        ctx.moveTo(0, startY);
-
-        const step = 30; // High performance step size for 144FPS
-        for (let x = 0; x <= width + step; x += step) {
-          const freq1 = 0.002 + layer * 0.0006;
-          const amp1 = 120 + layer * 25;
-          const y =
-            startY +
-            Math.sin(x * freq1 + time * 1.3 + layer) * amp1 +
-            Math.cos(x * 0.005 - time * 0.9) * 50;
-          ctx.lineTo(x, y);
-        }
-
-        ctx.lineTo(width, height);
-        ctx.lineTo(0, height);
-        ctx.closePath();
-
-        const grad = ctx.createLinearGradient(0, 0, width, height);
-        if (layer === 0) {
-          grad.addColorStop(0, 'rgba(168, 85, 247, 0.4)');
-          grad.addColorStop(0.5, 'rgba(217, 70, 239, 0.25)');
-          grad.addColorStop(1, 'transparent');
-        } else if (layer === 1) {
-          grad.addColorStop(0, 'rgba(217, 70, 239, 0.35)');
-          grad.addColorStop(0.6, 'rgba(139, 92, 246, 0.2)');
-          grad.addColorStop(1, 'transparent');
-        } else {
-          grad.addColorStop(0, 'rgba(6, 182, 212, 0.3)');
-          grad.addColorStop(0.5, 'rgba(168, 85, 247, 0.18)');
-          grad.addColorStop(1, 'transparent');
-        }
-
-        ctx.fillStyle = grad;
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.c},0.9)`;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = `rgba(${p.c},1)`;
         ctx.fill();
       }
+      ctx.shadowBlur = 0;
 
-      // --- Wave 2: Swirling Vortex Ribbon ---
-      for (let layer = 0; layer < 2; layer++) {
-        ctx.beginPath();
-        const startY = height * (0.75 - layer * 0.25);
-        ctx.moveTo(width, startY);
-
-        const step = 30;
-        for (let x = width; x >= -step; x -= step) {
-          const freq = 0.0025 + layer * 0.001;
-          const amp = 110 + layer * 35;
-          const y =
-            startY +
-            Math.cos(x * freq - time * 1.4 + layer) * amp +
-            Math.sin(x * 0.006 + time * 0.8) * 45;
-          ctx.lineTo(x, y);
-        }
-
-        ctx.lineTo(0, 0);
-        ctx.lineTo(width, 0);
-        ctx.closePath();
-
-        const grad = ctx.createLinearGradient(width, 0, 0, height);
-        grad.addColorStop(0, 'rgba(217, 70, 239, 0.3)');
-        grad.addColorStop(0.5, 'rgba(168, 85, 247, 0.2)');
-        grad.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = grad;
-        ctx.fill();
-      }
-
-      // --- Render Fast Cosmic Particles ---
+      // Draw constellation network lines
       for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.x += p.speedX;
-        p.y += p.speedY;
-
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
-
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.alpha;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i];
+          const b = particles[j];
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (d < 130) {
+            ctx.strokeStyle = `rgba(${a.c},${0.18 * (1 - d / 130)})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
       }
-      ctx.globalAlpha = 1;
 
-      animId = requestAnimationFrame(render);
-    };
+      frameId = requestAnimationFrame(draw);
+    }
 
-    animId = requestAnimationFrame(render);
+    function onMove(e: MouseEvent) {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    }
+
+    function onLeave() {
+      mouse.x = -9999;
+      mouse.y = -9999;
+    }
+
+    resize();
+    draw();
+    window.addEventListener('resize', resize, { passive: true });
+    window.addEventListener('mousemove', onMove, { passive: true });
+    window.addEventListener('mouseleave', onLeave, { passive: true });
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      if (animId) cancelAnimationFrame(animId);
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseleave', onLeave);
     };
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        pointerEvents: 'none',
-        zIndex: -3,
-        filter: 'blur(22px)',
-        transform: 'translateZ(0)',
-        willChange: 'transform',
-        opacity: 0.9,
-      }}
-    />
+    <div className="bgRoot" aria-hidden="true">
+      <div className="aurora aurora1" />
+      <div className="aurora aurora2" />
+      <div className="aurora aurora3" />
+      <div className="bgGrid" />
+      <canvas ref={canvasRef} className="bgCanvas" />
+      <div className="bgVignette" />
+    </div>
   );
 };
