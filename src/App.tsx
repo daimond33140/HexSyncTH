@@ -6749,293 +6749,292 @@ export default function App() {
         </div>
       ) : (
         <div className="hex-app-layout">
-          {/* HexSyncTH 2.0 Off-Canvas Backdrop Overlay */}
-          <div
-            className={`hex-sidebar-backdrop ${sidebarOpen ? 'open' : ''}`}
-            onClick={() => setSidebarOpen(false)}
-          />
-
-          {/* HexSyncTH 2.0 Left Navigation Sidebar (Collapsible Off-Canvas Drawer with Close Button) */}
-          <aside className={`hex-sidebar ${sidebarOpen ? 'open' : ''}`}>
-            <div className="hex-sidebar-header">
-              <div className="hex-sidebar-logo" onClick={() => { setView('store'); setSidebarOpen(false); }}>
-                <HexSyncLogo size={32} showVersion={true} />
-              </div>
+          {/* HexSyncTH 2.0 Full-Width Top Navbar Header */}
+          <header className="navbar">
+            <div className="navbar-brand-container">
               <button
                 type="button"
-                className="hex-sidebar-close-btn"
-                onClick={() => setSidebarOpen(false)}
-                title="ปิดเมนู"
+                className="btn-sidebar-toggle"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                title="เปิดเมนูนำทาง"
               >
-                <X size={20} />
+                <Menu size={22} />
               </button>
+              <div className="brand-logo" onClick={() => setView('store')}>
+                <HexSyncLogo size={34} showVersion={true} />
+              </div>
             </div>
 
-            <div className="hex-sidebar-menu">
+            <div className="nav-actions">
+              {/* HUD Icon Action 1: Chat Icon Button */}
               <button
-                className={`hex-sidebar-item ${view === 'store' ? 'active' : ''}`}
-                onClick={() => { setView('store'); setSidebarOpen(false); }}
+                type="button"
+                className="hud-icon-btn"
+                onClick={() => alert('💬 ระบบแชทซัพพอร์ต HexSyncTH: ติดต่อทีมงานได้ตลอด 24 ชั่วโมง')}
+                title="แชทติดต่อสอบถาม"
               >
-                <div className="item-icon"><IconGamepad size={18} /></div>
-                <span>DASHBOARD</span>
+                <MessageSquare size={19} />
               </button>
+
+              {/* HUD Icon Action 2: Notification Bell Icon Button with Red Badge Dot */}
               <button
-                className={`hex-sidebar-item ${view === 'status' ? 'active' : ''}`}
-                onClick={() => { setView('status'); setSidebarOpen(false); }}
+                type="button"
+                className="hud-icon-btn notification-bell-btn"
+                onClick={() => alert(siteSettings.banner_announcement || '🔔 การแจ้งเตือน: ยินดีต้อนรับสู่ HexSyncTH 2.0!')}
+                title="การแจ้งเตือน"
               >
-                <div className="item-icon"><ShieldCheck size={18} /></div>
-                <span>GAMES LIBRARY</span>
+                <Bell size={19} />
+                <span className="hud-bell-dot" />
               </button>
+
+              {/* HUD Icon Action 3: Settings Gear Icon Button */}
               <button
-                className={`hex-sidebar-item ${view === 'history' ? 'active' : ''}`}
-                onClick={() => { setView('history'); setSidebarOpen(false); }}
+                type="button"
+                className="hud-icon-btn"
+                onClick={() => {
+                  if (user && (user.role === 'admin' || user.role === 'superadmin')) {
+                    setView('admin');
+                    fetchAdminData();
+                  } else if (user) {
+                    handleOpenProfile('password');
+                  } else {
+                    handleOpenAuthModal('login');
+                  }
+                }}
+                title="ตั้งค่าระบบ"
               >
-                <div className="item-icon"><IconHistory size={18} /></div>
-                <span>SYNC TOOLS</span>
+                <Settings size={19} />
               </button>
-              <button
-                className="hex-sidebar-item"
-                onClick={() => { alert(siteSettings.banner_announcement || 'ยินดีต้อนรับสู่ HexSyncTH v2.0!'); setSidebarOpen(false); }}
-              >
-                <div className="item-icon"><IconZap size={18} /></div>
-                <span>NEWS</span>
+
+              {/* HUD Action 4: Wallet Balance Pill & Cart */}
+              {user && (
+                <button className="btn-balance" onClick={handleOpenTopup} title="คลิกเพื่อเติมเงิน">
+                  <IconWallet size={15} />
+                  <span>฿{user.balance.toLocaleString()}</span>
+                </button>
+              )}
+
+              <button className="btn-cart" onClick={() => setShowCartModal(true)} title="ตะกร้าสินค้า">
+                <IconCart size={19} />
+                {cart.length > 0 && (
+                  <span className="cart-badge-count">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
+                )}
               </button>
-              {user && (user.role === 'admin' || user.role === 'superadmin') && (
+
+              {/* HUD Icon Action 5: Circular Profile Avatar with Green Online Dot (Matching Image 3) */}
+              {user ? (
+                <div className="user-dropdown-container" ref={userDropdownRef}>
+                  <div
+                    className={`profile-avatar-circle ${showUserDropdown ? 'active' : ''}`}
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    title="โปรไฟล์ & เมนูผู้ใช้งาน"
+                  >
+                    {customAvatar ? (
+                      <img src={customAvatar} alt="Profile" className="profile-avatar-img" />
+                    ) : (
+                      <div className="profile-avatar-fallback">
+                        {user.role === 'superadmin' ? '👑' : user.role === 'admin' ? '🛡️' : '👤'}
+                      </div>
+                    )}
+                    <span className="profile-status-dot-online" title="ออนไลน์" />
+                  </div>
+
+                  {showUserDropdown && (
+                    <div className="user-dropdown-menu">
+                      <div className="user-dropdown-header">
+                        <div className="user-dropdown-uname">
+                          {user.role === 'superadmin' ? '👑' : user.role === 'admin' ? '🛡️' : '👤'}
+                          <span>{user.username}</span>
+                        </div>
+                        <div className="user-dropdown-email">{user.email || 'สมาชิก HexSyncTH'}</div>
+                      </div>
+
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          setShowAvatarUploadModal(true);
+                        }}
+                        style={{ color: '#d946ef', fontWeight: 700 }}
+                      >
+                        <IconSparkles size={16} color="#d946ef" />
+                        <span>📷 อัปโหลดรูปโปรไฟล์</span>
+                      </button>
+
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          handleOpenProfile('overview');
+                        }}
+                      >
+                        <IconUser size={16} />
+                        <span>ข้อมูลโปรไฟล์ของฉัน</span>
+                      </button>
+
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          handleOpenProfile('purchases');
+                        }}
+                      >
+                        <IconKey size={16} />
+                        <span>ประวัติการซื้อ & คีย์</span>
+                        {purchases?.length > 0 && (
+                          <span className="user-dropdown-badge">{purchases.length}</span>
+                        )}
+                      </button>
+
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          handleOpenProfile('topups');
+                        }}
+                      >
+                        <IconWallet size={16} />
+                        <span>ประวัติการเติมเงิน</span>
+                      </button>
+
+                      <button
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          handleOpenProfile('password');
+                        }}
+                      >
+                        <IconLock size={16} />
+                        <span>เปลี่ยนรหัสผ่าน</span>
+                      </button>
+
+                      {(user.role === 'admin' || user.role === 'superadmin') && (
+                        <button
+                          className="user-dropdown-item"
+                          onClick={() => {
+                            setShowUserDropdown(false);
+                            setView('admin');
+                            fetchAdminData();
+                          }}
+                          style={{ color: '#a855f7', fontWeight: 700 }}
+                        >
+                          <IconSettings size={16} color="#a855f7" />
+                          <span>{user.role === 'superadmin' ? 'ระบบหลังบ้าน 👑' : 'ระบบหลังบ้าน'}</span>
+                        </button>
+                      )}
+
+                      <div className="user-dropdown-divider" />
+
+                      <button
+                        className="user-dropdown-item danger"
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          if (window.confirm('คุณต้องการออกจากระบบหรือไม่?')) {
+                            handleLogout();
+                          }
+                        }}
+                      >
+                        <IconLogOut size={16} />
+                        <span>ออกจากระบบ</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <button
-                  className={`hex-sidebar-item ${view === 'admin' ? 'active' : ''}`}
-                  onClick={() => { setView('admin'); fetchAdminData(); setSidebarOpen(false); }}
+                  className="btn-primary"
+                  onClick={() => handleOpenAuthModal('login')}
                 >
-                  <div className="item-icon"><IconSettings size={18} /></div>
-                  <span>SETTINGS</span>
+                  เข้าสู่ระบบ / สมัครสมาชิก
                 </button>
               )}
             </div>
-          </aside>
+          </header>
 
-          <div className="hex-main-wrapper">
-            {/* Admin Emergency Lockdown Banner (Sticky on top when admin is bypassed and lockdown is active) */}
-            {siteSettings.site_lockdown_enabled === 'true' && user && (user.role === 'admin' || user.role === 'superadmin') && (
-              <div className="admin-lockdown-emergency-banner">
-                <div className="admin-lockdown-banner-content">
-                  <span className="pulse-lockdown-dot" />
-                  <div>
-                    <strong>🚨 เว็บไซต์กำลังอยู่ในสถานะ LOCKDOWN (ปิดปรับปรุงทั้งเว็บ)</strong>
-                    <span style={{ marginLeft: '8px', opacity: 0.9, fontSize: '0.82rem' }}>
-                      (ผู้ใช้ทั่วไปจะมองเห็นเฉพาะหน้าแจ้งปิดปรับปรุง ไม่สามารถเข้าชมสินค้าหรือสั่งซื้อได้)
-                    </span>
-                  </div>
-                </div>
+          <div className="hex-body-layout">
+            {/* HexSyncTH 2.0 Off-Canvas Backdrop Overlay */}
+            <div
+              className={`hex-sidebar-backdrop ${sidebarOpen ? 'open' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            />
+
+            {/* HexSyncTH 2.0 Left Navigation Sidebar (Vertical Stack matching Image) */}
+            <aside className={`hex-sidebar ${sidebarOpen ? 'open' : ''}`}>
+              <div className="hex-sidebar-header">
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#d8b4fe' }}>MENU</span>
                 <button
                   type="button"
-                  className="btn-unlock-site"
-                  onClick={handleDisableLockdown}
+                  className="hex-sidebar-close-btn"
+                  onClick={() => setSidebarOpen(false)}
+                  title="ปิดเมนู"
                 >
-                  🟢 ปลดล็อก & เปิดเว็บไซต์ตามปกติ
+                  <X size={18} />
                 </button>
               </div>
-            )}
 
-            {/* Navbar Header (Matching Image 3 HUD icons) */}
-            <header className="navbar">
-              <div className="navbar-brand-container">
+              <div className="hex-sidebar-menu">
                 <button
-                  type="button"
-                  className="btn-sidebar-toggle"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  title="เปิดเมนูนำทาง"
+                  className={`hex-sidebar-item ${view === 'store' ? 'active' : ''}`}
+                  onClick={() => { setView('store'); setSidebarOpen(false); }}
                 >
-                  <Menu size={22} />
+                  <div className="item-icon"><IconGamepad size={22} /></div>
+                  <span>DASHBOARD</span>
                 </button>
-                <div className="brand-logo brand-logo-mobile-only" onClick={() => setView('store')}>
-                  <HexSyncLogo size={34} showVersion={true} />
-                </div>
-              </div>
-
-              <div className="nav-actions">
-                {/* HUD Icon Action 1: Chat Icon Button */}
                 <button
-                  type="button"
-                  className="hud-icon-btn"
-                  onClick={() => alert('💬 ระบบแชทซัพพอร์ต HexSyncTH: ติดต่อทีมงานได้ตลอด 24 ชั่วโมง')}
-                  title="แชทติดต่อสอบถาม"
+                  className={`hex-sidebar-item ${view === 'status' ? 'active' : ''}`}
+                  onClick={() => { setView('status'); setSidebarOpen(false); }}
                 >
-                  <MessageSquare size={19} />
+                  <div className="item-icon"><ShieldCheck size={22} /></div>
+                  <span>GAMES LIBRARY</span>
                 </button>
-
-                {/* HUD Icon Action 2: Notification Bell Icon Button with Red Badge Dot */}
                 <button
-                  type="button"
-                  className="hud-icon-btn notification-bell-btn"
-                  onClick={() => alert(siteSettings.banner_announcement || '🔔 การแจ้งเตือน: ยินดีต้อนรับสู่ HexSyncTH 2.0!')}
-                  title="การแจ้งเตือน"
+                  className={`hex-sidebar-item ${view === 'history' ? 'active' : ''}`}
+                  onClick={() => { setView('history'); setSidebarOpen(false); }}
                 >
-                  <Bell size={19} />
-                  <span className="hud-bell-dot" />
+                  <div className="item-icon"><IconHistory size={22} /></div>
+                  <span>SYNC TOOLS</span>
                 </button>
-
-                {/* HUD Icon Action 3: Settings Gear Icon Button */}
                 <button
-                  type="button"
-                  className="hud-icon-btn"
-                  onClick={() => {
-                    if (user && (user.role === 'admin' || user.role === 'superadmin')) {
-                      setView('admin');
-                      fetchAdminData();
-                    } else if (user) {
-                      handleOpenProfile('password');
-                    } else {
-                      handleOpenAuthModal('login');
-                    }
-                  }}
-                  title="ตั้งค่าระบบ"
+                  className="hex-sidebar-item"
+                  onClick={() => { alert(siteSettings.banner_announcement || 'ยินดีต้อนรับสู่ HexSyncTH v2.0!'); setSidebarOpen(false); }}
                 >
-                  <Settings size={19} />
+                  <div className="item-icon"><IconZap size={22} /></div>
+                  <span>NEWS</span>
                 </button>
-
-                {/* HUD Action 4: Wallet Balance Pill & Cart */}
-                {user && (
-                  <button className="btn-balance" onClick={handleOpenTopup} title="คลิกเพื่อเติมเงิน">
-                    <IconWallet size={15} />
-                    <span>฿{user.balance.toLocaleString()}</span>
-                  </button>
-                )}
-
-                <button className="btn-cart" onClick={() => setShowCartModal(true)} title="ตะกร้าสินค้า">
-                  <IconCart size={19} />
-                  {cart.length > 0 && (
-                    <span className="cart-badge-count">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
-                  )}
-                </button>
-
-                {/* HUD Icon Action 5: Circular Profile Avatar with Green Online Dot (Matching Image 3) */}
-                {user ? (
-                  <div className="user-dropdown-container" ref={userDropdownRef}>
-                    <div
-                      className={`profile-avatar-circle ${showUserDropdown ? 'active' : ''}`}
-                      onClick={() => setShowUserDropdown(!showUserDropdown)}
-                      title="โปรไฟล์ & เมนูผู้ใช้งาน"
-                    >
-                      {customAvatar ? (
-                        <img src={customAvatar} alt="Profile" className="profile-avatar-img" />
-                      ) : (
-                        <div className="profile-avatar-fallback">
-                          {user.role === 'superadmin' ? '👑' : user.role === 'admin' ? '🛡️' : '👤'}
-                        </div>
-                      )}
-                      <span className="profile-status-dot-online" title="ออนไลน์" />
-                    </div>
-
-                    {showUserDropdown && (
-                      <div className="user-dropdown-menu">
-                        <div className="user-dropdown-header">
-                          <div className="user-dropdown-uname">
-                            {user.role === 'superadmin' ? '👑' : user.role === 'admin' ? '🛡️' : '👤'}
-                            <span>{user.username}</span>
-                          </div>
-                          <div className="user-dropdown-email">{user.email || 'สมาชิก HexSyncTH'}</div>
-                        </div>
-
-                        <button
-                          className="user-dropdown-item"
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            setShowAvatarUploadModal(true);
-                          }}
-                          style={{ color: '#d946ef', fontWeight: 700 }}
-                        >
-                          <IconSparkles size={16} color="#d946ef" />
-                          <span>📷 อัปโหลดรูปโปรไฟล์</span>
-                        </button>
-
-                        <button
-                          className="user-dropdown-item"
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            handleOpenProfile('overview');
-                          }}
-                        >
-                          <IconUser size={16} />
-                          <span>ข้อมูลโปรไฟล์ของฉัน</span>
-                        </button>
-
-                        <button
-                          className="user-dropdown-item"
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            handleOpenProfile('purchases');
-                          }}
-                        >
-                          <IconKey size={16} />
-                          <span>ประวัติการซื้อ & คีย์</span>
-                          {purchases?.length > 0 && (
-                            <span className="user-dropdown-badge">{purchases.length}</span>
-                          )}
-                        </button>
-
-                        <button
-                          className="user-dropdown-item"
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            handleOpenProfile('topups');
-                          }}
-                        >
-                          <IconWallet size={16} />
-                          <span>ประวัติการเติมเงิน</span>
-                        </button>
-
-                        <button
-                          className="user-dropdown-item"
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            handleOpenProfile('password');
-                          }}
-                        >
-                          <IconLock size={16} />
-                          <span>เปลี่ยนรหัสผ่าน</span>
-                        </button>
-
-                        {(user.role === 'admin' || user.role === 'superadmin') && (
-                          <button
-                            className="user-dropdown-item"
-                            onClick={() => {
-                              setShowUserDropdown(false);
-                              setView('admin');
-                              fetchAdminData();
-                            }}
-                            style={{ color: '#a855f7', fontWeight: 700 }}
-                          >
-                            <IconSettings size={16} color="#a855f7" />
-                            <span>{user.role === 'superadmin' ? 'ระบบหลังบ้าน 👑' : 'ระบบหลังบ้าน'}</span>
-                          </button>
-                        )}
-
-                        <div className="user-dropdown-divider" />
-
-                        <button
-                          className="user-dropdown-item danger"
-                          onClick={() => {
-                            setShowUserDropdown(false);
-                            if (window.confirm('คุณต้องการออกจากระบบหรือไม่?')) {
-                              handleLogout();
-                            }
-                          }}
-                        >
-                          <IconLogOut size={16} />
-                          <span>ออกจากระบบ</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
+                {user && (user.role === 'admin' || user.role === 'superadmin') && (
                   <button
-                    className="btn-primary"
-                    onClick={() => handleOpenAuthModal('login')}
+                    className={`hex-sidebar-item ${view === 'admin' ? 'active' : ''}`}
+                    onClick={() => { setView('admin'); fetchAdminData(); setSidebarOpen(false); }}
                   >
-                    เข้าสู่ระบบ / สมัครสมาชิก
+                    <div className="item-icon"><IconSettings size={22} /></div>
+                    <span>SETTINGS</span>
                   </button>
                 )}
               </div>
-            </header>
+            </aside>
+
+            <div className="hex-main-wrapper">
+              {/* Admin Emergency Lockdown Banner (Sticky on top when admin is bypassed and lockdown is active) */}
+              {siteSettings.site_lockdown_enabled === 'true' && user && (user.role === 'admin' || user.role === 'superadmin') && (
+                <div className="admin-lockdown-emergency-banner">
+                  <div className="admin-lockdown-banner-content">
+                    <span className="pulse-lockdown-dot" />
+                    <div>
+                      <strong>🚨 เว็บไซต์กำลังอยู่ในสถานะ LOCKDOWN (ปิดปรับปรุงทั้งเว็บ)</strong>
+                      <span style={{ marginLeft: '8px', opacity: 0.9, fontSize: '0.82rem' }}>
+                        (ผู้ใช้ทั่วไปจะมองเห็นเฉพาะหน้าแจ้งปิดปรับปรุง ไม่สามารถเข้าชมสินค้าหรือสั่งซื้อได้)
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-unlock-site"
+                    onClick={handleDisableLockdown}
+                  >
+                    🟢 ปลดล็อก & เปิดเว็บไซต์ตามปกติ
+                  </button>
+                </div>
+              )}
 
       {/* VIEW: STORE */}
       {view === 'store' && (
@@ -18738,6 +18737,7 @@ async function verifyLicense(key, hwid) {
       )}
           </div>
         </div>
+      </div>
       )}
     </div>
   );
