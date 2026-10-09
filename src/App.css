@@ -5700,3 +5700,81 @@ select option:checked, select.text-input option:checked {
   color: #fff;
   transform: rotate(90deg);
 }
+
+/* Universal Glowing Cards & Conic Borders (HexSyncTH 2.0 / my-frontend style) */
+.product-card,
+.stat-card,
+.package-card,
+.category-card,
+.game-item-card,
+.modal-card,
+.admin-card,
+.glass-panel {
+  position: relative;
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(167, 139, 250, 0.28) !important;
+  box-shadow: 0 30px 80px -30px rgba(124, 58, 237, 0.55), 0 0 20px rgba(139, 92, 246, 0.15) !important;
+  overflow: hidden;
+}
+
+.product-card::before,
+.stat-card::before,
+.package-card::before,
+.category-card::before,
+.game-item-card::before,
+.modal-card::before,
+.admin-card::before,
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--angle), transparent 0deg, #8b5cf6 60deg, #22d3ee 120deg, #d946ef 180deg, transparent 240deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: borderSpin 6s linear infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.product-card:hover,
+.stat-card:hover,
+.package-card:hover {
+  transform: translateY(-4px) !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 35px 90px -25px rgba(139, 92, 246, 0.75), 0 0 30px rgba(34, 211, 238, 0.35) !important;
+}
+
+/* Universal Glowing Inputs & Selects */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+.text-input,
+select,
+textarea {
+  background: rgba(15, 11, 32, 0.85) !important;
+  border: 1px solid rgba(167, 139, 250, 0.35) !important;
+  border-radius: 14px !important;
+  color: #ede9fe !important;
+  backdrop-filter: blur(14px) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+.text-input:focus,
+select:focus,
+textarea:focus {
+  background: rgba(22, 16, 46, 0.95) !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.6), 0 0 12px rgba(34, 211, 238, 0.4) !important;
+  outline: none !important;
+}
