@@ -5743,7 +5743,7 @@ textarea:focus {
   position: relative;
 }
 
-/* Sidebar Off-Canvas Collapsible System */
+/* Sidebar System: Desktop Fixed Launcher & Mobile Drawer */
 .hex-sidebar-backdrop {
   position: fixed;
   inset: 0;
@@ -5766,7 +5766,7 @@ textarea:focus {
   top: 0;
   left: 0;
   bottom: 0;
-  width: 260px;
+  width: 240px;
   height: 100vh;
   background: rgba(14, 8, 28, 0.94);
   backdrop-filter: blur(30px) saturate(160%);
@@ -5784,6 +5784,38 @@ textarea:focus {
 
 .hex-sidebar.open {
   transform: translateX(0);
+}
+
+/* Desktop Mode (> 1024px): Sidebar is Fixed Docked on the left */
+@media (min-width: 1025px) {
+  .hex-sidebar-backdrop {
+    display: none !important;
+  }
+
+  .hex-sidebar {
+    position: sticky;
+    top: 0;
+    left: auto;
+    bottom: auto;
+    width: 240px;
+    height: 100vh;
+    transform: none !important;
+    z-index: 90;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+  }
+
+  .hex-sidebar-close-btn {
+    display: none !important;
+  }
+
+  .btn-sidebar-toggle {
+    display: none !important;
+  }
+
+  .brand-logo-mobile-only {
+    display: none !important;
+  }
 }
 
 .hex-sidebar-header {

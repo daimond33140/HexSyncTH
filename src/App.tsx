@@ -6846,7 +6846,7 @@ export default function App() {
                 >
                   <Menu size={22} />
                 </button>
-                <div className="brand-logo" onClick={() => setView('store')}>
+                <div className="brand-logo brand-logo-mobile-only" onClick={() => setView('store')}>
                   <HexSyncLogo size={34} showVersion={true} />
                 </div>
               </div>
