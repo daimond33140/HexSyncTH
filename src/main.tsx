@@ -22,9 +22,11 @@ import './index.css'
 import App from './App.tsx'
 import { initClientSecurity } from './security'
 import { CursorEffect } from './CursorEffect'
+import { PlasmaBackground } from './PlasmaBackground'
 
 // Initialize anti-inspect, anti-F12, anti-dump security protection
 initClientSecurity();
+
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -96,6 +98,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
+      <PlasmaBackground />
       <CursorEffect />
       <App />
     </ErrorBoundary>
