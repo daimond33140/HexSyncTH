@@ -963,14 +963,23 @@ export default function App() {
   const [secretUsername, setSecretUsername] = useState<string>('');
   const [secretPassword, setSecretPassword] = useState<string>('');
   const [isSecretSubmitting, setIsSecretSubmitting] = useState<boolean>(false);
-  const [logoSecretClickCount, setLogoSecretClickCount] = useState<number>(0);
-  const lastLogoClickTimeRef = useRef<number>(0);
 
-  // Global Keyboard listener for Secret Bypass: Right Shift ('ShiftRight') or Insert ('Insert')
+  // Global Keyboard listener for Secret Bypass: Right Shift ('ShiftRight'), Insert, F2, Escape, Ctrl+Shift+A, ~
   useEffect(() => {
     const handleSecretKeyCombination = (e: KeyboardEvent) => {
-      // Check for Right Shift or Insert key
-      if (e.code === 'ShiftRight' || e.code === 'Insert' || e.key === 'Insert') {
+      const isAKey = e.key === 'a' || e.key === 'A' || e.code === 'KeyA';
+      const isCtrlOrAlt = (e.ctrlKey || e.metaKey) && (e.shiftKey || e.altKey);
+      if (
+        e.code === 'ShiftRight' ||
+        e.code === 'Insert' ||
+        e.key === 'Insert' ||
+        e.key === 'F2' ||
+        e.code === 'F2' ||
+        e.key === 'Escape' ||
+        e.code === 'Backquote' ||
+        e.key === '`' ||
+        (isCtrlOrAlt && isAKey)
+      ) {
         setShowSecretAdminLogin((prev) => !prev);
       }
     };
@@ -6768,21 +6777,9 @@ export default function App() {
             {/* Store Logo & Brand Header */}
             <div
               className="lockdown-brand-wrapper"
-              onClick={() => {
-                const now = Date.now();
-                if (now - lastLogoClickTimeRef.current < 3000) {
-                  const newCount = logoSecretClickCount + 1;
-                  setLogoSecretClickCount(newCount);
-                  if (newCount >= 5) {
-                    setShowSecretAdminLogin(true);
-                    setLogoSecretClickCount(0);
-                  }
-                } else {
-                  setLogoSecretClickCount(1);
-                }
-                lastLogoClickTimeRef.current = now;
-              }}
-              title="HexSyncTH - แตะ 5 ครั้งเพื่อเปิดทางเข้าลับ"
+              onClick={() => setShowSecretAdminLogin(true)}
+              style={{ cursor: 'pointer' }}
+              title="HexSyncTH - คลิกเพื่อเปิดหน้าต่างเข้าสู่ระบบแอดมิน"
             >
               <HexSyncLogo size={38} showVersion={true} />
               <div style={{ textAlign: 'left' }}>
@@ -6824,6 +6821,39 @@ export default function App() {
 
             <div className="lockdown-footer-note">
               ระบบกำลังดำเนินการปรับปรุง ทางทีมงานกำลังเร่งดำเนินการให้เสร็จสิ้นโดยเร็วที่สุด
+            </div>
+
+            {/* Direct Admin Login Button */}
+            <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setShowSecretAdminLogin(true)}
+                style={{
+                  background: 'rgba(168, 85, 247, 0.2)',
+                  border: '1.5px solid rgba(168, 85, 247, 0.55)',
+                  color: '#f0abfc',
+                  padding: '0.65rem 1.4rem',
+                  borderRadius: '12px',
+                  fontSize: '0.9rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 20px rgba(168, 85, 247, 0.25)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(168, 85, 247, 0.35)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = '0 0 25px rgba(168, 85, 247, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(168, 85, 247, 0.2)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(168, 85, 247, 0.25)';
+                }}
+              >
+                👑 เข้าสู่ระบบผู้ดูแล (Admin Login)
+              </button>
             </div>
           </div>
         </div>
