@@ -6856,6 +6856,79 @@ export default function App() {
               </button>
             </div>
           </div>
+
+          {/* SECRET ADMIN BYPASS GATEWAY MODAL (Rendered directly in lockdown screen) */}
+          {showSecretAdminLogin && (
+            <div className="secret-admin-modal-overlay" onClick={() => setShowSecretAdminLogin(false)}>
+              <div className="secret-admin-modal-box" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className="secret-admin-close-btn"
+                  onClick={() => setShowSecretAdminLogin(false)}
+                  title="ปิดหน้าต่าง"
+                >
+                  ✕
+                </button>
+
+                <div className="secret-admin-header">
+                  <div className="secret-admin-tag">
+                    <span>👑 ADMIN BYPASS GATEWAY</span>
+                  </div>
+                  <h3 className="secret-admin-title">เข้าสู่ระบบผู้ดูแลหลังบ้าน</h3>
+                  <p className="secret-admin-subtitle">
+                    สำหรับ Admin & SuperAdmin เพื่อเข้าจัดการระบบหรือเปิดเว็บไซต์คืน
+                  </p>
+                </div>
+
+                <form onSubmit={handleSecretAdminLogin}>
+                  <div className="input-field-group" style={{ marginBottom: '1rem' }}>
+                    <label className="input-label" style={{ color: '#e879f9', fontSize: '0.85rem' }}>
+                      ชื่อผู้ใช้ (Admin Username)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      className="text-input"
+                      placeholder="กรอกชื่อผู้ใช้แอดมิน"
+                      value={secretUsername}
+                      onChange={(e) => setSecretUsername(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="input-field-group" style={{ marginBottom: '1.5rem' }}>
+                    <label className="input-label" style={{ color: '#e879f9', fontSize: '0.85rem' }}>
+                      รหัสผ่าน (Password)
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      className="text-input"
+                      placeholder="กรอกรหัสผ่าน"
+                      value={secretPassword}
+                      onChange={(e) => setSecretPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSecretSubmitting}
+                    className="btn-primary"
+                    style={{
+                      width: '100%',
+                      padding: '0.85rem',
+                      fontWeight: 800,
+                      fontSize: '0.95rem',
+                      background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
+                      boxShadow: '0 0 20px rgba(168, 85, 247, 0.4)'
+                    }}
+                  >
+                    {isSecretSubmitting ? 'กำลังตรวจสอบสิทธิ์...' : '⚡ ปลดล็อก & เข้าสู่ระบบหลังบ้าน'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="hex-app-layout">
