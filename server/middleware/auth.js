@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { Setting, User, SecurityThreatLog } = require('../models');
 const { getClientIp, banIpImmediately, banDeviceImmediately } = require('./ipBan');
+const { sendSuspiciousActivityAlert } = require('../utils/discordAlert');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c';
 
@@ -20,7 +21,7 @@ function calculate10YearsBanDate() {
 
 /**
  * Auto Trap & Honeypot:
- * Instantly bans the IP and Device for 10 years, logs security threat, and terminates request.
+ * Instantly bans the IP, User, and Device for 10 years, logs security threat, and sends rich Discord alert with unban link.
  */
 async function triggerAdminIntrusionTrap(req, res, reason = 'ความพยายามเข้าถึงหน้าแอดมินโดยไม่ได้รับอนุญาต (Admin Honeypot Trap)') {
   const clientIp = getClientIp(req);
@@ -43,7 +44,23 @@ async function triggerAdminIntrusionTrap(req, res, reason = 'ความพย�
     console.error('[Honeypot Trap] Error banning IP:', err.message);
   }
 
-  // 2. Instantly ban Device if ID is present
+  // 2. Instantly ban User if logged in
+  if (req.user) {
+    try {
+      const u = await User.findByPk(req.user.id);
+      if (u) {
+        u.isBanned = true;
+        u.banReason = `[Auto-Trap] ${reason}`;
+        u.bannedAt = new Date();
+        u.bannedUntil = bannedUntil;
+        await u.save();
+      }
+    } catch (err) {
+      console.error('[Honeypot Trap] Error banning User:', err.message);
+    }
+  }
+
+  // 3. Instantly ban Device if ID is present
   if (deviceId) {
     try {
       await banDeviceImmediately(
@@ -61,7 +78,7 @@ async function triggerAdminIntrusionTrap(req, res, reason = 'ความพย�
     }
   }
 
-  // 3. Persist forensic threat log in Database
+  // 4. Persist forensic threat log in Database
   try {
     await SecurityThreatLog.create({
       ip: clientIp,
@@ -75,7 +92,18 @@ async function triggerAdminIntrusionTrap(req, res, reason = 'ความพย�
     console.error('[Honeypot Trap] Error saving SecurityThreatLog:', err.message);
   }
 
-  // 4. Return 403 Forbidden with honeypot security alert
+  // 5. Send Rich Discord Alert with 1-Click Unban Link
+  sendSuspiciousActivityAlert({
+    req,
+    user: req.user,
+    username: req.user?.username || '',
+    report: `พยายามแอบเข้าถึงหรือเจาะระบบหลังบ้านแอดมิน: [${method}] ${endpoint} (${reason})`,
+    actionTaken: req.user ? 'แบน IP & User ถาวร (10 ปี)' : 'แบน IP ถาวร (10 ปี)',
+    ip: clientIp,
+    deviceId: deviceId || ''
+  }).catch(() => {});
+
+  // 6. Return 403 Forbidden with honeypot security alert
   return res.status(403).json({
     error: 'SECURITY_TRAP_TRIGGERED',
     message: '🚨 ตรวจพบความพยายามบุกรุกพื้นที่ผู้ดูแลระบบโดยไม่ได้รับอนุญาต (Admin Intrusion Trap): IP และอุปกรณ์ของคุณถูกสั่งแบนถาวรทันที!',
@@ -170,10 +198,8 @@ async function requireAdmin(req, res, next) {
     }
 
     if (dbUser.role !== 'admin' && dbUser.role !== 'superadmin') {
-      return res.status(403).json({
-        error: 'FORBIDDEN',
-        message: 'คุณไม่มีสิทธิ์เข้าถึงพื้นที่นี้ (Admin Only)'
-      });
+      req.user = dbUser;
+      return triggerAdminIntrusionTrap(req, res, `ผู้ใช้ทั่วไป (${dbUser.username}) พยายามเข้าถึงพื้นที่แอดมิน [${req.method}] ${req.originalUrl}`);
     }
 
     req.user = dbUser;

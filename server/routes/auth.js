@@ -8,7 +8,7 @@ const { getClientIp } = require('../middleware/ipBan');
 const { recordFailedLogin, clearFailedLogin, checkLoginLockout } = require('../middleware/wafSecurity');
 const { resolveIpLocation } = require('../utils/geoIp');
 const { verifyToken } = require('../middleware/auth');
-const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
+const { sendDiscordSecurityAlert, sendSuspiciousActivityAlert, sendRegisterAlert } = require('../utils/discordAlert');
 require('dotenv').config();
 
 const router = express.Router();
@@ -126,16 +126,13 @@ router.post('/register', async (req, res) => {
     });
 
     // Send Discord security notification for new member
-    sendDiscordSecurityAlert({
-      title: '👤 สมาชิกใหม่ลงทะเบียน (New User Registered)',
-      description: `มีผู้ใช้งานสมัครสมาชิกใหม่เข้าสู่ระบบ`,
-      color: 0x3b82f6,
-      fields: [
-        { name: 'Username', value: username, inline: true },
-        { name: 'Email', value: email, inline: true },
-        { name: 'IP Address', value: clientIp, inline: true },
-        { name: 'อุปกรณ์/เบราว์เซอร์', value: parsedModel, inline: true }
-      ]
+    sendRegisterAlert({
+      username,
+      email,
+      ip: clientIp,
+      deviceId: deviceId ? deviceId.trim() : null,
+      deviceModel: parsedModel,
+      req
     }).catch(() => {});
 
     const token = jwt.sign(
@@ -188,6 +185,21 @@ router.post('/login', async (req, res) => {
 
     if (!user) {
       const failResult = recordFailedLogin(clientIp, username);
+      if (failResult.ban || failResult.blocked) {
+        sendSuspiciousActivityAlert({
+          req,
+          user: null,
+          username: username || 'ยังไม่ Login เข้าเว็บ',
+          attemptedPassword: password,
+          report: failResult.ban
+            ? `พยายามสุ่มรหัสผ่านข้ามบัญชีจำนวนมาก (Credential Stuffing / Password Spray Attack)`
+            : `พยายามเดารหัสผ่านผิดพลาดต่อเนื่องเกินกำหนด (Brute Force Login Attempt)`,
+          actionTaken: failResult.ban ? 'แบน IP ถาวร (10 ปี)' : 'กักกัน IP ชั่วคราว (15 นาที)',
+          ip: clientIp,
+          deviceId: deviceId || ''
+        }).catch(() => {});
+      }
+
       if (failResult.ban) {
         return res.status(403).json({
           banned: true,
@@ -207,6 +219,21 @@ router.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) {
       const failResult = recordFailedLogin(clientIp, username);
+      if (failResult.ban || failResult.blocked) {
+        sendSuspiciousActivityAlert({
+          req,
+          user: null,
+          username: username || user.username || 'ยังไม่ Login เข้าเว็บ',
+          attemptedPassword: password,
+          report: failResult.ban
+            ? `พยายามสุ่มรหัสผ่านข้ามหลายบัญชีบนเว็บ (Credential Stuffing Attack)`
+            : `ใส่รหัสผ่านผิดพลาดติดต่อกันบนบัญชี "${user.username}" เกินกำหนด (Brute-Force Lock)`,
+          actionTaken: failResult.ban ? 'แบน IP ถาวร (10 ปี)' : 'กักกัน IP ชั่วคราว (15 นาที)',
+          ip: clientIp,
+          deviceId: deviceId || ''
+        }).catch(() => {});
+      }
+
       if (failResult.ban) {
         return res.status(403).json({
           banned: true,

@@ -96,7 +96,7 @@ const jpeg = require('jpeg-js');
 const { PNG } = require('pngjs');
 const { extractAmountFromSlip } = require('../ocr_helper');
 const { inspectSlipForensics } = require('../forensics_helper');
-const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
+const { sendDiscordSecurityAlert, sendSuspiciousActivityAlert, sendTopupAlert } = require('../utils/discordAlert');
 
 // In-memory sliding tracker for slip submission attempts (prevent automated brute force / spam)
 const slipAttemptMap = new Map(); // ip_or_username -> { failedCount, windowStart, lockedUntil }
@@ -390,6 +390,15 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     const forensics = await inspectSlipForensics(slipImage);
     if (!forensics.isClean) {
       recordFailedSlip(forensics.reason || 'ตรวจพบการตัดต่อภาพสลิป');
+      sendSuspiciousActivityAlert({
+        req,
+        user,
+        username,
+        report: `อัปโหลดสลิปปลอม/ตัดต่อภาพ: ${forensics.reason || 'ตรวจพบการตัดต่อภาพสลิป'} (ยอดเงินที่แจ้งเติม: ฿${requestedAmount.toLocaleString()} บาท)`,
+        actionTaken: 'บล็อกสลิปทันที / บันทึกประวัติเสี่ยง',
+        ip: clientIp
+      }).catch(() => {});
+
       return res.status(400).json({
         message: forensics.reason || '❌ ระบบ AI ปฏิเสธสลิป: ตรวจพบร่องรอยการดัดแปลงหรือตัดต่อภาพสลิป'
       });
@@ -422,18 +431,16 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
 
     if (existingSlip) {
       recordFailedSlip(`พยายามใช้สลิปซ้ำ (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 10)})`);
-      sendDiscordSecurityAlert({
-        title: '⚠️ ตรวจพบการพยายามใช้สลิปซ้ำ (Duplicate Slip Attempt)',
-        description: `ผู้ใช้ \`${username}\` (IP: \`${clientIp}\`) พยายามอัปโหลดสลิปที่เคยถูกใช้งานไปแล้ว`,
-        color: 0xf59e0b,
-        fields: [
-          { name: 'ผู้ใช้งาน', value: username, inline: true },
-          { name: 'รหัสอ้างอิง', value: transRef || slipHash.slice(0, 12), inline: true },
-          { name: 'สลิปเดิมอนุมัติเมื่อ', value: new Date(existingSlip.createdAt).toLocaleString('th-TH'), inline: true }
-        ]
+      const usedTime = new Date(existingSlip.createdAt).toLocaleString('th-TH');
+      sendSuspiciousActivityAlert({
+        req,
+        user,
+        username,
+        report: `พยายามใช้สลิปซ้ำ (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 12)}) เคยถูกอนุมัติไปแล้วเมื่อ ${usedTime}`,
+        actionTaken: 'ปฏิเสธคำขอ / บันทึกประวัติสลิปซ้ำ',
+        ip: clientIp
       }).catch(() => {});
 
-      const usedTime = new Date(existingSlip.createdAt).toLocaleString('th-TH');
       return res.status(400).json({
         message: `❌ สลิปนี้ถูกใช้งานไปแล้ว ไม่สามารถใช้งานซ้ำได้! (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 12)} เคยทำรายการเมื่อ ${usedTime})`
       });
@@ -577,19 +584,15 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     // Reset failed tracker on success
     slipAttemptMap.delete(trackKey);
 
-    // Send Discord security notification
-    sendDiscordSecurityAlert({
-      title: '💰 สมาชิกเติมเงินผ่านสลิปสำเร็จ (Bank Slip Approved)',
-      description: `ผู้ใช้ \`${username}\` เติมเงินเข้ากระเป๋าสำเร็จ +฿${finalCreditAmount.toLocaleString()} บาท`,
-      color: 0x10b981,
-      fields: [
-        { name: 'ผู้ใช้งาน', value: username, inline: true },
-        { name: 'ยอดเงิน', value: `+฿${finalCreditAmount.toLocaleString()}`, inline: true },
-        { name: 'ยอดคงเหลือใหม่', value: `฿${user.creditBalance.toLocaleString()}`, inline: true },
-        { name: 'ธนาคารต้นทาง', value: sendingBankName || 'ไม่ระบุ', inline: true },
-        { name: 'รหัสอ้างอิง', value: transRef || slipHash.slice(0, 12), inline: true },
-        { name: 'วิธีตรวจสอบ', value: verifiedVia, inline: true }
-      ]
+    // Send Discord topup notification
+    sendTopupAlert({
+      username,
+      amount: finalCreditAmount,
+      method: verifiedVia === 'slipok_bank_verified' ? 'สลิปธนาคาร (ผ่าน SlipOK API)' : 'สลิปธนาคาร (สแกน Mini-QR ธนาคาร)',
+      transRef: transRef || slipHash.slice(0, 12),
+      balance: user.creditBalance,
+      ip: clientIp,
+      req
     }).catch(() => {});
 
     res.json({
@@ -1192,6 +1195,15 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
     const forensics = await inspectSlipForensics(slipImage);
     if (!forensics.isClean) {
       recordFailedSlip(forensics.reason || 'ตรวจพบการตัดต่อภาพสลิป');
+      sendSuspiciousActivityAlert({
+        req,
+        user,
+        username: targetUsername,
+        report: `อัปโหลดสลิปปลอม/ตัดต่อภาพในออเดอร์ QR: ${forensics.reason || 'ตรวจพบการตัดต่อภาพสลิป'} (ยอดออเดอร์: ฿${order.amount.toLocaleString()} บาท, OrderId: ${order.orderId})`,
+        actionTaken: 'บล็อกสลิปทันที / บันทึกประวัติเสี่ยง',
+        ip: clientIp
+      }).catch(() => {});
+
       return res.status(400).json({
         success: false,
         message: forensics.reason || '❌ ระบบ AI ปฏิเสธสลิป: ตรวจพบร่องรอยการดัดแปลงหรือตัดต่อภาพสลิป'
@@ -1242,6 +1254,15 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
 
     if (existingSlip) {
       const usedTime = new Date(existingSlip.createdAt).toLocaleString('th-TH');
+      sendSuspiciousActivityAlert({
+        req,
+        user,
+        username: targetUsername,
+        report: `พยายามใช้สลิปซ้ำในออเดอร์ QR (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 12)}) เคยถูกอนุมัติไปแล้วเมื่อ ${usedTime}`,
+        actionTaken: 'ปฏิเสธคำขอ / บันทึกประวัติสลิปซ้ำ',
+        ip: clientIp
+      }).catch(() => {});
+
       return res.status(400).json({
         success: false,
         message: `❌ สลิปนี้ถูกนำมาใช้งานในระบบแล้ว ไม่สามารถใช้งานซ้ำได้! (รหัสอ้างอิง: ${transRef} เคยใช้เมื่อ ${usedTime})`
@@ -1343,6 +1364,17 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       username: targetUsername,
       actionType: 'Topup QR Single-Use'
     });
+
+    // Send Discord topup notification
+    sendTopupAlert({
+      username: targetUsername,
+      amount: addedAmount,
+      method: 'PromptPay Dynamic QR',
+      transRef,
+      balance: user.creditBalance,
+      ip: clientIp,
+      req
+    }).catch(() => {});
 
     return res.json({
       success: true,

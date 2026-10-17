@@ -5,7 +5,7 @@ const { SecurityThreatLog, BannedIP, BannedDevice, User, Log, Setting } = requir
 const { getClientIp, banIpImmediately, refreshBannedIps, refreshBannedDevices, isIpBanned, isDeviceBanned } = require('../middleware/ipBan');
 const { requireAdmin, requireSuperAdminOrPasscode, getSuperAdminPasscode } = require('../middleware/auth');
 const { clearIpJail } = require('../middleware/antiFlood');
-const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
+const { sendDiscordSecurityAlert, sendSuspiciousActivityAlert } = require('../utils/discordAlert');
 const router = express.Router();
 
 /**
@@ -176,21 +176,30 @@ router.post('/report-threat', async (req, res) => {
     });
 
     // Send instant alert to Discord
-    sendDiscordSecurityAlert({
-      title: shouldBan 
-        ? '🚨 ตรวจพบการพยายามเจาะระบบขั้นสูง - ถูกระงับสิทธิ์ 10 ปี (Security Ban)' 
-        : `⚠️ ตรวจพบการพยายามกด F12 / แกะระบบ (คำเตือน ${strikes}/3)`,
-      description: `ผู้ใช้ \`${verifiedUsername}\` พยายามกระทำ: **${detail}** บนหน้าเว็บ \`${pageUrl || '/'}\``,
-      color: shouldBan ? 0xdc2626 : 0xf59e0b,
-      fields: [
-        { name: 'ประเภทภัยคุกคาม', value: threatType, inline: true },
-        { name: 'ระดับการเตือน', value: `${strikes} / 3 ครั้ง`, inline: true },
-        { name: 'สถานะ', value: shouldBan ? '🔴 แบน IP & Device 10 ปี' : '🟡 บันทึกหลักฐาน Forensic', inline: true },
-        { name: 'IP Address', value: ip, inline: true },
-        { name: 'อุปกรณ์/เบราว์เซอร์', value: deviceModel || 'ไม่ระบุ', inline: true },
-        { name: 'ผู้ใช้งาน', value: verifiedUsername, inline: true }
-      ]
-    }).catch(() => {});
+    if (shouldBan) {
+      sendSuspiciousActivityAlert({
+        req,
+        username: verifiedUsername,
+        report: `ตรวจพบพฤติกรรมพยายามเจาะระบบหรือดักโค้ดเว็บไซต์ (${threatType}): ${detail} บนหน้า ${pageUrl || '/'} (สะสมคำเตือนครบ ${strikes}/3 ครั้ง)`,
+        actionTaken: 'แบน IP & Device ถาวร (10 ปี)',
+        ip,
+        deviceId
+      }).catch(() => {});
+    } else {
+      sendDiscordSecurityAlert({
+        title: `⚠️ ตรวจพบการพยายามกด F12 / แกะระบบ (คำเตือน ${strikes}/3)`,
+        description: `ผู้ใช้ \`${verifiedUsername}\` พยายามกระทำ: **${detail}** บนหน้าเว็บ \`${pageUrl || '/'}\``,
+        color: 0xf59e0b,
+        fields: [
+          { name: 'ประเภทภัยคุกคาม', value: threatType, inline: true },
+          { name: 'ระดับการเตือน', value: `${strikes} / 3 ครั้ง`, inline: true },
+          { name: 'สถานะ', value: '🟡 บันทึกหลักฐาน Forensic (ยังไม่ถูกแบน)', inline: true },
+          { name: 'IP Address', value: ip, inline: true },
+          { name: 'อุปกรณ์/เบราว์เซอร์', value: deviceModel || 'ไม่ระบุ', inline: true },
+          { name: 'ผู้ใช้งาน', value: verifiedUsername, inline: true }
+        ]
+      }).catch(() => {});
+    }
 
     res.json({
       success: true,

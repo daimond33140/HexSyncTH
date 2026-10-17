@@ -3,7 +3,8 @@ const express = require('express');
 const { Purchase, Product, ProductKey, User, Log, Coupon, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { verifyToken, requireAdmin } = require('../middleware/auth');
-const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
+const { getClientIp } = require('../middleware/ipBan');
+const { sendDiscordSecurityAlert, sendSuspiciousActivityAlert, sendPurchaseAlert } = require('../utils/discordAlert');
 const router = express.Router();
 
 // Get purchase history for user or all (if admin)
@@ -80,6 +81,14 @@ router.post('/checkout', verifyToken, async (req, res) => {
 
     // Enforce identity: Caller must be the account owner or an admin
     if (req.user && req.user.username !== username && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      sendSuspiciousActivityAlert({
+        req,
+        user: req.user,
+        username: req.user?.username,
+        report: `พยายามแฮกสั่งซื้อสินค้าโดยใช้เครดิตของบัญชีอื่น (${username})`,
+        actionTaken: 'ปฏิเสธคำสั่งซื้อทันที / บันทึกประวัติเสี่ยง',
+        ip: getClientIp(req)
+      }).catch(() => {});
       return res.status(403).json({ message: '❌ สิทธิ์การเข้าถึงถูกปฏิเสธ ไม่อนุญาตให้สั่งซื้อโดยใช้ยอดเงินของบัญชีผู้อื่น' });
     }
 
@@ -256,16 +265,14 @@ router.post('/checkout', verifyToken, async (req, res) => {
       if (typeof invalidateProductCache === 'function') invalidateProductCache();
     } catch {}
 
-    // Send Discord security notification
-    sendDiscordSecurityAlert({
-      title: '🛒 สมาชิกสั่งซื้อสินค้าสำเร็จ (Purchase Completed)',
-      description: `ผู้ใช้ \`${username}\` ทำรายการซื้อสินค้าจำนวน ${result.createdPurchases.length} ชิ้น`,
-      color: 0x10b981,
-      fields: [
-        { name: 'ผู้ซื้อ', value: username, inline: true },
-        { name: 'จำนวนชิ้น', value: `${result.createdPurchases.length} รายการ`, inline: true },
-        { name: 'ยอดคงเหลือใหม่', value: `฿${result.newBalance.toLocaleString()}`, inline: true }
-      ]
+    // Send Discord purchase notification
+    sendPurchaseAlert({
+      username,
+      items: result.createdPurchases,
+      totalAmount: finalPrice,
+      balance: result.newBalance,
+      ip: getClientIp(req),
+      req
     }).catch(() => {});
 
     res.status(201).json({

@@ -1,11 +1,13 @@
-// server/routes/bannedIps.js
 const express = require('express');
+const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { BannedIP, Log, Setting, WhitelistedIP, User } = require('../models');
 const { requireAdmin } = require('../middleware/auth');
 const { getClientIp, refreshBannedIps, refreshWhitelistedIps, isIpWhitelisted } = require('../middleware/ipBan');
 const { clearAllJails, clearIpJail, getJailedIps } = require('../middleware/antiFlood');
 const router = express.Router();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c';
 
 // Helper to get active Master Key from database
 async function getActiveMasterKey() {
@@ -115,6 +117,117 @@ router.post('/emergency-unban', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: 'ไม่สามารถดำเนินการปลดแบนฉุกเฉินได้' });
+  }
+});
+
+// 4. Public HMAC One-Click Quick Unban (Triggered from Discord Alert Button)
+router.get('/quick-unban', async (req, res) => {
+  try {
+    const { ip, user, sig } = req.query;
+    if (!ip || !sig) {
+      return res.status(400).send(`
+        <!DOCTYPE html><html><head><meta charset="utf-8"/><title>Error</title></head>
+        <body style="background:#0a0e17;color:#f87171;font-family:sans-serif;text-align:center;padding:50px;">
+          <h2>❌ พารามิเตอร์ไม่ถูกต้อง (Missing Parameters)</h2>
+        </body></html>
+      `);
+    }
+
+    const safeIp = ip.toString().trim();
+    const safeUser = (user || '').toString().trim();
+    const expectedSig = crypto.createHmac('sha256', JWT_SECRET).update(`unban_${safeIp}_${safeUser}`).digest('hex');
+
+    if (sig !== expectedSig) {
+      return res.status(403).send(`
+        <!DOCTYPE html><html><head><meta charset="utf-8"/><title>Access Denied</title></head>
+        <body style="background:#0a0e17;color:#ef4444;font-family:sans-serif;text-align:center;padding:50px;">
+          <h2>❌ ลิงก์ปลดแบนไม่ถูกต้องหรือถูกดัดแปลง (Invalid Signature)</h2>
+          <p style="color:#94a3b8;">ระบบปฏิเสธการปลดแบนเนื่องจากลายเซ็นความปลอดภัยไม่ตรงกัน</p>
+        </body></html>
+      `);
+    }
+
+    // 1. Remove from BannedIP
+    await BannedIP.destroy({ where: { ip: safeIp } });
+    clearIpJail(safeIp);
+    await refreshBannedIps();
+
+    // 2. Unban specific user or associated users on this IP
+    const unbannedUsers = [];
+    if (safeUser && safeUser !== 'ยังไม่ Login เข้าเว็บ' && safeUser !== 'Anonymous') {
+      const u = await User.findOne({ where: { username: safeUser } });
+      if (u) {
+        u.isBanned = false;
+        u.banReason = null;
+        u.bannedBy = null;
+        u.bannedAt = null;
+        u.bannedUntil = null;
+        await u.save();
+        unbannedUsers.push(u.username);
+      }
+    }
+
+    const usersOnIp = await User.findAll({
+      where: {
+        isBanned: true,
+        [Op.or]: [{ lastIp: safeIp }, { registerIp: safeIp }]
+      }
+    });
+    for (const u of usersOnIp) {
+      u.isBanned = false;
+      u.banReason = null;
+      u.bannedBy = null;
+      u.bannedAt = null;
+      u.bannedUntil = null;
+      await u.save();
+      if (!unbannedUsers.includes(u.username)) unbannedUsers.push(u.username);
+    }
+
+    // 3. Log admin action
+    await Log.create({
+      action: 'ADMIN_QUICK_UNBAN_DISCORD',
+      detail: `ปลดแบนผ่านปุ่ม Discord: IP ${safeIp}${unbannedUsers.length > 0 ? ` พร้อมบัญชี (${unbannedUsers.join(', ')})` : ''}`,
+      username: 'Discord Admin Quick-Action',
+      ip: getClientIp(req)
+    });
+
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="th">
+      <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>HexSyncTH - ปลดแบนสำเร็จ</title>
+        <style>
+          body { background: #0a0e17; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+          .card { background: #131c2e; border: 1px solid #1e293b; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+          .badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 14px; margin-bottom: 20px; }
+          h1 { margin: 0 0 12px; font-size: 22px; color: #fff; }
+          p { margin: 0 0 16px; color: #94a3b8; font-size: 14px; line-height: 1.6; }
+          .info-box { background: #0b1120; border: 1px solid #1f2937; border-radius: 10px; padding: 14px; text-align: left; font-size: 13px; margin-bottom: 20px; }
+          .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+          .info-row:last-child { margin-bottom: 0; }
+          .info-label { color: #64748b; }
+          .info-val { color: #f8fafc; font-weight: 600; font-family: monospace; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="badge">✅ UNBANNED COMPLETED</div>
+          <h1>ปลดแบนสำเร็จเรียบร้อยแล้ว</h1>
+          <p>ระบบ HexSync Zero-Trust ได้ดำเนินการปลดแบน IP และเคลียร์สถานะบัญชีออกจากระบบเรียบร้อยแล้ว</p>
+          <div class="info-box">
+            <div class="info-row"><span class="info-label">IP Address:</span><span class="info-val">${safeIp}</span></div>
+            <div class="info-row"><span class="info-label">User Accounts:</span><span class="info-val">${unbannedUsers.length > 0 ? unbannedUsers.join(', ') : (safeUser || '-')}</span></div>
+            <div class="info-row"><span class="info-label">เวลาปลดแบน:</span><span class="info-val">${new Date().toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}</span></div>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">คุณสามารถปิดหน้าต่างนี้ได้ทันที</p>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    res.status(500).send(`เกิดข้อผิดพลาดในการปลดแบน: ` + err.message);
   }
 });
 

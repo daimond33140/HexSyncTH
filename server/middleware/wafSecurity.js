@@ -2,7 +2,7 @@
 const { getClientIp, banIpImmediately, isIpBanned, isIpWhitelisted } = require('./ipBan');
 const { autoJailMap } = require('./antiFlood');
 const { Log } = require('../models');
-const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
+const { sendDiscordSecurityAlert, sendSuspiciousActivityAlert } = require('../utils/discordAlert');
 
 // In-memory sliding trackers for stateful attack detection
 const fuzzerTrackingMap = new Map(); // ip -> { count404: number, windowStart: number }
@@ -202,15 +202,12 @@ async function wafSecurityMiddleware(req, res, next) {
       console.warn(`[WAF Block] 🚨 Scanner User-Agent blocked from ${ip}: ${userAgent}`);
       await banIpImmediately(ip, `ตรวจพบเครื่องมือสแกนเจาะระบบ (Scanner/Recon User-Agent): ${userAgent.slice(0, 80)}`);
       
-      sendDiscordSecurityAlert({
-        title: '🚨 ตรวจพบเครื่องมือเจาะระบบ (Scanner Blocked)',
-        description: `WAF ได้ทำการบล็อกและแบน IP \`${ip}\` ทันทีหลังพบการใช้งานเครื่องมือสแกนเจาะระบบ`,
-        color: 0xef4444,
-        fields: [
-          { name: 'IP Address', value: ip, inline: true },
-          { name: 'Target Path', value: requestPath, inline: true },
-          { name: 'User-Agent', value: `\`${userAgent.slice(0, 100)}\``, inline: false }
-        ]
+      sendSuspiciousActivityAlert({
+        req,
+        username: 'ยังไม่ Login เข้าเว็บ',
+        report: `ใช้งานเครื่องมือสแกนเจาะระบบหรือรวบรวมข้อมูลเว็บไซต์ (Scanner User-Agent: \`${userAgent.slice(0, 100)}\`) เข้ามาที่เส้นทาง \`${requestPath}\``,
+        actionTaken: 'แบน IP ถาวร (10 ปี)',
+        ip
       }).catch(() => {});
 
       try {
@@ -235,14 +232,12 @@ async function wafSecurityMiddleware(req, res, next) {
       console.warn(`[WAF Honeypot] 🪤 Honeypot tripped by ${ip} on path: ${requestPath}`);
       await banIpImmediately(ip, `[Honeypot Trap] ตรวจพบการสแกนหาไฟล์ลับ/ระบบ: ${requestPath}`);
       
-      sendDiscordSecurityAlert({
-        title: '🪤 ตรวจพบการติดบ่อล่อโจร (Honeypot Tripped)',
-        description: `IP \`${ip}\` พยายามแอบสแกนหาไฟล์ลับ/ระบบ (\`${requestPath}\`) ถูกระงับการใช้งานทันที`,
-        color: 0xdc2626,
-        fields: [
-          { name: 'IP Address', value: ip, inline: true },
-          { name: 'Path ที่พยายามเข้าถึง', value: `\`${requestPath}\``, inline: true }
-        ]
+      sendSuspiciousActivityAlert({
+        req,
+        username: 'ยังไม่ Login เข้าเว็บ',
+        report: `แอบสแกนหาไฟล์ลับ/ระบบหรือโฟลเดอร์หลังบ้าน (Honeypot Path: \`${requestPath}\`) เช่น .env, git, wp-admin หรือไฟล์โครงสร้างเซิร์ฟเวอร์`,
+        actionTaken: 'แบน IP ถาวร (10 ปี)',
+        ip
       }).catch(() => {});
 
       try {
@@ -292,20 +287,17 @@ async function wafSecurityMiddleware(req, res, next) {
       exploitAttemptMap.set(ip, expData);
 
       // If critical severity or repeated payload attempts -> Ban IP immediately
-      if (violation.severity === 'critical' || expData.count >= 2) {
+      const isBannedNow = violation.severity === 'critical' || expData.count >= 2;
+      if (isBannedNow) {
         await banIpImmediately(ip, `ตรวจพบ Payload โจมตีระบบ (${violation.type}): ${violation.matched}`);
       }
 
-      sendDiscordSecurityAlert({
-        title: `🛡️ สกัดกั้นการโจมตีระบบ (${violation.type})`,
-        description: `HexSync WAF สกัดกั้นการโจมตีจาก IP \`${ip}\` บนเส้นทาง \`${requestPath}\``,
-        color: 0xef4444,
-        fields: [
-          { name: 'ประเภทการโจมตี', value: violation.type, inline: true },
-          { name: 'ระดับความรุนแรง', value: violation.severity || 'high', inline: true },
-          { name: 'IP Address', value: ip, inline: true },
-          { name: 'Matched Pattern', value: `\`${violation.matched?.slice(0, 100) || 'unknown'}\``, inline: false }
-        ]
+      sendSuspiciousActivityAlert({
+        req,
+        username: req.user?.username || 'ยังไม่ Login เข้าเว็บ',
+        report: `ส่ง Payload โจมตีเจาะระบบประเภท **${violation.type}** (ความรุนแรง: ${violation.severity || 'high'}) บนเส้นทาง \`${requestPath}\`\n• ข้อความที่ตรวจจับได้: \`${violation.matched?.slice(0, 100) || 'unknown'}\``,
+        actionTaken: isBannedNow ? 'แบน IP ถาวร (10 ปี)' : 'บล็อกคำขอ / บันทึกประวัติเสี่ยง',
+        ip
       }).catch(() => {});
 
       try {
@@ -392,14 +384,11 @@ function recordFailedLogin(ip, username = '') {
     console.warn(`[WAF Brute-Force] 🚨 Credential Stuffing / Password Spraying detected from IP ${ip}`);
     banIpImmediately(ip, 'ตรวจพบการสุ่มรหัสผ่านข้ามหลายบัญชี (Credential Stuffing / Hydra Attack)').catch(() => {});
     
-    sendDiscordSecurityAlert({
-      title: '🚨 ตรวจพบการสุ่มรหัสผ่านข้ามบัญชี (Credential Stuffing)',
-      description: `IP \`${ip}\` พยายามสุ่มรหัสผ่านมากกว่า 15 ชื่อผู้ใช้ในเวลาสั้นๆ ถูกแบนทันที`,
-      color: 0xdc2626,
-      fields: [
-        { name: 'IP Address', value: ip, inline: true },
-        { name: 'จำนวน Username ที่สุ่ม', value: `${attempt.usernames.size} บัญชี`, inline: true }
-      ]
+    sendSuspiciousActivityAlert({
+      username: 'ยังไม่ Login เข้าเว็บ',
+      report: `ตรวจพบการพยายามสุ่มรหัสผ่านข้ามหลายบัญชีพร้อมกัน (Credential Stuffing / Hydra / Password Spray Attack) มากกว่า ${attempt.usernames.size} รายชื่อ (${Array.from(attempt.usernames).slice(0, 5).join(', ')}...)`,
+      actionTaken: 'แบน IP ถาวร (10 ปี)',
+      ip
     }).catch(() => {});
 
     return { blocked: true, reason: 'CREDENTIAL_STUFFING', ban: true };
