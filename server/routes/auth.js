@@ -41,8 +41,11 @@ ensureAdminUser();
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password, confirmPassword, deviceId, deviceModel, deviceInfo } = req.body;
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+    if (!username || !email || !password || typeof username !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบถ้วนในรูปแบบข้อความเท่านั้น' });
+    }
+    if (username.length > 40 || password.length > 100 || email.length > 100) {
+      return res.status(400).json({ message: 'ข้อมูลมีความยาวเกินกำหนด' });
     }
 
     if (confirmPassword && password !== confirmPassword) {
@@ -173,8 +176,11 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    if (!username || !password) {
-      return res.status(400).json({ message: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' });
+    if (!username || !password || typeof username !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ message: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่านในรูปแบบข้อความเท่านั้น' });
+    }
+    if (username.length > 50 || password.length > 100) {
+      return res.status(400).json({ message: 'ข้อมูลมีความยาวเกินกำหนด' });
     }
 
     const user = await User.findOne({

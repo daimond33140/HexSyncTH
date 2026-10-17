@@ -60,11 +60,20 @@ const MALICIOUS_USER_AGENTS = [
   /cortex/i,
   /burpcollaborator/i,
 
-  // Exploitation Tools (sqlmap, hydra, metasploit, havok)
+  // Exploitation Tools (sqlmap, hydra, metasploit, havok, WormGPT, Saikuto)
   /sqlmap/i,
   /hydra/i,
   /metasploit/i,
-  /havoc/i
+  /havoc/i,
+  /wormgpt/i,
+  /codexworm/i,
+  /saikuto/i,
+  /blackhat/i,
+  /censysinspect/i,
+  /python-requests/i,
+  /aiohttp/i,
+  /scrapy/i,
+  /go-http-client/i
 ];
 
 // 2. Honeypot Trap Paths (Paths scanned exclusively by malicious bots and hackers)
@@ -88,7 +97,7 @@ const HONEYPOT_PATHS = [
   /^\/(database|db|backup|dump|data|users|site)\.(sql|tar|tar\.gz|zip|bak|old)$/i,
   /^\/backup\//i,
 
-  // PHP & CMS Probing (WordPress, phpMyAdmin, Adminer, etc.)
+  // PHP & CMS Probing (WordPress, phpMyAdmin, Adminer, Plesk, cPanel, etc.)
   /^\/wp-admin(\/|$)/i,
   /^\/wp-login\.php/i,
   /^\/wp-content\//i,
@@ -109,15 +118,28 @@ const HONEYPOT_PATHS = [
   /^\/shell\.php/i,
   /^\/cmd\.php/i,
   /^\/alfa\.php/i,
-  /^\/eval-stdin/i
+  /^\/eval-stdin/i,
+  /^\/admin-v2(\/|$)/i,
+  /^\/plesk(\/|$)/i,
+  /^\/plesklin(\/|$)/i,
+  /^\/cpanel(\/|$)/i,
+  /^\/webmail(\/|$)/i,
+  /^\/phpinfo(\.php|\/|$)/i,
+  /^\/api\/v1\/admin/i
 ];
 
-// 3. Exploit Payload Patterns (SQLi, XSS, LFI/RFI, RCE, Path Traversal)
+// 3. Exploit Payload Patterns (SQLi, NoSQLi, XSS, LFI/RFI, RCE, Path Traversal)
 const EXPLOIT_PATTERNS = [
   // SQL Injection (SQLi)
   {
     type: 'SQL_INJECTION',
     pattern: /(\bUNION\b[\s\S]+?\bSELECT\b|\b(OR|AND)\b\s+['"\d\w]+?\s*=\s*['"\d\w]+?|\bWAITFOR\s+DELAY\b|\bSLEEP\s*\(\s*\d+\s*\)|\bBENCHMARK\s*\(\s*\d+|\bINFORMATION_SCHEMA\b|\b(LOAD_FILE|INTO\s+(OUT|DUMP)FILE)\b|;\s*(DROP|ALTER|CREATE|EXEC|EXECUTE)\b|EXTRACTVALUE\s*\(|UPDATEXML\s*\(|xp_cmdshell)/i,
+    severity: 'critical'
+  },
+  // NoSQL Injection ($ne, $gt, $where, $regex, etc.)
+  {
+    type: 'NOSQL_INJECTION',
+    pattern: /(\$ne|\$gt|\$gte|\$lt|\$lte|\$in|\$nin|\$regex|\$where|\$or|\$and|\$not)\b/i,
     severity: 'critical'
   },
   // Cross-Site Scripting (XSS)

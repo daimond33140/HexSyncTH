@@ -35,6 +35,7 @@ const { antiFloodMiddleware } = require('./middleware/antiFlood');
 const { wafSecurityMiddleware } = require('./middleware/wafSecurity');
 
 const app = express();
+app.disable('x-powered-by');
 
 // Trust Cloudflare and reverse proxy headers
 app.set('trust proxy', 1);
