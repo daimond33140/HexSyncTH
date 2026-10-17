@@ -63,7 +63,7 @@ const DEFAULT_GAMES: GameItem[] = [
     isFree: false,
     category: 'MOBA',
     updatedAt: '2026-09-15',
-    bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80',
+    bannerUrl: '/game-assets/rov_banner.gif',
     downloadCount: 12450,
     driveNote: 'รองรับGBOX ไม่รองรับPC',
   },
@@ -78,7 +78,7 @@ const DEFAULT_GAMES: GameItem[] = [
     isFree: false,
     category: 'MOBA',
     updatedAt: '2026-09-17',
-    bannerUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=600&q=80',
+    bannerUrl: '/game-assets/rov_banner.gif',
     downloadCount: 8930,
     driveNote: 'Rov HackMap ฟังชั่นเกรียนๆมากมาย',
   },
@@ -93,7 +93,7 @@ const DEFAULT_GAMES: GameItem[] = [
     isFree: false,
     category: 'FPS',
     updatedAt: '2026-09-17',
-    bannerUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80',
+    bannerUrl: '/game-assets/free_fire_ff_max_banner.gif',
     downloadCount: 15420,
     driveNote: 'มอง ล็อค ขยายดาเมจ เมนู',
   },
@@ -108,7 +108,7 @@ const DEFAULT_GAMES: GameItem[] = [
     isFree: false,
     category: 'Battle Royale',
     updatedAt: '2026-09-17',
-    bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80',
+    bannerUrl: '/game-assets/pubg_mobile_vip_banner.gif',
     downloadCount: 9400,
     driveNote: 'กำลังอัปเดตรองรับเวอร์ชันล่าสุด',
   },
@@ -123,7 +123,7 @@ const DEFAULT_GAMES: GameItem[] = [
     isFree: false,
     category: 'FPS',
     updatedAt: '2026-09-17',
-    bannerUrl: 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?auto=format&fit=crop&w=600&q=80',
+    bannerUrl: '/game-assets/pubg_mobile_crack_banner.gif',
     downloadCount: 6700,
     driveNote: 'กำลังอัปเดตรองรับตัวเกมใหม่',
   },
@@ -138,25 +138,11 @@ const DEFAULT_GAMES: GameItem[] = [
     isFree: false,
     category: 'Utilities',
     updatedAt: '2026-09-17',
-    bannerUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=600&q=80',
+    bannerUrl: '/game-assets/hexsyncth_full_source_banner.gif',
     downloadCount: 3200,
     driveNote: 'ซอร์สโค้ดพร้อมใช้งาน 100% พร้อมคู่มือติดตั้ง',
   },
-  {
-    id: 'test-system',
-    title: 'ทดสอบระบบ',
-    subtitle: 'รายการสำหรับทดสอบการทำงานของระบบ',
-    version: 'v1.0',
-    status: 'undetected',
-    downloadUrl: 'https://drive.google.com',
-    isDownloadEnabled: true,
-    isFree: true,
-    category: 'Utilities',
-    updatedAt: '2026-09-17',
-    bannerUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80',
-    downloadCount: 120,
-    driveNote: 'สำหรับแอดมินทดสอบระบบ',
-  }
+
 ];
 
 const DEFAULT_SETTINGS: StatusSettings = {
@@ -683,7 +669,7 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                   isDownloadEnabled: true,
                   category: 'Action',
                   updatedAt: new Date().toISOString().split('T')[0],
-                  bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80',
+                  bannerUrl: '/game-assets/rov_banner.gif',
                   downloadCount: 0,
                   driveNote: 'รหัสแตกไฟล์: hexsync',
                 };
@@ -1003,7 +989,7 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                     alt={game.title}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
+                      (e.target as HTMLImageElement).src = '/game-assets/rov_banner.gif';
                     }}
                   />
                   <div style={{

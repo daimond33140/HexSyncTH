@@ -560,6 +560,33 @@ export function getGameBaseTitle(name: string): string {
     .trim() || name;
 }
 
+export const DEFAULT_GAME_CUSTOM_IMAGES: Record<string, { bannerImage?: string; image?: string; description?: string; availabilityStatus?: string; maintenanceNote?: string }> = {
+  'ROV กันรายงาน': {
+    bannerImage: '/game-assets/rov_banner.gif',
+    image: '/game-assets/rov_icon.jpg'
+  },
+  'ROV ไม่กันรายงาน': {
+    bannerImage: '/game-assets/rov_banner.gif',
+    image: '/game-assets/rov_icon.jpg'
+  },
+  'Free Fire / FF MAX': {
+    bannerImage: '/game-assets/free_fire_ff_max_banner.gif',
+    image: '/game-assets/free_fire_ff_max_icon.jpg'
+  },
+  'PUBG Mobile (VIP)': {
+    bannerImage: '/game-assets/pubg_mobile_vip_banner.gif',
+    image: '/game-assets/pubg_mobile_vip_icon.jpg'
+  },
+  'PUBG Mobile (Crack)': {
+    bannerImage: '/game-assets/pubg_mobile_crack_banner.gif',
+    image: '/game-assets/pubg_mobile_crack_icon.jpg'
+  },
+  'ระบบเว็บ HexSyncTH (Full Source)': {
+    bannerImage: '/game-assets/hexsyncth_full_source_banner.gif',
+    image: '/game-assets/hexsyncth_full_source_icon.jpg'
+  }
+};
+
 export function groupProductsByGame(
   productsList: Product[],
   categoriesList: CategoryItem[],
@@ -585,6 +612,11 @@ export function groupProductsByGame(
     } catch {}
   }
 
+  // 3. Fallback to default game assets so images NEVER flash or show empty/placeholders
+  if (Object.keys(customMap).length === 0) {
+    customMap = { ...DEFAULT_GAME_CUSTOM_IMAGES };
+  }
+
   const map: Record<string, GameGroup> = {};
 
   productsList.forEach(p => {
@@ -603,6 +635,8 @@ export function groupProductsByGame(
     }
     custom = custom || {};
 
+    const defaultMeta = DEFAULT_GAME_CUSTOM_IMAGES[baseTitle] || {};
+
     const localBanner = typeof window !== 'undefined' ? (localStorage.getItem('hexsync_banner_' + baseTitle) || localStorage.getItem('hexsync_banner_' + p.name)) : null;
     const localIcon = typeof window !== 'undefined' ? (localStorage.getItem('hexsync_icon_' + baseTitle) || localStorage.getItem('hexsync_icon_' + p.name)) : null;
 
@@ -618,11 +652,11 @@ export function groupProductsByGame(
     // Strict priority hierarchy for 0ms instant display without old image flash:
     // 1. custom.bannerImage (explicit admin setting for this game)
     // 2. localBanner (0ms instant cached image from localStorage)
-    // 3. p.image (product's own custom uploaded image)
-    // 4. catBanner (only if category matches the game title!)
+    // 3. catBanner (only if category matches the game title!)
+    // 4. defaultMeta.bannerImage (built-in animated GIF banner)
     // 5. Default fallback
-    const resolvedBanner = custom.bannerImage || localBanner || (hasValidProdImage ? p.image : '') || catBanner || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
-    const resolvedImage = custom.image || localIcon || (hasValidProdImage ? p.image : '') || catBanner || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600';
+    const resolvedBanner = custom.bannerImage || localBanner || catBanner || defaultMeta.bannerImage || (hasValidProdImage ? p.image : '') || '/game-assets/rov_banner.gif';
+    const resolvedImage = custom.image || localIcon || defaultMeta.image || (hasValidProdImage ? p.image : '') || '/game-assets/rov_icon.jpg';
 
     if (!map[baseTitle]) {
       map[baseTitle] = {
@@ -648,17 +682,21 @@ export function groupProductsByGame(
     if (p.price < grp.startingPrice) grp.startingPrice = p.price;
     if (p.price > grp.maxPrice) grp.maxPrice = p.price;
 
-    // Keep icons and banners updated if product has valid image
+    // Keep icons and banners updated with proper game assets (never overwrite banners with square icons)
     if (custom.image) {
       grp.image = custom.image;
-    } else if (hasValidProdImage && (!grp.image || grp.image.includes('unsplash') || grp.image === catBanner)) {
+    } else if (hasValidProdImage && (!grp.image || grp.image.includes('unsplash'))) {
       grp.image = p.image;
+    } else if (!grp.image && defaultMeta.image) {
+      grp.image = defaultMeta.image;
     }
 
     if (custom.bannerImage) {
       grp.bannerImage = custom.bannerImage;
-    } else if (hasValidProdImage && (!grp.bannerImage || grp.bannerImage.includes('unsplash') || grp.bannerImage === catBanner)) {
-      grp.bannerImage = p.image;
+    } else if (catBanner && (!grp.bannerImage || grp.bannerImage.includes('unsplash'))) {
+      grp.bannerImage = catBanner;
+    } else if (defaultMeta.bannerImage && (!grp.bannerImage || grp.bannerImage.includes('unsplash'))) {
+      grp.bannerImage = defaultMeta.bannerImage;
     }
   });
 
@@ -1438,7 +1476,7 @@ export default function App() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
-  const [newProductImage, setNewProductImage] = useState('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80');
+  const [newProductImage, setNewProductImage] = useState('/game-assets/rov_icon.jpg');
 
   // Gift Codes & Coupons admin state
   const [giftCodesList, setGiftCodesList] = useState<GiftCodeItem[]>([]);
@@ -1484,7 +1522,7 @@ export default function App() {
       bank_account_name: 'บจก. คีย์ช็อป ดิจิทัล (KeyShop Co., Ltd.)',
       bank_account_number: '123-4-56789-0',
       promptpay_number: '0812345678',
-      hexsync_game_custom_images: '{}',
+      hexsync_game_custom_images: JSON.stringify(DEFAULT_GAME_CUSTOM_IMAGES),
       hexsync_game_order: '[]',
 
       dashboard_override_enabled: 'false',
@@ -7279,7 +7317,7 @@ export default function App() {
                         alt={group.title}
                         className="game-card-banner-img"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600';
+                          (e.target as HTMLImageElement).src = '/game-assets/rov_banner.gif';
                         }}
                       />
                       <div className={`game-card-status-tag ${isMaintenance ? 'maintenance' : isNotReady ? 'not-ready' : !isOutOfStock ? 'in-stock' : 'out-of-stock'}`}>
@@ -7369,7 +7407,7 @@ export default function App() {
                           alt=""
                           className="game-card-icon"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                            (e.target as HTMLImageElement).src = '/game-assets/rov_icon.jpg';
                           }}
                         />
                         <div className="game-card-title-group">
@@ -8316,7 +8354,7 @@ export default function App() {
                             alt=""
                             className="admin-game-card-icon"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                              (e.target as HTMLImageElement).src = '/game-assets/rov_icon.jpg';
                             }}
                           />
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -8453,7 +8491,7 @@ export default function App() {
                               alt=""
                               style={{ width: 45, height: 45, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-subtle)' }}
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                                (e.target as HTMLImageElement).src = '/game-assets/rov_icon.jpg';
                               }}
                             />
                           </td>
@@ -14598,7 +14636,7 @@ async function verifyLicense(key, hwid) {
                     alt="Banner Preview"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
+                      (e.target as HTMLImageElement).src = '/game-assets/rov_banner.gif';
                     }}
                   />
                 </div>
@@ -14633,7 +14671,7 @@ async function verifyLicense(key, hwid) {
                     alt="Icon Preview"
                     style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.15)' }}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                      (e.target as HTMLImageElement).src = '/game-assets/rov_icon.jpg';
                     }}
                   />
                   <div style={{ flex: 1, display: 'flex', gap: '8px' }}>
@@ -14960,7 +14998,7 @@ async function verifyLicense(key, hwid) {
                       alt={selectedProductDetail.name}
                       className="detail-media-img"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400';
+                        (e.target as HTMLImageElement).src = '/game-assets/rov_icon.jpg';
                       }}
                     />
                     {selectedProductDetail.badge && (
@@ -16391,7 +16429,7 @@ async function verifyLicense(key, hwid) {
                       alt="Preview"
                       style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, border: '1px solid #a855f7' }}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                        (e.target as HTMLImageElement).src = '/game-assets/rov_icon.jpg';
                       }}
                     />
 
@@ -16753,7 +16791,7 @@ async function verifyLicense(key, hwid) {
                   alt=""
                   style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover' }}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100';
+                    (e.target as HTMLImageElement).src = '/game-assets/rov_icon.jpg';
                   }}
                 />
                 <div style={{ textAlign: 'left', flex: 1, overflow: 'hidden' }}>
@@ -17376,7 +17414,7 @@ async function verifyLicense(key, hwid) {
                         alt="Banner Preview"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
+                          (e.target as HTMLImageElement).src = '/game-assets/rov_banner.gif';
                         }}
                       />
                     </div>
@@ -17482,7 +17520,7 @@ async function verifyLicense(key, hwid) {
                         alt="Banner Preview"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
+                          (e.target as HTMLImageElement).src = '/game-assets/rov_banner.gif';
                         }}
                       />
                     </div>

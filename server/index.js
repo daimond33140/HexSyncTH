@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { sequelize } = require('./models');
+const path = require('path');
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err.message);
@@ -108,6 +109,7 @@ app.get('/', (req, res) => {
   res.send('<h2>HexSyncTH API Server is running securely!</h2><p>Database connected and protected with Anti-Hack & Rate Limiting.</p>');
 });
 
+app.use('/game-assets', express.static(path.join(__dirname, '../public/game-assets')));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);

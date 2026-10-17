@@ -51,6 +51,15 @@ const DEFAULT_SETTINGS = {
   discord_security_webhook: '',
   discord_bot_token: '',
   discord_alert_channel_id: '',
+  hexsync_game_custom_images: JSON.stringify({
+    'ROV กันรายงาน': { bannerImage: '/game-assets/rov_banner.gif', image: '/game-assets/rov_icon.jpg' },
+    'ROV ไม่กันรายงาน': { bannerImage: '/game-assets/rov_banner.gif', image: '/game-assets/rov_icon.jpg' },
+    'Free Fire / FF MAX': { bannerImage: '/game-assets/free_fire_ff_max_banner.gif', image: '/game-assets/free_fire_ff_max_icon.jpg' },
+    'PUBG Mobile (VIP)': { bannerImage: '/game-assets/pubg_mobile_vip_banner.gif', image: '/game-assets/pubg_mobile_vip_icon.jpg' },
+    'PUBG Mobile (Crack)': { bannerImage: '/game-assets/pubg_mobile_crack_banner.gif', image: '/game-assets/pubg_mobile_crack_icon.jpg' },
+    'ระบบเว็บ HexSyncTH (Full Source)': { bannerImage: '/game-assets/hexsyncth_full_source_banner.gif', image: '/game-assets/hexsyncth_full_source_icon.jpg' }
+  }),
+  hexsync_game_order: '[]',
 };
 
 const jwt = require('jsonwebtoken');
