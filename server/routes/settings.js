@@ -47,8 +47,10 @@ const DEFAULT_SETTINGS = {
   bg_music_volume: '30',
   bg_music_autoplay: 'true',
 
-  // Discord Security & Alerts Webhook
+  // Discord Security & Alerts (Supports Webhook URL or Bot Token + Channel ID)
   discord_security_webhook: '',
+  discord_bot_token: '',
+  discord_alert_channel_id: '',
 };
 
 const jwt = require('jsonwebtoken');
@@ -99,7 +101,7 @@ router.get('/', async (req, res) => {
     });
 
     if (!isAdmin) {
-      // Never expose internal sensitive keys, API tokens, or webhook URLs to public
+      // Never expose internal sensitive keys, API tokens, bot tokens, or webhook URLs to public
       delete settingsMap.emergency_master_key;
       delete settingsMap.slipok_api_key;
       delete settingsMap.slipok_branch_id;
@@ -108,6 +110,8 @@ router.get('/', async (req, res) => {
       delete settingsMap.webhook_secret;
       delete settingsMap.superadmin_master_secret;
       delete settingsMap.discord_security_webhook;
+      delete settingsMap.discord_bot_token;
+      delete settingsMap.discord_alert_channel_id;
 
       cachedSettings = settingsMap;
       settingsCacheExpiry = now + 2000; // 2s micro-cache
@@ -122,42 +126,47 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Test Discord Webhook connection (Admin only)
+// Test Discord connection (Admin only - supports Webhook URL or Bot Token + Channel ID)
 router.post('/test-discord-webhook', requireAdmin, async (req, res) => {
   try {
-    const { webhookUrl, adminUsername } = req.body;
-    let url = (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.trim().startsWith('http')) ? webhookUrl.trim() : null;
+    const { webhookUrl, botToken, channelId, adminUsername } = req.body;
     
-    if (!url) {
-      const s = await Setting.findOne({ where: { key: 'discord_security_webhook' } });
-      if (s && s.value && s.value.trim().startsWith('http')) {
-        url = s.value.trim();
-      }
+    // Save temporary if passed so test uses newest input
+    if (botToken) {
+      const [s] = await Setting.findOrCreate({ where: { key: 'discord_bot_token' }, defaults: { value: String(botToken).trim() } });
+      s.value = String(botToken).trim();
+      await s.save();
     }
-
-    if (!url) {
-      return res.status(400).json({ success: false, message: 'กรุณากรอก Discord Webhook URL ที่ขึ้นต้นด้วย https://discord.com/api/webhooks/...' });
+    if (channelId) {
+      const [s] = await Setting.findOrCreate({ where: { key: 'discord_alert_channel_id' }, defaults: { value: String(channelId).trim() } });
+      s.value = String(channelId).trim();
+      await s.save();
+    }
+    if (webhookUrl && webhookUrl.trim().startsWith('http')) {
+      const [s] = await Setting.findOrCreate({ where: { key: 'discord_security_webhook' }, defaults: { value: String(webhookUrl).trim() } });
+      s.value = String(webhookUrl).trim();
+      await s.save();
     }
 
     const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
     const success = await sendDiscordSecurityAlert({
-      title: '🎉 ทดสอบการเชื่อมต่อระบบแจ้งเตือนสำเร็จ (Discord Connected!)',
-      description: 'ระบบหลังบ้าน HexSyncTH เชื่อมต่อกับ Discord Webhook เรียบร้อยแล้ว พร้อมส่งการแจ้งเตือนความปลอดภัยตลอด 24 ชั่วโมง',
+      title: '🎉 ทดสอบการเชื่อมต่อ HEX AI สำเร็จ (Discord Connected!)',
+      description: 'ระบบหลังบ้าน HexSyncTH เชื่อมต่อกับบอท Discord เรียบร้อยแล้ว พร้อมส่งการแจ้งเตือนความปลอดภัยตลอด 24 ชั่วโมง',
       color: 0x10b981,
       fields: [
-        { name: 'สถานะระบบ', value: '🟢 ออนไลน์และพร้อมส่งการแจ้งเตือน 24/7', inline: true },
+        { name: 'สถานะบอท', value: '🟢 ออนไลน์และพร้อมส่งการแจ้งเตือน 24/7', inline: true },
         { name: 'ผู้ทดสอบ', value: adminUsername || req.user?.username || 'Admin', inline: true },
         { name: 'การตรวจจับความปลอดภัย', value: '• ป้องกันสลิปปลอม & Auto-Ban\n• WAF ดักจับแฮกเกอร์ & Honeypot\n• แจ้งเตือนการสั่งซื้อคีย์ & เติมเงิน\n• แจ้งเตือนการสมัครสมาชิกใหม่', inline: false }
       ]
     });
 
     if (success) {
-      return res.json({ success: true, message: 'ส่งข้อความทดสอบเข้าห้องดิสคอร์ดเรียบร้อยแล้ว!' });
+      return res.json({ success: true, message: 'บอทส่งข้อความทดสอบเข้าห้องดิสคอร์ดเรียบร้อยแล้ว!' });
     } else {
-      return res.status(500).json({ success: false, message: 'ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบว่า Webhook URL ถูกต้องและมีสิทธิ์ส่งข้อความในห้องนั้น' });
+      return res.status(500).json({ success: false, message: 'ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบว่า Bot Token และ ID ห้องถูกต้อง หรือบอทมีสิทธิ์ส่งข้อความในห้องนั้น' });
     }
   } catch (err) {
-    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการทดสอบ Webhook: ' + err.message });
+    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการทดสอบ Discord: ' + err.message });
   }
 });
 
