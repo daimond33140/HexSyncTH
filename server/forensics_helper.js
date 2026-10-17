@@ -8,7 +8,7 @@ const EDITING_APP_SIGNATURES = [
   { name: 'Adobe Photoshop', pattern: /(photoshop|8BIM|adobe:ns:meta|xmp:CreatorTool="Adobe Photoshop")/i },
   { name: 'Adobe Lightroom', pattern: /(lightroom|Adobe Lightroom)/i },
   { name: 'Photopea', pattern: /photopea/i },
-  { name: 'Canva', pattern: /canva/i },
+  { name: 'Canva', pattern: /\bcanva\b/i },
   { name: 'PicsArt', pattern: /(picsart|com\.picsart\.studio)/i },
   { name: 'Snapseed', pattern: /snapseed/i },
   { name: 'Pixlr', pattern: /pixlr/i },
