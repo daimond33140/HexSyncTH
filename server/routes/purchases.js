@@ -4,7 +4,7 @@ const { Purchase, Product, ProductKey, User, Log, Coupon, sequelize } = require(
 const { Op } = require('sequelize');
 const { verifyToken, requireAdmin } = require('../middleware/auth');
 const { getClientIp } = require('../middleware/ipBan');
-const { sendDiscordSecurityAlert, sendSuspiciousActivityAlert, sendPurchaseAlert, sendProductListAlert } = require('../utils/discordAlert');
+const { sendDiscordSecurityAlert, sendSuspiciousActivityAlert, sendPurchaseAlert } = require('../utils/discordAlert');
 const router = express.Router();
 
 // Get purchase history for user or all (if admin)
@@ -274,9 +274,6 @@ router.post('/checkout', verifyToken, async (req, res) => {
       ip: getClientIp(req),
       req
     }).catch(() => {});
-
-    // Sync updated stock to Discord #product-list in real-time
-    sendProductListAlert().catch(() => {});
 
     res.status(201).json({
       message: 'การสั่งซื้อสำเร็จ ระบบได้ดึงคีย์จริงออกจากสต็อกเรียบร้อยแล้ว',
