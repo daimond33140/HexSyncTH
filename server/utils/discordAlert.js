@@ -300,44 +300,52 @@ async function sendProductListAlert({ channelId = null } = {}) {
       keyCountMap[k.productId] = (keyCountMap[k.productId] || 0) + 1;
     });
 
-    const activeProducts = products.filter(p => p.active !== false);
-    const inStockCount = activeProducts.filter(p => (keyCountMap[p.id] || p.stockCount || 0) > 0).length;
-    const totalAvailableKeys = keys.length;
+    const now = new Date();
+    const thaiTime = now.toLocaleString('th-TH', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    const unixTimestamp = Math.floor(now.getTime() / 1000);
 
     // Build fields for up to 24 products (Discord embed field limit is 25)
     const productFields = products.slice(0, 24).map(p => {
       const stock = keyCountMap[p.id] !== undefined ? keyCountMap[p.id] : (p.stockCount || 0);
       const isReady = p.active !== false && stock > 0;
-      const statusIcon = isReady ? '🟢 พร้อมใช้งาน' : (p.active === false ? '🔴 ปิดปรับปรุง' : '🟡 สินค้าหมดชั่วคราว');
-      const priceText = `฿${Number(p.price || 0).toLocaleString()}`;
-      const origPriceText = p.originalPrice ? ` ~฿${Number(p.originalPrice).toLocaleString()}~` : '';
-      
-      const badgeText = p.badge ? ` \`[${p.badge}]\`` : '';
-      const rentalDuration = p.durationHours ? `${p.durationHours} ชม.` : (p.durationDays ? `${p.durationDays} วัน` : 'ถาวร');
+      let statusText = 'พร้อมใช้งาน';
+      if (p.active === false) {
+        statusText = 'ปิดปรับปรุง';
+      } else if (stock === 0) {
+        statusText = 'สินค้าหมดชั่วคราว';
+      }
 
       return {
-        name: `🛍️ ${p.name || 'สินค้า'}${badgeText}`,
-        value: `> **สถานะ:** ${statusIcon}\n> **คงเหลือ:** \`${stock}\` ชิ้น/คีย์\n> **ราคาเริ่มต้น:** \`${priceText}\`${origPriceText}\n> **อายุการใช้งาน:** \`${rentalDuration}\``,
+        name: `${p.name || 'สินค้า'}`,
+        value: `> **Status :** ${statusText}\n> **อัพเดทล่าสุด :** ${thaiTime} (<t:${unixTimestamp}:R>)`,
         inline: true
       };
     });
 
     const embed = {
-      title: '🛒 HexSyncTH — รายการสินค้าอัปเดตแบบเรียลไทม์ (Live Catalog)',
-      description: 'ระบบอัปเดตสถานะคลังสินค้าอัตโนมัติจากเซิร์ฟเวอร์หลัก HexSyncTH\nสั่งซื้อผ่านหน้าเว็บ รับคีย์แท้ใช้งานได้ทันที 24 ชม. ตรวจสอบสถานะและสต็อกล่าสุดด้านล่างนี้ได้เลยครับ',
+      title: '🛒 HexSyncTH — สถานะสินค้าปัจจุบัน (Product Status)',
+      description: 'รายการตรวจสอบสถานะความพร้อมให้บริการของสินค้าทั้งหมดบนเว็บไซต์ HexSyncTH\nอัปเดตข้อมูลสถานะแบบเรียลไทม์ 24 ชม.',
       color: 0x00FF88, // Vivid Emerald
       fields: [
         {
-          name: '📊 ข้อมูลภาพรวมคลังสินค้า (Live Inventory Summary)',
-          value: `📦 สินค้าทั้งหมด: **${products.length}** รายการ | 🟢 พร้อมส่งทันที: **${inStockCount}** รายการ | 🔑 คีย์พร้อมใช้งาน: **${totalAvailableKeys}** คีย์`,
+          name: '📌 ข้อมูลระบบโดยรวม (System Status)',
+          value: `📦 สินค้าทั้งหมดในระบบ: **${products.length}** รายการ | 🟢 เซิร์ฟเวอร์: **ออนไลน์ปกติ (24/7)**`,
           inline: false
         },
         ...productFields
       ],
       footer: {
-        text: 'HexSyncTH Security & Automation Gateway • ซิงค์สต็อกเรียลไทม์ 100%'
+        text: 'HexSyncTH Security & Automation • อัปเดตสถานะอัตโนมัติ'
       },
-      timestamp: new Date().toISOString()
+      timestamp: now.toISOString()
     };
 
     const payload = JSON.stringify({
@@ -349,7 +357,7 @@ async function sendProductListAlert({ channelId = null } = {}) {
             {
               type: 2,
               style: 5,
-              label: '🌐 สั่งซื้อสินค้าผ่านหน้าเว็บ (Instant Web Order)',
+              label: '🌐 เข้าสู่เว็บไซต์ HexSyncTH',
               url: 'https://hexsyncth.site'
             }
           ]
