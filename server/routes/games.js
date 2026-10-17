@@ -11,64 +11,109 @@ const JWT_SECRET = process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd
 
 const DEFAULT_GAMES = [
   {
-    id: 'game-1',
-    title: 'GAME XX1 (VIP)',
-    subtitle: 'ระบบเช็คสถานะ & เมนูช่วยเล่น VIP',
-    version: 'v2.4.1 (Latest)',
+    id: 'rov-vip',
+    title: 'ROV กันรี+กันแบน (VIP)',
+    subtitle: 'Rov VIP กันรายงาน',
+    version: 'v3.1.0 (Latest)',
     status: 'undetected',
     downloadUrl: 'https://drive.google.com',
     isDownloadEnabled: true,
     isFree: false,
-    category: 'FPS / Action',
+    category: 'MOBA',
     updatedAt: '2026-09-15',
     bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80',
     downloadCount: 12450,
-    driveNote: 'รหัสแตกไฟล์ zip คือ: xx1vip (แนะนำปิด Antivirus ชั่วคราวก่อนแตกไฟล์)',
+    driveNote: 'รองรับGBOX ไม่รองรับPC',
   },
   {
-    id: 'game-2',
-    title: 'GAME XX2 (Mod Menu)',
-    subtitle: 'Mod Menu & Script Loader',
-    version: 'v1.8.0',
-    status: 'risk',
+    id: 'rov-normal',
+    title: 'Rov ไม่กันรี',
+    subtitle: 'Rov HackMap ฟังชั่นเกรียนๆมากมาย',
+    version: 'v10.1.1',
+    status: 'undetected',
     downloadUrl: 'https://drive.google.com',
     isDownloadEnabled: true,
     isFree: false,
-    category: 'Battle Royale',
-    updatedAt: '2026-09-14',
+    category: 'MOBA',
+    updatedAt: '2026-09-17',
     bannerUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=600&q=80',
     downloadCount: 8930,
-    driveNote: 'สถานะตอนนี้ Use At Own Risk เสี่ยงปานกลาง แนะนำใช้ไอดีไก่เท่านั้น',
+    driveNote: 'Rov HackMap ฟังชั่นเกรียนๆมากมาย',
   },
   {
-    id: 'game-3',
-    title: 'GAME XX3 (Auto Farm)',
-    subtitle: 'Auto Farm & Quest Helper',
-    version: 'v3.1.0',
+    id: 'ff-max',
+    title: 'FF / FF MAX',
+    subtitle: 'มอง ล็อค ขยายดาเมจ เมนู',
+    version: 'v1.0.0',
+    status: 'undetected',
+    downloadUrl: 'https://drive.google.com',
+    isDownloadEnabled: true,
+    isFree: false,
+    category: 'FPS',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 15420,
+    driveNote: 'มอง ล็อค ขยายดาเมจ เมนู',
+  },
+  {
+    id: 'pubgm-vip',
+    title: 'PUBG Mobile (VIP)',
+    subtitle: 'PUBG Mobile VIP แท้ ปลอดภัยสูง',
+    version: 'v3.2.0',
     status: 'updating',
     downloadUrl: 'https://drive.google.com',
     isDownloadEnabled: false,
     isFree: false,
-    category: 'MMORPG / RPG',
-    updatedAt: '2026-09-15',
-    bannerUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80',
-    downloadCount: 5410,
-    driveNote: 'กำลังปรับปรุงระบบ รอรับแพตช์เกมเวอร์ชันล่าสุด เร็วๆ นี้',
+    category: 'Battle Royale',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 9400,
+    driveNote: 'กำลังอัปเดตรองรับเวอร์ชันล่าสุด',
   },
   {
-    id: 'game-4',
-    title: 'GAME XX4 (Skin / Tool)',
-    subtitle: 'Skin Changer & Crosshair Tool',
-    version: 'v1.0.5',
+    id: 'pubgm-crack',
+    title: 'PUBG Mobile (Crack)',
+    subtitle: 'PUBG Mobile Crack ตัวเต็ม',
+    version: 'v3.2.0',
+    status: 'updating',
+    downloadUrl: 'https://drive.google.com',
+    isDownloadEnabled: false,
+    isFree: false,
+    category: 'FPS',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 6700,
+    driveNote: 'กำลังอัปเดตรองรับตัวเกมใหม่',
+  },
+  {
+    id: 'hexsync-src',
+    title: 'ระบบเว็บ HexSyncTH (Full Source)',
+    subtitle: 'Source code ระบบเว็บ HexSyncTH v2.0 และระบบความปลอดภัยครบชุด',
+    version: 'v2.0',
+    status: 'undetected',
+    downloadUrl: 'https://drive.google.com',
+    isDownloadEnabled: true,
+    isFree: false,
+    category: 'Utilities',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 3200,
+    driveNote: 'ซอร์สโค้ดพร้อมใช้งาน 100% พร้อมคู่มือติดตั้ง',
+  },
+  {
+    id: 'test-system',
+    title: 'ทดสอบระบบ',
+    subtitle: 'รายการสำหรับทดสอบการทำงานของระบบ',
+    version: 'v1.0',
     status: 'undetected',
     downloadUrl: 'https://drive.google.com',
     isDownloadEnabled: true,
     isFree: true,
     category: 'Utilities',
-    updatedAt: '2026-09-13',
-    bannerUrl: 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?auto=format&fit=crop&w=600&q=80',
-    downloadCount: 3200,
-    driveNote: 'ปลอดภัย 100% ใช้งานง่าย รหัสแตกไฟล์: hexsync (แจกฟรีสำหรับทุกคน)',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 120,
+    driveNote: 'สำหรับแอดมินทดสอบระบบ',
   }
 ];
 
@@ -194,7 +239,7 @@ async function getGamesList(forceFresh = false) {
     }
   } catch {}
 
-  if (!games) {
+  if (!games || games.length === 0) {
     games = DEFAULT_GAMES;
   }
 
@@ -204,7 +249,11 @@ async function getGamesList(forceFresh = false) {
     if (customSetting && customSetting.value) {
       const customMap = JSON.parse(customSetting.value);
       games = games.map((g) => {
-        const foundKey = Object.keys(customMap).find(k => k.trim().toLowerCase() === g.title.trim().toLowerCase());
+        const foundKey = Object.keys(customMap).find(k => {
+          const cleanK = k.trim().toLowerCase();
+          const cleanTitle = (g.title || '').trim().toLowerCase();
+          return cleanK === cleanTitle || cleanTitle.includes(cleanK) || cleanK.includes(cleanTitle);
+        });
         const match = foundKey ? customMap[foundKey] : null;
         if (match && (match.bannerImage || match.image)) {
           return {
@@ -218,7 +267,7 @@ async function getGamesList(forceFresh = false) {
   } catch {}
 
   cachedGamesList = games;
-  cachedGamesExpiry = now + 2000; // 2 seconds micro-cache
+  cachedGamesExpiry = now + 1000; // 1 second micro-cache
   return games;
 }
 

@@ -53,60 +53,109 @@ export interface StatusSettings {
 
 const DEFAULT_GAMES: GameItem[] = [
   {
-    id: 'game-1',
-    title: 'GAME XX1 (VIP)',
-    subtitle: 'ระบบเช็คสถานะ & เมนูช่วยเล่น VIP',
-    version: 'v2.4.1 (Latest)',
+    id: 'rov-vip',
+    title: 'ROV กันรี+กันแบน (VIP)',
+    subtitle: 'Rov VIP กันรายงาน',
+    version: 'v3.1.0 (Latest)',
     status: 'undetected',
     downloadUrl: 'https://drive.google.com',
     isDownloadEnabled: true,
-    category: 'FPS / Action',
+    isFree: false,
+    category: 'MOBA',
     updatedAt: '2026-09-15',
     bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80',
     downloadCount: 12450,
-    driveNote: 'รหัสแตกไฟล์ zip คือ: xx1vip (แนะนำปิด Antivirus ชั่วคราวก่อนแตกไฟล์)',
+    driveNote: 'รองรับGBOX ไม่รองรับPC',
   },
   {
-    id: 'game-2',
-    title: 'GAME XX2 (Mod Menu)',
-    subtitle: 'Mod Menu & Script Loader',
-    version: 'v1.8.0',
-    status: 'detected',
-    downloadUrl: 'https://drive.google.com',
-    isDownloadEnabled: false,
-    category: 'Battle Royale',
-    updatedAt: '2026-09-14',
-    bannerUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=600&q=80',
-    downloadCount: 8930,
-    driveNote: 'สถานะตอนนี้ Detected! ห้ามใช้งานเด็ดขาด ทีมงานกำลังแก้ปัญหาอยู่',
-  },
-  {
-    id: 'game-3',
-    title: 'GAME XX3 (Auto Farm)',
-    subtitle: 'Auto Farm & Quest Helper',
-    version: 'v3.1.0',
-    status: 'updating',
-    downloadUrl: 'https://drive.google.com',
-    isDownloadEnabled: false,
-    category: 'MMORPG / RPG',
-    updatedAt: '2026-09-15',
-    bannerUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80',
-    downloadCount: 5410,
-    driveNote: 'อยู่ระหว่างปรับปรุงระบบ รองรับแพตช์เกมเวอร์ชันล่าสุด',
-  },
-  {
-    id: 'game-4',
-    title: 'GAME XX4 (Skin / Tool)',
-    subtitle: 'Skin Changer & Crosshair Tool',
-    version: 'v1.0.5',
+    id: 'rov-normal',
+    title: 'Rov ไม่กันรี',
+    subtitle: 'Rov HackMap ฟังชั่นเกรียนๆมากมาย',
+    version: 'v10.1.1',
     status: 'undetected',
     downloadUrl: 'https://drive.google.com',
     isDownloadEnabled: true,
-    category: 'Utilities',
-    updatedAt: '2026-09-13',
+    isFree: false,
+    category: 'MOBA',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 8930,
+    driveNote: 'Rov HackMap ฟังชั่นเกรียนๆมากมาย',
+  },
+  {
+    id: 'ff-max',
+    title: 'FF / FF MAX',
+    subtitle: 'มอง ล็อค ขยายดาเมจ เมนู',
+    version: 'v1.0.0',
+    status: 'undetected',
+    downloadUrl: 'https://drive.google.com',
+    isDownloadEnabled: true,
+    isFree: false,
+    category: 'FPS',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 15420,
+    driveNote: 'มอง ล็อค ขยายดาเมจ เมนู',
+  },
+  {
+    id: 'pubgm-vip',
+    title: 'PUBG Mobile (VIP)',
+    subtitle: 'PUBG Mobile VIP แท้ ปลอดภัยสูง',
+    version: 'v3.2.0',
+    status: 'updating',
+    downloadUrl: 'https://drive.google.com',
+    isDownloadEnabled: false,
+    isFree: false,
+    category: 'Battle Royale',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 9400,
+    driveNote: 'กำลังอัปเดตรองรับเวอร์ชันล่าสุด',
+  },
+  {
+    id: 'pubgm-crack',
+    title: 'PUBG Mobile (Crack)',
+    subtitle: 'PUBG Mobile Crack ตัวเต็ม',
+    version: 'v3.2.0',
+    status: 'updating',
+    downloadUrl: 'https://drive.google.com',
+    isDownloadEnabled: false,
+    isFree: false,
+    category: 'FPS',
+    updatedAt: '2026-09-17',
     bannerUrl: 'https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 6700,
+    driveNote: 'กำลังอัปเดตรองรับตัวเกมใหม่',
+  },
+  {
+    id: 'hexsync-src',
+    title: 'ระบบเว็บ HexSyncTH (Full Source)',
+    subtitle: 'Source code ระบบเว็บ HexSyncTH v2.0 และระบบความปลอดภัยครบชุด',
+    version: 'v2.0',
+    status: 'undetected',
+    downloadUrl: 'https://drive.google.com',
+    isDownloadEnabled: true,
+    isFree: false,
+    category: 'Utilities',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=600&q=80',
     downloadCount: 3200,
-    driveNote: 'ใช้งานได้ปลอดภัย 100% ปลดล็อกสกินทันที รหัสแตกไฟล์: hexsync',
+    driveNote: 'ซอร์สโค้ดพร้อมใช้งาน 100% พร้อมคู่มือติดตั้ง',
+  },
+  {
+    id: 'test-system',
+    title: 'ทดสอบระบบ',
+    subtitle: 'รายการสำหรับทดสอบการทำงานของระบบ',
+    version: 'v1.0',
+    status: 'undetected',
+    downloadUrl: 'https://drive.google.com',
+    isDownloadEnabled: true,
+    isFree: true,
+    category: 'Utilities',
+    updatedAt: '2026-09-17',
+    bannerUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=80',
+    downloadCount: 120,
+    driveNote: 'สำหรับแอดมินทดสอบระบบ',
   }
 ];
 
@@ -213,20 +262,28 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
   // Admin edit states
   const [editingGame, setEditingGame] = useState<GameItem | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isSavingGames, setIsSavingGames] = useState(false);
 
-    // Fetch games & settings from server / Supabase on mount
+  // Fetch games & settings from server / Supabase on mount
   useEffect(() => {
     fetch('/api/games?_t=' + Date.now(), { cache: 'no-store' })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
       .then((data) => {
-        if (data && data.success && Array.isArray(data.games)) {
+        if (data && data.success && Array.isArray(data.games) && data.games.length > 0) {
           let updatedGames = data.games;
           try {
             const customImgStr = localStorage.getItem('hexsync_game_custom_images');
             if (customImgStr) {
               const customMap = JSON.parse(customImgStr);
               updatedGames = updatedGames.map((g: GameItem) => {
-                const foundKey = Object.keys(customMap).find(k => k.trim().toLowerCase() === g.title.trim().toLowerCase());
+                const foundKey = Object.keys(customMap).find(k => {
+                  const cleanK = k.trim().toLowerCase();
+                  const cleanTitle = (g.title || '').trim().toLowerCase();
+                  return cleanK === cleanTitle || cleanTitle.includes(cleanK) || cleanK.includes(cleanTitle);
+                });
                 const match = foundKey ? customMap[foundKey] : null;
                 if (match && (match.bannerImage || match.image)) {
                   return { ...g, bannerUrl: match.bannerImage || match.image || g.bannerUrl };
@@ -241,9 +298,10 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
           } catch {}
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('Using local games cache:', err.message);
+      });
 
-    
     const token = localStorage.getItem('hexsync_token');
     if (token) {
       fetch('/api/purchases/active-licenses', {
@@ -264,15 +322,16 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
       .then((data) => {
         if (data && data.success && data.settings) {
           setSettings(data.settings);
-          localStorage.setItem('hexsync_status_settings', JSON.stringify(data.settings));
+          try {
+            localStorage.setItem('hexsync_status_settings', JSON.stringify(data.settings));
+          } catch {}
         }
       })
       .catch(() => {});
   }, []);
 
   // Save to Database (Supabase Cloud) and localStorage
-
-  const handleMoveGame = (gameId: string, direction: 'up' | 'down') => {
+  const handleMoveGame = async (gameId: string, direction: 'up' | 'down') => {
     const idx = games.findIndex(g => g.id === gameId);
     if (idx === -1) return;
     const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
@@ -280,15 +339,19 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
     const newGames = [...games];
     const [moved] = newGames.splice(idx, 1);
     newGames.splice(targetIdx, 0, moved);
-    handleSaveGames(newGames);
+    await handleSaveGames(newGames);
   };
 
   const handleSaveGames = async (newGames: GameItem[]) => {
     setGames(newGames);
-    localStorage.setItem('hexsync_games_status', JSON.stringify(newGames));
+    try {
+      localStorage.setItem('hexsync_games_status', JSON.stringify(newGames));
+    } catch {}
+
+    setIsSavingGames(true);
     try {
       const token = localStorage.getItem('hexsync_token');
-      await fetch('/api/games', {
+      const res = await fetch('/api/games', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -296,17 +359,32 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
         },
         body: JSON.stringify({ games: newGames })
       });
-    } catch (err) {
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        console.error('Failed to sync games to server:', data.message || res.statusText);
+        alert('⚠️ บันทึกข้อมูลไปยังเซิร์ฟเวอร์ไม่สำเร็จ: ' + (data.message || res.statusText || 'กรุณาตรวจสอบสิทธิ์แอดมินหรือเข้าสู่ระบบใหม่'));
+        return false;
+      }
+      return true;
+    } catch (err: any) {
       console.error('Failed to sync games to server:', err);
+      alert('⚠️ บันทึกข้อมูลไม่สำเร็จ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์: ' + (err.message || 'Network Error'));
+      return false;
+    } finally {
+      setIsSavingGames(false);
     }
   };
 
   const handleSaveSettings = async (newSettings: StatusSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('hexsync_status_settings', JSON.stringify(newSettings));
+    try {
+      localStorage.setItem('hexsync_status_settings', JSON.stringify(newSettings));
+    } catch {}
+
     try {
       const token = localStorage.getItem('hexsync_token');
-      await fetch('/api/games/settings', {
+      const res = await fetch('/api/games/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -314,8 +392,18 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
         },
         body: JSON.stringify({ settings: newSettings })
       });
-    } catch (err) {
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        console.error('Failed to sync settings to server:', data.message || res.statusText);
+        alert('⚠️ บันทึกการตั้งค่าไม่สำเร็จ: ' + (data.message || res.statusText || 'กรุณาตรวจสอบสิทธิ์แอดมิน'));
+        return false;
+      }
+      return true;
+    } catch (err: any) {
       console.error('Failed to sync settings to server:', err);
+      alert('⚠️ ไม่สามารถบันทึกการตั้งค่าได้: ' + (err.message || 'Network Error'));
+      return false;
     }
   };
 
@@ -1724,11 +1812,14 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
                 <button
-                  onClick={() => {
+                  disabled={isSavingGames}
+                  onClick={async () => {
                     if (confirm(`ลบเกม "${editingGame.title}" ออกจากระบบ?`)) {
                       const updated = games.filter(g => g.id !== editingGame.id);
-                      handleSaveGames(updated);
-                      setEditingGame(null);
+                      const ok = await handleSaveGames(updated);
+                      if (ok !== false) {
+                        setEditingGame(null);
+                      }
                     }
                   }}
                   style={{
@@ -1737,7 +1828,7 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
                     border: '1px solid rgba(239, 68, 68, 0.4)',
                     padding: '8px 14px',
                     borderRadius: '8px',
-                    cursor: 'pointer',
+                    cursor: isSavingGames ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px'
@@ -1748,31 +1839,36 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
 
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
+                    disabled={isSavingGames}
                     onClick={() => setEditingGame(null)}
                     style={{ background: '#27272a', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer' }}
                   >
                     ยกเลิก
                   </button>
                   <button
-                    onClick={() => {
+                    disabled={isSavingGames}
+                    onClick={async () => {
                       const updated = games.map(g => g.id === editingGame.id ? editingGame : g);
-                      handleSaveGames(updated);
-                      setEditingGame(null);
+                      const ok = await handleSaveGames(updated);
+                      if (ok !== false) {
+                        setEditingGame(null);
+                      }
                     }}
                     style={{
-                      background: '#10b981',
+                      background: isSavingGames ? '#059669' : '#10b981',
+                      opacity: isSavingGames ? 0.7 : 1,
                       color: '#fff',
                       border: 'none',
                       padding: '8px 18px',
                       borderRadius: '8px',
-                      cursor: 'pointer',
+                      cursor: isSavingGames ? 'not-allowed' : 'pointer',
                       fontWeight: 600,
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px'
                     }}
                   >
-                    <Save size={16} /> บันทึกข้อมูล
+                    <Save size={16} /> {isSavingGames ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
                   </button>
                 </div>
               </div>
