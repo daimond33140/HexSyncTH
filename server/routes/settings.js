@@ -46,7 +46,12 @@ const DEFAULT_SETTINGS = {
   bg_music_title: 'MMM',
   bg_music_volume: '30',
   bg_music_autoplay: 'true',
+
+  // Discord Security & Alerts Webhook
+  discord_security_webhook: '',
 };
+
+const jwt = require('jsonwebtoken');
 
 // In-memory micro-cache for Anti-DDoS / Traffic Spike absorption
 let cachedSettings = null;
@@ -69,7 +74,21 @@ router.get('/', async (req, res) => {
   try {
     const now = Date.now();
     const bypassCache = req.query._t || req.headers['cache-control'] === 'no-cache';
-    if (!bypassCache && cachedSettings && now < settingsCacheExpiry) {
+
+    let isAdmin = false;
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+    if (authHeader) {
+      try {
+        const parts = authHeader.split(' ');
+        const token = parts.length === 2 ? parts[1] : parts[0];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'd35eab7a7a6dc834e4fdc276e9d1e0c6fd109494a1b2c76212aad166fd88474c');
+        if (decoded && (decoded.role === 'admin' || decoded.role === 'superadmin')) {
+          isAdmin = true;
+        }
+      } catch (_) {}
+    }
+
+    if (!isAdmin && !bypassCache && cachedSettings && now < settingsCacheExpiry) {
       return res.json({ settings: cachedSettings });
     }
 
@@ -78,17 +97,21 @@ router.get('/', async (req, res) => {
     settingsList.forEach((s) => {
       settingsMap[s.key] = s.value;
     });
-    // Never expose internal sensitive keys, API tokens, or passcodes to public
-    delete settingsMap.emergency_master_key;
-    delete settingsMap.slipok_api_key;
-    delete settingsMap.slipok_branch_id;
-    delete settingsMap.superadmin_security_passcode;
-    delete settingsMap.angpao_phone;
-    delete settingsMap.webhook_secret;
-    delete settingsMap.superadmin_master_secret;
 
-    cachedSettings = settingsMap;
-    settingsCacheExpiry = now + 2000; // 2s micro-cache
+    if (!isAdmin) {
+      // Never expose internal sensitive keys, API tokens, or webhook URLs to public
+      delete settingsMap.emergency_master_key;
+      delete settingsMap.slipok_api_key;
+      delete settingsMap.slipok_branch_id;
+      delete settingsMap.superadmin_security_passcode;
+      delete settingsMap.angpao_phone;
+      delete settingsMap.webhook_secret;
+      delete settingsMap.superadmin_master_secret;
+      delete settingsMap.discord_security_webhook;
+
+      cachedSettings = settingsMap;
+      settingsCacheExpiry = now + 2000; // 2s micro-cache
+    }
 
     res.json({ settings: settingsMap });
   } catch (err) {
@@ -96,6 +119,45 @@ router.get('/', async (req, res) => {
       return res.json({ settings: cachedSettings });
     }
     res.json({ settings: DEFAULT_SETTINGS });
+  }
+});
+
+// Test Discord Webhook connection (Admin only)
+router.post('/test-discord-webhook', requireAdmin, async (req, res) => {
+  try {
+    const { webhookUrl, adminUsername } = req.body;
+    let url = (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.trim().startsWith('http')) ? webhookUrl.trim() : null;
+    
+    if (!url) {
+      const s = await Setting.findOne({ where: { key: 'discord_security_webhook' } });
+      if (s && s.value && s.value.trim().startsWith('http')) {
+        url = s.value.trim();
+      }
+    }
+
+    if (!url) {
+      return res.status(400).json({ success: false, message: 'กรุณากรอก Discord Webhook URL ที่ขึ้นต้นด้วย https://discord.com/api/webhooks/...' });
+    }
+
+    const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
+    const success = await sendDiscordSecurityAlert({
+      title: '🎉 ทดสอบการเชื่อมต่อระบบแจ้งเตือนสำเร็จ (Discord Connected!)',
+      description: 'ระบบหลังบ้าน HexSyncTH เชื่อมต่อกับ Discord Webhook เรียบร้อยแล้ว พร้อมส่งการแจ้งเตือนความปลอดภัยตลอด 24 ชั่วโมง',
+      color: 0x10b981,
+      fields: [
+        { name: 'สถานะระบบ', value: '🟢 ออนไลน์และพร้อมส่งการแจ้งเตือน 24/7', inline: true },
+        { name: 'ผู้ทดสอบ', value: adminUsername || req.user?.username || 'Admin', inline: true },
+        { name: 'การตรวจจับความปลอดภัย', value: '• ป้องกันสลิปปลอม & Auto-Ban\n• WAF ดักจับแฮกเกอร์ & Honeypot\n• แจ้งเตือนการสั่งซื้อคีย์ & เติมเงิน\n• แจ้งเตือนการสมัครสมาชิกใหม่', inline: false }
+      ]
+    });
+
+    if (success) {
+      return res.json({ success: true, message: 'ส่งข้อความทดสอบเข้าห้องดิสคอร์ดเรียบร้อยแล้ว!' });
+    } else {
+      return res.status(500).json({ success: false, message: 'ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบว่า Webhook URL ถูกต้องและมีสิทธิ์ส่งข้อความในห้องนั้น' });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการทดสอบ Webhook: ' + err.message });
   }
 });
 

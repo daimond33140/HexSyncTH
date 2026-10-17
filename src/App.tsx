@@ -1483,6 +1483,7 @@ export default function App() {
       slipok_branch_id: '',
       slipok_api_key: '',
       webhook_secret: 'whsec_keyshop_2026_auto',
+      discord_security_webhook: '',
 
       bg_music_enabled: 'true',
       bg_music_url: 'https://youtu.be/h_VCgsWLmY4?si=BvgFsmrHWlMFvwkT&t=8',
@@ -5493,6 +5494,37 @@ export default function App() {
         showToast('บันทึกไม่สำเร็จ (กรุณาตรวจสอบเซิร์ฟเวอร์)');
       }
     });
+  };
+
+  const [isTestingDiscordWebhook, setIsTestingDiscordWebhook] = useState(false);
+
+  const handleTestDiscordWebhook = async () => {
+    const url = (siteSettings.discord_security_webhook || '').trim();
+    if (!url || !url.startsWith('http')) {
+      showToast('⚠️ กรุณากรอก Discord Webhook URL ให้ถูกต้องก่อนทดสอบ (เช่น https://discord.com/api/webhooks/...)');
+      return;
+    }
+    setIsTestingDiscordWebhook(true);
+    try {
+      const res = await fetch('/api/settings/test-discord-webhook', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          webhookUrl: url,
+          adminUsername: user?.username || 'Admin'
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        showToast('🎉 ส่งข้อความทดสอบเข้า Discord สำเร็จ! ลองดูในห้องดิสคอร์ดของคุณได้เลย');
+      } else {
+        showToast('❌ ' + (data.message || 'ส่งข้อความไม่สำเร็จ'));
+      }
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์: ' + (err?.message || ''));
+    } finally {
+      setIsTestingDiscordWebhook(false);
+    }
   };
 
   // Emergency Unban Action (ปลดแบนฉุกเฉินสำหรับแอดมิน ทั้ง IP และเลขเครื่อง)
@@ -11711,6 +11743,74 @@ async function verifyLicense(key, hwid) {
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#7a6368', marginTop: '6px' }}>
                     *หากลูกค้าไม่ได้โอนเงินจริง ระบบจะขึ้นสถานะ "รอชำระ (Pending)" และป้องกันการปั๊มเครดิตฟรี 100% (แอดมินสามารถกดปุ่ม "อนุมัติ" ได้เองในแท็บประวัติการเติมเงิน)
+                  </div>
+                </div>
+
+                {/* 5.6 DISCORD NOTIFICATIONS & SECURITY WEBHOOK */}
+                <div style={{ background: 'rgba(88, 101, 242, 0.06)', border: '1px solid rgba(88, 101, 242, 0.35)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 4px 20px rgba(88, 101, 242, 0.1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '1.3rem' }}>💬</span>
+                      <div>
+                        <div style={{ color: '#7289da', fontWeight: 800, fontSize: '0.98rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>ระบบแจ้งเตือนความปลอดภัยผ่าน Discord Webhook (ออนไลน์ 24/7)</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: '12px', background: siteSettings.discord_security_webhook ? 'rgba(88, 101, 242, 0.25)' : 'rgba(255,255,255,0.08)', color: siteSettings.discord_security_webhook ? '#7289da' : '#888', fontWeight: 700, border: '1px solid rgba(88, 101, 242, 0.3)' }}>
+                      {siteSettings.discord_security_webhook ? '🟢 เชื่อมต่อ Discord พร้อมทำงาน 24 ชม.' : '⚪ ยังไม่ได้เชื่อมต่อ'}
+                    </span>
+                  </div>
+
+                  <p style={{ color: '#b89ca2', fontSize: '0.82rem', marginBottom: '1rem', lineHeight: 1.5 }}>
+                    ระบบจะส่งข้อความแจ้งเตือนความปลอดภัยทันทีตลอด 24 ชั่วโมง โดยที่แอดมิน<strong>ไม่ต้องเปิดคอมพิวเตอร์ทิ้งไว้</strong> (ครอบคลุม: ตรวจจับสลิปปลอม, สกัดกั้นแฮกเกอร์ WAF/SQLi/Honeypot, สมาชิกสมัครใหม่, รายการเติมเงิน และสั่งซื้อคีย์สำเร็จ)
+                  </p>
+
+                  <div className="input-field-group" style={{ marginBottom: '0.85rem' }}>
+                    <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Discord Webhook URL</span>
+                      <span style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400 }}>เช่น https://discord.com/api/webhooks/123456.../abcdef...</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <input
+                        type="url"
+                        className="text-input"
+                        placeholder="https://discord.com/api/webhooks/..."
+                        style={{ flex: 1, minWidth: '240px', fontFamily: 'monospace', fontSize: '0.82rem' }}
+                        value={siteSettings.discord_security_webhook || ''}
+                        onChange={(e) => setSiteSettings({ ...siteSettings, discord_security_webhook: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleTestDiscordWebhook}
+                        disabled={isTestingDiscordWebhook}
+                        style={{
+                          padding: '0.55rem 1.15rem',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: 'linear-gradient(135deg, #5865F2 0%, #4752C4 100%)',
+                          color: '#fff',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          cursor: isTestingDiscordWebhook ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 10px rgba(88, 101, 242, 0.35)',
+                          transition: 'all 0.2s ease',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {isTestingDiscordWebhook ? '⏳ กำลังทดสอบ...' : '🔔 ทดสอบส่งเข้า Discord'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px dashed rgba(88, 101, 242, 0.4)', borderRadius: '8px', padding: '0.75rem 0.9rem', fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.6 }}>
+                    <div style={{ fontWeight: 700, color: '#7289da', marginBottom: '3px' }}>💡 วิธีสร้าง Discord Webhook ใน 1 นาที:</div>
+                    1. เข้าแอป Discord ในคอมหรือมือถือ ไปที่ห้องแชทที่ต้องการรับการแจ้งเตือน<br />
+                    2. กดไอคอน ⚙️ <strong>Edit Channel (ตั้งค่าห้อง)</strong> &gt; ไปที่แท็บ <strong>Integrations</strong> &gt; กด <strong>Webhooks</strong><br />
+                    3. กด <strong>New Webhook</strong> ตั้งชื่อบอทตามต้องการ แล้วกดปุ่ม <strong>Copy Webhook URL</strong> นำมาวางที่ช่องนี้แล้วกด "บันทึกการตกแต่งร้านค้า" ด้านล่าง
                   </div>
                 </div>
 
