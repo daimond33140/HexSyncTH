@@ -5,6 +5,17 @@ const { requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 // Helper: Format remaining milliseconds into human-readable Thai string
+
+// Helper: Parse bound HWIDs array from string or JSON
+function parseBoundHwids(hwidVal) {
+  if (!hwidVal) return [];
+  try {
+    const parsed = JSON.parse(hwidVal);
+    if (Array.isArray(parsed)) return parsed.map(s => String(s).trim()).filter(Boolean);
+  } catch (_) {}
+  return String(hwidVal).split(',').map(s => s.trim()).filter(Boolean);
+}
+
 function formatRemainingTime(ms) {
   if (ms <= 0) return 'หมดอายุแล้ว';
   const totalSec = Math.floor(ms / 1000);
@@ -72,6 +83,9 @@ const handleVerifyLicense = async (req, res) => {
 
     const now = new Date();
 
+    const maxDevices = Math.max(1, parseInt(license.maxDevices) || 1);
+    let boundHwids = parseBoundHwids(license.hwid);
+
     // 1. First-time Activation: Starts the countdown clock & locks to first HWID
     if (!license.activatedAt) {
       license.activatedAt = now;
@@ -86,7 +100,8 @@ const handleVerifyLicense = async (req, res) => {
       }
 
       if (reqHwid) {
-        license.hwid = reqHwid;
+        boundHwids = [reqHwid];
+        license.hwid = JSON.stringify(boundHwids);
       }
 
       await license.save();
@@ -102,10 +117,15 @@ const handleVerifyLicense = async (req, res) => {
         remainingSeconds: remainingMs ? Math.max(0, Math.floor(remainingMs / 1000)) : -1,
         expiryDate: expDateStr,
         expiredAt: license.expiresAt,
+        maxDevices: maxDevices,
+        devicesUsed: boundHwids.length,
         license: {
           key: license.key,
           appName: license.appName,
           hwid: license.hwid || null,
+          boundHwids: boundHwids,
+          maxDevices: maxDevices,
+          devicesUsed: boundHwids.length,
           isLifetime: license.isLifetime,
           activatedAt: license.activatedAt,
           expiresAt: license.expiresAt,
@@ -133,21 +153,29 @@ const handleVerifyLicense = async (req, res) => {
       }
     }
 
-    // 3. HWID Lock Check (If key has HWID bound and request provides HWID)
-    if (license.hwid && reqHwid) {
-      if (license.hwid.toLowerCase() !== reqHwid.toLowerCase()) {
-        return res.status(403).json({
-          success: false,
-          validated: false,
-          code: 403,
-          status: 'hwid_mismatch',
-          message: 'คีย์นี้ถูกผูกกับอุปกรณ์เครื่องอื่นแล้ว (HWID Mismatch) หากต้องการย้ายเครื่องกรุณาติดต่อผู้ดูแลระบบเพื่อ Reset HWID'
-        });
+    // 3. Multi-Device HWID Verification
+    if (reqHwid) {
+      const isAlreadyBound = boundHwids.some(h => h.toLowerCase() === reqHwid.toLowerCase());
+      if (!isAlreadyBound) {
+        if (maxDevices <= 0 || boundHwids.length < maxDevices) {
+          // Available slot: Register this new machine
+          boundHwids.push(reqHwid);
+          license.hwid = JSON.stringify(boundHwids);
+          await license.save();
+        } else {
+          // Limit reached!
+          return res.status(403).json({
+            success: false,
+            validated: false,
+            code: 403,
+            status: 'hwid_mismatch',
+            deviceLimitReached: true,
+            maxDevices: maxDevices,
+            devicesUsed: boundHwids.length,
+            message: `คีย์นี้ถูกใช้งานเต็มจำนวนเครื่องแล้ว (${boundHwids.length}/${maxDevices} เครื่อง) หากต้องการย้ายเครื่องหรือเพิ่มเครื่อง กรุณาติดต่อผู้ดูแลระบบเพื่อ Reset HWID`
+          });
+        }
       }
-    } else if (!license.hwid && reqHwid) {
-      // Auto-bind HWID if it was empty (e.g. after admin reset HWID)
-      license.hwid = reqHwid;
-      await license.save();
     }
 
     // 4. Everything is Valid & Active!
@@ -162,10 +190,15 @@ const handleVerifyLicense = async (req, res) => {
       remainingSeconds: remainingMs ? Math.max(0, Math.floor(remainingMs / 1000)) : -1,
       expiryDate: expDateStr,
       expiredAt: license.expiresAt,
+      maxDevices: maxDevices,
+      devicesUsed: boundHwids.length,
       license: {
         key: license.key,
         appName: license.appName,
         hwid: license.hwid,
+        boundHwids: boundHwids,
+        maxDevices: maxDevices,
+        devicesUsed: boundHwids.length,
         isLifetime: license.isLifetime,
         activatedAt: license.activatedAt,
         expiresAt: license.expiresAt,
@@ -204,6 +237,12 @@ router.get('/admin/list', requireAdmin, async (req, res) => {
       if (!plain.isLifetime && plain.expiresAt && new Date(plain.expiresAt).getTime() <= now && plain.status === 'active') {
         plain.status = 'expired';
       }
+      const boundHwids = parseBoundHwids(plain.hwid);
+      const maxDev = Math.max(1, parseInt(plain.maxDevices) || 1);
+      plain.maxDevices = maxDev;
+      plain.boundHwids = boundHwids;
+      plain.boundCount = boundHwids.length;
+      plain.deviceUsage = `${boundHwids.length} / ${maxDev} เครื่อง`;
       plain.remainingMs = plain.isLifetime ? null : (plain.expiresAt ? Math.max(0, new Date(plain.expiresAt).getTime() - now) : null);
       plain.remainingFormatted = plain.isLifetime ? 'ถาวร (ตลอดชีพ)' : (plain.remainingMs ? formatRemainingTime(plain.remainingMs) : (plain.status === 'unused' ? 'ยังไม่เริ่มนับ (เริ่มเมื่อเปิดใช้)' : 'หมดอายุแล้ว'));
       return plain;
@@ -228,6 +267,7 @@ router.post('/admin/create', requireAdmin, async (req, res) => {
       productId = null,
       durationHours = 24,
       isLifetime = false,
+      maxDevices = 1,
       note = '',
       addToProductStock = false
     } = req.body;
@@ -263,6 +303,7 @@ router.post('/admin/create', requireAdmin, async (req, res) => {
         productId: productId ? parseInt(productId) : null,
         durationHours: isLifetime ? 0 : parseInt(durationHours) || 24,
         isLifetime: Boolean(isLifetime),
+        maxDevices: Math.max(1, parseInt(maxDevices) || 1),
         status: 'unused',
         note: note || null,
         createdBy: req.user?.username || 'Admin'
@@ -300,19 +341,52 @@ router.post('/admin/create', requireAdmin, async (req, res) => {
   }
 });
 
-// Reset Bound HWID
+// Reset Bound HWID (All or Single Device)
 router.post('/admin/reset-hwid', requireAdmin, async (req, res) => {
   try {
-    const { id } = req.body;
+    const { id, removeHwid } = req.body;
     const license = await LicenseKey.findByPk(id);
     if (!license) return res.status(404).json({ success: false, message: 'ไม่พบคีย์นี้' });
+
+    if (removeHwid) {
+      let hwids = parseBoundHwids(license.hwid);
+      hwids = hwids.filter(h => h.toLowerCase() !== String(removeHwid).toLowerCase());
+      license.hwid = hwids.length > 0 ? JSON.stringify(hwids) : null;
+      await license.save();
+      return res.json({
+        success: true,
+        message: `ปลดล็อกอุปกรณ์ "${removeHwid}" ออกจากคีย์เรียบร้อยแล้ว`,
+        boundHwids: hwids
+      });
+    }
 
     license.hwid = null;
     await license.save();
 
-    res.json({ success: true, message: `ปลดล็อก HWID ของคีย์ "${license.key}" เรียบร้อยแล้ว (ลูกค้าย้ายเครื่องได้แล้ว)` });
+    res.json({ success: true, message: `ปลดล็อก HWID ทุกเครื่องของคีย์ "${license.key}" เรียบร้อยแล้ว (ลูกค้าย้ายเครื่องได้แล้ว)` });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Reset HWID failed: ' + err.message });
+  }
+});
+
+// Update Max Allowed Devices (Seats) for a License Key
+router.post('/admin/set-max-devices', requireAdmin, async (req, res) => {
+  try {
+    const { id, maxDevices } = req.body;
+    const license = await LicenseKey.findByPk(id);
+    if (!license) return res.status(404).json({ success: false, message: 'ไม่พบคีย์นี้' });
+
+    const newMax = Math.max(1, parseInt(maxDevices) || 1);
+    license.maxDevices = newMax;
+    await license.save();
+
+    res.json({
+      success: true,
+      message: `ปรับจำนวนเครื่องที่อนุญาตของคีย์ "${license.key}" เป็น ${newMax} เครื่อง เรียบร้อยแล้ว`,
+      maxDevices: newMax
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to update max devices: ' + err.message });
   }
 });
 

@@ -331,6 +331,11 @@ async function ipBanMiddleware(req, res, next) {
     return next();
   }
 
+  // HexSync Desktop Client Bypass
+  if (req.headers['x-hexsync-client'] === 'HexSync_Boot_v2_Authorized') {
+    return next();
+  }
+
   // 1. Whitelist endpoints for real-time status check and emergency unban
   const path = req.path || '';
   if (

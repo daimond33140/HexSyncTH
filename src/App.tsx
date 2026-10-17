@@ -782,6 +782,10 @@ export default function App() {
     isLifetime: boolean;
     status: 'unused' | 'active' | 'expired' | 'banned';
     hwid?: string | null;
+    maxDevices?: number;
+    boundHwids?: string[];
+    boundCount?: number;
+    deviceUsage?: string;
     activatedAt?: string | null;
     expiresAt?: string | null;
     remainingFormatted?: string;
@@ -807,6 +811,7 @@ export default function App() {
   const [licenseFormAppName, setLicenseFormAppName] = useState<string>('PubgM VIP');
   const [licenseFormDurationHours, setLicenseFormDurationHours] = useState<number>(24);
   const [licenseFormIsLifetime, setLicenseFormIsLifetime] = useState<boolean>(false);
+  const [licenseFormMaxDevices, setLicenseFormMaxDevices] = useState<number>(1);
   const [licenseFormNote, setLicenseFormNote] = useState<string>('');
   const [licenseFormAddToStock, setLicenseFormAddToStock] = useState<boolean>(false);
   const [licenseFormProductId, setLicenseFormProductId] = useState<string>('');
@@ -844,6 +849,7 @@ export default function App() {
           appName: licenseFormAppName,
           durationHours: licenseFormIsLifetime ? 0 : licenseFormDurationHours,
           isLifetime: licenseFormIsLifetime,
+          maxDevices: licenseFormMaxDevices,
           note: licenseFormNote,
           addToProductStock: licenseFormAddToStock,
           productId: licenseFormProductId ? parseInt(licenseFormProductId) : null
@@ -866,7 +872,7 @@ export default function App() {
   };
 
   const handleResetHwid = async (id: number) => {
-    if (!window.confirm('คุณต้องการรีเซ็ต HWID (ปลดล็อกเครื่อง) ของคีย์นี้หรือไม่?')) return;
+    if (!window.confirm('คุณต้องการรีเซ็ต HWID (ปลดล็อกทุกเครื่อง) ของคีย์นี้หรือไม่?')) return;
     try {
       const res = await fetch('/api/license/admin/reset-hwid', {
         method: 'POST',
@@ -876,9 +882,55 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         showToast(data.message || 'รีเซ็ต HWID สำเร็จ');
-        setAdminLicenses(prev => prev.map(item => item.id === id ? { ...item, hwid: null } : item));
+        fetchAdminLicenses();
       } else {
         showToast(data.message || 'รีเซ็ต HWID ไม่สำเร็จ');
+      }
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
+  const handleRemoveDevice = async (id: number, hwidToRemove: string) => {
+    if (!window.confirm(`ต้องการปลดล็อกอุปกรณ์ "${hwidToRemove.substring(0, 16)}..." ออกจากคีย์นี้ใช่หรือไม่?`)) return;
+    try {
+      const res = await fetch('/api/license/admin/reset-hwid', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ id, removeHwid: hwidToRemove })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'ปลดเครื่องเรียบร้อย');
+        fetchAdminLicenses();
+      } else {
+        showToast(data.message || 'ไม่สามารถปลดเครื่องได้');
+      }
+    } catch (err: any) {
+      showToast('เกิดข้อผิดพลาด: ' + err.message);
+    }
+  };
+
+  const handleSetMaxDevices = async (id: number, currentMax: number) => {
+    const input = window.prompt(`ระบุจำนวนเครื่องที่อนุญาตให้ใช้งานพร้อมกันสำหรับคีย์นี้ (ปัจจุบัน: ${currentMax} เครื่อง):`, String(currentMax));
+    if (!input) return;
+    const newMax = parseInt(input);
+    if (isNaN(newMax) || newMax < 1) {
+      showToast('กรุณาระบุจำนวนเครื่องให้ถูกต้อง (ขั้นต่ำ 1 เครื่อง)');
+      return;
+    }
+    try {
+      const res = await fetch('/api/license/admin/set-max-devices', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ id, maxDevices: newMax })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || 'ปรับจำนวนเครื่องสำเร็จ');
+        fetchAdminLicenses();
+      } else {
+        showToast(data.message || 'ไม่สามารถปรับจำนวนเครื่องได้');
       }
     } catch (err: any) {
       showToast('เกิดข้อผิดพลาด: ' + err.message);
@@ -8696,7 +8748,7 @@ export default function App() {
                       <th>ระยะเวลา</th>
                       <th>สถานะ</th>
                       <th>เวลาคงเหลือ</th>
-                      <th>รหัสเครื่อง (HWID)</th>
+                      <th>อุปกรณ์ / สล็อตเครื่อง (HWID)</th>
                       <th style={{ textAlign: 'right' }}>จัดการ</th>
                     </tr>
                   </thead>
@@ -8773,24 +8825,65 @@ export default function App() {
                               </span>
                             </td>
                             <td>
-                              {item.hwid ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ fontFamily: 'monospace', fontSize: '0.76rem', color: '#cbd5e1' }} title={item.hwid}>
-                                    {item.hwid.length > 14 ? item.hwid.substring(0, 14) + '...' : item.hwid}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                  <span
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      background: (item.boundCount || 0) >= (item.maxDevices || 1) ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 240, 255, 0.15)',
+                                      color: (item.boundCount || 0) >= (item.maxDevices || 1) ? '#f87171' : '#00f0ff',
+                                      border: `1px solid ${(item.boundCount || 0) >= (item.maxDevices || 1) ? 'rgba(239, 68, 68, 0.4)' : 'rgba(0, 240, 255, 0.35)'}`,
+                                      padding: '2px 8px',
+                                      borderRadius: '12px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    💻 {item.boundCount || 0} / {item.maxDevices || 1} เครื่อง
                                   </span>
                                   <button
                                     type="button"
                                     className="btn-outline"
-                                    style={{ padding: '2px 6px', fontSize: '0.7rem', color: '#ffaa00', borderColor: 'rgba(255,170,0,0.4)' }}
-                                    onClick={() => handleResetHwid(item.id)}
-                                    title="รีเซ็ต HWID (ปลดล็อกเครื่องเพื่อให้ลูกค้าย้ายเครื่องใหม่ได้)"
+                                    style={{ padding: '2px 6px', fontSize: '0.7rem', color: '#00f0ff', borderColor: 'rgba(0,240,255,0.4)' }}
+                                    onClick={() => handleSetMaxDevices(item.id, item.maxDevices || 1)}
+                                    title="ปรับจำนวนเครื่องที่อนุญาต"
                                   >
-                                    🔄 ปลดเครื่อง
+                                    ⚙️ สล็อต
                                   </button>
+                                  {(item.boundCount || 0) > 0 && (
+                                    <button
+                                      type="button"
+                                      className="btn-outline"
+                                      style={{ padding: '2px 6px', fontSize: '0.7rem', color: '#ffaa00', borderColor: 'rgba(255,170,0,0.4)' }}
+                                      onClick={() => handleResetHwid(item.id)}
+                                      title="ปลดล็อกทุกเครื่องเพื่อให้ลูกค้าย้ายเครื่องใหม่ได้"
+                                    >
+                                      🔄 ปลดทั้งหมด
+                                    </button>
+                                  )}
                                 </div>
-                              ) : (
-                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>ยังไม่ผูกเครื่อง</span>
-                              )}
+                                {item.boundHwids && item.boundHwids.length > 0 ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                                    {item.boundHwids.map((hw, hIdx) => (
+                                      <div key={hIdx} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: '#94a3b8' }}>
+                                        <span style={{ fontFamily: 'monospace' }}>#{hIdx + 1}: {hw.length > 14 ? hw.substring(0, 14) + '...' : hw}</span>
+                                        <button
+                                          type="button"
+                                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 3px', fontSize: '0.75rem', fontWeight: 700 }}
+                                          onClick={() => handleRemoveDevice(item.id, hw)}
+                                          title="ปลดเครื่องนี้"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span style={{ fontSize: '0.73rem', color: '#64748b' }}>ยังไม่มีเครื่องเปิดใช้งาน</span>
+                                )}
+                              </div>
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -9174,6 +9267,50 @@ async function verifyLicense(key, hwid) {
                           {dur.label}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Max Devices / Slots */}
+                  <div>
+                    <label className="input-label">จำนวนเครื่องที่อนุญาตให้ใช้งานพร้อมกัน (Max Devices / Slots):</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginBottom: '8px' }}>
+                      {[
+                        { label: '1 เครื่อง (เดี่ยว)', count: 1 },
+                        { label: '2 เครื่อง', count: 2 },
+                        { label: '3 เครื่อง', count: 3 },
+                        { label: '5 เครื่อง', count: 5 }
+                      ].map(slot => (
+                        <button
+                          key={slot.count}
+                          type="button"
+                          onClick={() => setLicenseFormMaxDevices(slot.count)}
+                          style={{
+                            padding: '0.45rem',
+                            borderRadius: '8px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: licenseFormMaxDevices === slot.count ? '1.5px solid #00f0ff' : '1px solid rgba(255,255,255,0.08)',
+                            background: licenseFormMaxDevices === slot.count ? 'rgba(0, 240, 255, 0.2)' : 'rgba(255,255,255,0.03)',
+                            color: licenseFormMaxDevices === slot.count ? '#00f0ff' : '#cbd5e1'
+                          }}
+                        >
+                          {slot.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>หรือกำหนดเอง:</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        className="text-input"
+                        style={{ width: '90px', padding: '4px 8px' }}
+                        value={licenseFormMaxDevices}
+                        onChange={(e) => setLicenseFormMaxDevices(Math.max(1, parseInt(e.target.value) || 1))}
+                      />
+                      <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>เครื่อง (คน)</span>
                     </div>
                   </div>
 
