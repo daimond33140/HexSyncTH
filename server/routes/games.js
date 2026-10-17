@@ -177,32 +177,62 @@ function invalidateGamesCache() {
   cachedGamesExpiry = 0;
 }
 
-// Helper to get current games list (Cached)
-async function getGamesList() {
+// Helper to get current games list (Cached & Synced with latest custom images)
+async function getGamesList(forceFresh = false) {
   const now = Date.now();
-  if (cachedGamesList && now < cachedGamesExpiry) {
+  if (!forceFresh && cachedGamesList && now < cachedGamesExpiry) {
     return cachedGamesList;
   }
+  let games = null;
   try {
     const s = await Setting.findOne({ where: { key: 'hexsync_games_status' } });
     if (s && s.value) {
-      const games = JSON.parse(s.value);
-      if (Array.isArray(games) && games.length > 0) {
-        cachedGamesList = games;
-        cachedGamesExpiry = now + 60000; // 60s cache
-        return games;
+      const parsed = JSON.parse(s.value);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        games = parsed;
       }
     }
   } catch {}
-  cachedGamesList = DEFAULT_GAMES;
-  cachedGamesExpiry = now + 60000;
-  return DEFAULT_GAMES;
+
+  if (!games) {
+    games = DEFAULT_GAMES;
+  }
+
+  // Sync with latest custom images from admin settings (e.g. ROV cover)
+  try {
+    const customSetting = await Setting.findOne({ where: { key: 'hexsync_game_custom_images' } });
+    if (customSetting && customSetting.value) {
+      const customMap = JSON.parse(customSetting.value);
+      games = games.map((g) => {
+        const foundKey = Object.keys(customMap).find(k => k.trim().toLowerCase() === g.title.trim().toLowerCase());
+        const match = foundKey ? customMap[foundKey] : null;
+        if (match && (match.bannerImage || match.image)) {
+          return {
+            ...g,
+            bannerUrl: match.bannerImage || match.image || g.bannerUrl,
+          };
+        }
+        return g;
+      });
+    }
+  } catch {}
+
+  cachedGamesList = games;
+  cachedGamesExpiry = now + 2000; // 2 seconds micro-cache
+  return games;
 }
 
 // GET /api/games - Public endpoint for fetching latest games status
 router.get('/', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   try {
-    const games = await getGamesList();
+    const bypassCache = Boolean(req.query._t || req.headers['cache-control'] === 'no-cache');
+    if (bypassCache) {
+      invalidateGamesCache();
+    }
+    const games = await getGamesList(bypassCache);
     return res.json({ success: true, games });
   } catch (err) {
     console.error('Error fetching games status:', err);

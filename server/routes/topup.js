@@ -403,9 +403,11 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
       return res.status(400).json({ message: '❌ ยอดเงินที่เติมต้องมากกว่า 0 บาท' });
     }
 
-    // Auto-approve valid, non-duplicate bank transfer slip and credit user immediately
+    // Security Check: NEVER auto-approve unverified slips without valid bank QR or SlipOK verification
     if (verifiedVia === 'anti_duplicate_verified') {
-      verifiedVia = 'slip_anti_duplicate_approved';
+      return res.status(400).json({
+        message: '❌ ไม่สามารถตรวจสอบสลิปนี้ได้: ไม่พบ QR Code ของธนาคารบนสลิป หรือรูปภาพไม่ถูกต้อง กรุณาอัปโหลดสลิปโอนเงินที่มี QR Code ชัดเจน'
+      });
     }
 
     // 5. Store approved transaction with slipHash and transRef to prevent any future reuse

@@ -204,12 +204,29 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
 
     // Fetch games & settings from server / Supabase on mount
   useEffect(() => {
-    fetch('/api/games')
+    fetch('/api/games?_t=' + Date.now(), { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data && data.success && Array.isArray(data.games)) {
-          setGames(data.games);
-          localStorage.setItem('hexsync_games_status', JSON.stringify(data.games));
+          let updatedGames = data.games;
+          try {
+            const customImgStr = localStorage.getItem('hexsync_game_custom_images');
+            if (customImgStr) {
+              const customMap = JSON.parse(customImgStr);
+              updatedGames = updatedGames.map((g: GameItem) => {
+                const foundKey = Object.keys(customMap).find(k => k.trim().toLowerCase() === g.title.trim().toLowerCase());
+                const match = foundKey ? customMap[foundKey] : null;
+                if (match && (match.bannerImage || match.image)) {
+                  return { ...g, bannerUrl: match.bannerImage || match.image || g.bannerUrl };
+                }
+                return g;
+              });
+            }
+          } catch {}
+          setGames(updatedGames);
+          try {
+            localStorage.setItem('hexsync_games_status', JSON.stringify(updatedGames));
+          } catch {}
         }
       })
       .catch(() => {});
