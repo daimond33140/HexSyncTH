@@ -867,11 +867,41 @@ router.post('/create-qr-order', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'ไม่พบบัญชีผู้ใช้นี้ในระบบ' });
     }
 
-    // Cancel any previous pending orders for THIS user to ensure fresh order
-    await PaymentOrder.update(
-      { status: 'cancelled' },
-      { where: { username, status: 'pending' } }
-    );
+    // Anti-Spam Lockout: Check if user already has an active pending order within 30 minutes
+    const existingOrder = await PaymentOrder.findOne({
+      where: {
+        username,
+        status: 'pending',
+        expiresAt: { [Op.gt]: new Date() }
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    if (existingOrder) {
+      const elapsedMs = Date.now() - new Date(existingOrder.createdAt).getTime();
+      const twoMinutesMs = 2 * 60 * 1000;
+      const canCancel = elapsedMs >= twoMinutesMs;
+      const remainingCancelSec = canCancel ? 0 : Math.ceil((twoMinutesMs - elapsedMs) / 1000);
+
+      // Return the existing order so user cannot spam new ones
+      return res.status(200).json({
+        success: true,
+        alreadyActive: true,
+        order: {
+          orderId: existingOrder.orderId,
+          amount: existingOrder.amount,
+          qrPayload: existingOrder.qrPayload,
+          promptpayNumber: existingOrder.promptpayNumber,
+          accountName: existingOrder.accountName,
+          expiresAt: existingOrder.expiresAt.toISOString(),
+          createdAt: existingOrder.createdAt.toISOString(),
+          durationSeconds: Math.max(0, Math.floor((new Date(existingOrder.expiresAt).getTime() - Date.now()) / 1000)),
+          canCancel,
+          remainingCancelSec,
+        },
+        message: `⚠️ คุณมีรายการคำสั่งชำระเงินที่ยังค้างอยู่ (ยอด ฿${existingOrder.amount.toLocaleString()} บาท) กรุณาชำระเงิน หรือรอครบ 2 นาทีเพื่อกดยกเลิก`
+      });
+    }
 
     // Get current PromptPay receiver info
     const [ppSetting, nameSetting, bankSetting] = await Promise.all([
@@ -914,12 +944,104 @@ router.post('/create-qr-order', verifyToken, async (req, res) => {
         accountName,
         bankName,
         expiresAt: order.expiresAt.toISOString(),
+        createdAt: order.createdAt.toISOString(),
         durationSeconds: 1800, // 30 minutes
+        canCancel: false,
+        remainingCancelSec: 120, // 2 minutes cooldown before cancel is allowed
       }
     });
   } catch (err) {
     console.error('Error creating QR order:', err);
     res.status(500).json({ message: 'เกิดข้อผิดพลาดในการสร้าง QR Code: ' + err.message });
+  }
+});
+
+// 1.1 Get User Active Pending QR Order (Persistent lock across page reloads & closes)
+router.get('/active-qr-order', verifyToken, async (req, res) => {
+  try {
+    const username = req.user.username;
+    const order = await PaymentOrder.findOne({
+      where: {
+        username,
+        status: 'pending',
+        expiresAt: { [Op.gt]: new Date() }
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    if (!order) {
+      return res.json({ hasActive: false });
+    }
+
+    const elapsedMs = Date.now() - new Date(order.createdAt).getTime();
+    const twoMinutesMs = 2 * 60 * 1000;
+    const canCancel = elapsedMs >= twoMinutesMs;
+    const remainingCancelSec = canCancel ? 0 : Math.ceil((twoMinutesMs - elapsedMs) / 1000);
+    const durationSeconds = Math.max(0, Math.floor((new Date(order.expiresAt).getTime() - Date.now()) / 1000));
+
+    res.json({
+      hasActive: true,
+      order: {
+        orderId: order.orderId,
+        amount: order.amount,
+        qrPayload: order.qrPayload,
+        promptpayNumber: order.promptpayNumber,
+        accountName: order.accountName,
+        expiresAt: order.expiresAt.toISOString(),
+        createdAt: order.createdAt.toISOString(),
+        durationSeconds,
+        canCancel,
+        remainingCancelSec,
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching active QR order:', err);
+    res.status(500).json({ message: 'เกิดข้อผิดพลาดในการตรวจสอบรายการชำระเงิน' });
+  }
+});
+
+// 1.2 Cancel Active Pending QR Order (Enforces 2-minute cooldown before cancellation is allowed)
+router.post('/cancel-qr-order', verifyToken, async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ message: 'กรุณาระบุรหัสคำสั่งชำระเงิน (orderId)' });
+    }
+
+    const order = await PaymentOrder.findOne({ where: { orderId } });
+    if (!order) {
+      return res.status(404).json({ message: 'ไม่พบรายการคำสั่งชำระเงินนี้' });
+    }
+
+    if (order.username !== req.user.username && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      return res.status(403).json({ message: 'ไม่มีสิทธิ์ยกเลิกรายการของผู้อื่น' });
+    }
+
+    if (order.status !== 'pending') {
+      return res.status(400).json({ message: `ไม่สามารถยกเลิกได้ รายการนี้อยู่ในสถานะ ${order.status}` });
+    }
+
+    // 2-minute lockout check: Must wait at least 2 minutes (120 seconds) before cancelling!
+    const elapsedMs = Date.now() - new Date(order.createdAt).getTime();
+    const twoMinutesMs = 2 * 60 * 1000;
+    if (elapsedMs < twoMinutesMs) {
+      const waitSec = Math.ceil((twoMinutesMs - elapsedMs) / 1000);
+      return res.status(400).json({
+        success: false,
+        message: `⏳ กรุณารออีก ${waitSec} วินาที จึงจะสามารถกดยกเลิกได้ (ระบบป้องกันการสร้าง QR ซ้ำซ้อน)`
+      });
+    }
+
+    order.status = 'cancelled';
+    await order.save();
+
+    res.json({
+      success: true,
+      message: `🗑️ ยกเลิกรายการ QR Code (ยอด ฿${order.amount.toLocaleString()} บาท) เรียบร้อยแล้ว สามารถสร้างยอดใหม่ได้`
+    });
+  } catch (err) {
+    console.error('Error cancelling QR order:', err);
+    res.status(500).json({ message: 'เกิดข้อผิดพลาดในการยกเลิกรายการ' });
   }
 });
 

@@ -1216,10 +1216,15 @@ export default function App() {
     accountName: string;
     bankName: string;
     expiresAt: string;
+    createdAt?: string;
     durationSeconds?: number;
+    canCancel?: boolean;
+    remainingCancelSec?: number;
   } | null>(null);
   const [showDynamicQrModal, setShowDynamicQrModal] = useState<boolean>(false);
   const [qrCountdown, setQrCountdown] = useState<number>(1800);
+  const [cancelCountdown, setCancelCountdown] = useState<number>(120);
+  const [cancellingQr, setCancellingQr] = useState<boolean>(false);
   const [qrVerifying, setQrVerifying] = useState<boolean>(false);
   const [qrPaymentSuccess, setQrPaymentSuccess] = useState<boolean>(false);
   const [generatingQr, setGeneratingQr] = useState<boolean>(false);
@@ -3969,7 +3974,7 @@ export default function App() {
   };
 
   // Open Top-Up Modal (requires authentication)
-  const handleOpenTopup = (initialTab?: 'bank' | 'angpao' | 'giftcode' | 'history' | React.MouseEvent) => {
+  const handleOpenTopup = async (initialTab?: 'bank' | 'angpao' | 'giftcode' | 'history' | React.MouseEvent) => {
     if (!user) {
       setAuthModalOpen(true);
       showToast('กรุณาเข้าสู่ระบบก่อนทำรายการเติมเงิน');
@@ -3980,8 +3985,38 @@ export default function App() {
         ? (initialTab as any)
         : 'bank';
 
-    setActiveQrOrder(null);
-    setShowDynamicQrModal(false);
+    // If opening bank tab, check for active pending QR order first!
+    if (tab === 'bank') {
+      // A. If active in client memory & not paid
+      if (activeQrOrder && !qrPaymentSuccess && qrCountdown > 0) {
+        setShowDynamicQrModal(true);
+        setShowAngpaoModal(false);
+        showToast(`📌 คุณมีรายการคำสั่งชำระเงินค้างอยู่ (ยอด ฿${activeQrOrder.amount.toLocaleString()} บาท)`);
+        return;
+      }
+
+      // B. Check server for persistent active pending order
+      try {
+        const res = await fetch('/api/topup/active-qr-order', {
+          headers: getAuthHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hasActive && data.order) {
+            setActiveQrOrder(data.order);
+            setQrCountdown(data.order.durationSeconds || 1800);
+            setCancelCountdown(data.order.remainingCancelSec !== undefined ? data.order.remainingCancelSec : 120);
+            setQrPaymentSuccess(false);
+            setQrSlipImage('');
+            setShowDynamicQrModal(true);
+            setShowAngpaoModal(false);
+            showToast(`⚠️ คุณมีรายการคำสั่งชำระเงินที่ยังค้างอยู่ (ยอด ฿${data.order.amount.toLocaleString()} บาท)`);
+            return;
+          }
+        }
+      } catch (_) {}
+    }
+
     setQrPaymentSuccess(false);
     setBankAmount(0);
     setQrSlipImage('');
@@ -4050,7 +4085,8 @@ export default function App() {
       }
 
       setActiveQrOrder(data.order);
-      setQrCountdown(1800); // 30 minutes in seconds
+      setQrCountdown(data.order.durationSeconds || 1800);
+      setCancelCountdown(data.order.remainingCancelSec !== undefined ? data.order.remainingCancelSec : 120);
       setQrPaymentSuccess(false);
       setQrSlipImage('');
       setQrSlipQrData(null);
@@ -4059,11 +4095,48 @@ export default function App() {
       setQrSlipScanning(false);
       setShowDynamicQrModal(true);
       setShowAngpaoModal(false); // smoothly transition to the dedicated QR payment modal
-      showToast(`⚡ สร้าง QR Code ชำระเงิน ฿${data.order.amount.toLocaleString()} สำเร็จ (หมดอายุใน 30 นาที)`);
+      if (data.alreadyActive) {
+        showToast(`⚠️ คุณมีรายการ QR Code ยอด ฿${data.order.amount.toLocaleString()} บาท ที่ยังค้างอยู่ (กรุณาชำระเงิน หรือรอครบ 2 นาทีเพื่อกดยกเลิก)`);
+      } else {
+        showToast(`⚡ สร้าง QR Code ชำระเงิน ฿${data.order.amount.toLocaleString()} สำเร็จ (หมดอายุใน 30 นาที)`);
+      }
     } catch {
       showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
     } finally {
       setGeneratingQr(false);
+    }
+  };
+
+  // 1.1 Cancel Active QR Order (Enforces 2-minute lockout)
+  const handleCancelQrOrder = async () => {
+    if (!activeQrOrder) return;
+    if (cancelCountdown > 0) {
+      showToast(`⏳ กรุณารออีก ${cancelCountdown} วินาที จึงจะสามารถกดยกเลิกได้ (ระบบป้องกันการสร้าง QR ซ้ำซ้อน)`);
+      return;
+    }
+    setCancellingQr(true);
+    try {
+      const res = await fetch('/api/topup/cancel-qr-order', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ orderId: activeQrOrder.orderId })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'ยกเลิกรายการไม่สำเร็จ');
+        return;
+      }
+      showToast(data.message || 'ยกเลิกรายการเรียบร้อยแล้ว');
+      setActiveQrOrder(null);
+      setShowDynamicQrModal(false);
+      setQrSlipImage('');
+      setBankAmount(0);
+      setTopupTab('bank');
+      setShowAngpaoModal(true);
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    } finally {
+      setCancellingQr(false);
     }
   };
 
@@ -4208,7 +4281,7 @@ export default function App() {
   useEffect(() => {
     if (!showDynamicQrModal || !activeQrOrder || qrPaymentSuccess) return;
 
-    // A. 1-second countdown clock
+    // A. 1-second countdown clock for QR expiration
     const countdownTimer = setInterval(() => {
       setQrCountdown((prev) => {
         if (prev <= 1) {
@@ -4219,7 +4292,12 @@ export default function App() {
       });
     }, 1000);
 
-    // B. Real-time 3-second auto polling to detect payment & auto credit
+    // B. 1-second cancel cooldown clock (locked for 2 minutes / 120 seconds)
+    const cancelCooldownTimer = setInterval(() => {
+      setCancelCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    // C. Real-time 3-second auto polling to detect payment & auto credit
     const pollInterval = setInterval(async () => {
       try {
         const res = await fetch(`/api/topup/qr-order/${activeQrOrder.orderId}`);
@@ -4246,6 +4324,7 @@ export default function App() {
 
     return () => {
       clearInterval(countdownTimer);
+      clearInterval(cancelCooldownTimer);
       clearInterval(pollInterval);
     };
   }, [showDynamicQrModal, activeQrOrder, qrPaymentSuccess]);
@@ -15494,10 +15573,13 @@ async function verifyLicense(key, hwid) {
               <button
                 className="btn-close-modal"
                 onClick={() => {
-                  if (qrPaymentSuccess || confirm('คุณต้องการปิดหน้าต่างชำระเงินนี้หรือไม่?')) {
+                  if (qrPaymentSuccess) {
                     setShowDynamicQrModal(false);
                     setActiveQrOrder(null);
                     setQrPaymentSuccess(false);
+                  } else {
+                    setShowDynamicQrModal(false);
+                    showToast(`📌 คุณยังมีรายการ QR ยอด ฿${activeQrOrder.amount.toLocaleString()} บาท ค้างอยู่ (ระบบจะบันทึกยอดนี้ไว้จนกว่าจะชำระหรือกดยกเลิก)`);
                   }
                 }}
               >
@@ -15918,6 +16000,60 @@ async function verifyLicense(key, hwid) {
                           : '📸 เลือกรูปสลิปเพื่อตรวจสอบ'}
                       </span>
                     </button>
+                  </div>
+
+                  {/* CANCEL QR BUTTON (LOCKED FOR 2 MINUTES TO PREVENT SPAM GENERATION) */}
+                  <div style={{ marginTop: '0.85rem', textAlign: 'center' }}>
+                    {cancelCountdown > 0 ? (
+                      <div
+                        style={{
+                          width: '100%',
+                          padding: '0.8rem 1rem',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '12px',
+                          color: '#8e7b80',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '7px',
+                          cursor: 'not-allowed'
+                        }}
+                      >
+                        <IconLock size={15} color="#8e7b80" />
+                        <span>🔒 ยกเลิกรายการได้ในอีก {Math.floor(cancelCountdown / 60)}:{(cancelCountdown % 60).toString().padStart(2, '0')} นาที</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={cancellingQr}
+                        onClick={handleCancelQrOrder}
+                        style={{
+                          width: '100%',
+                          padding: '0.8rem 1rem',
+                          background: 'rgba(255, 77, 109, 0.08)',
+                          border: '1px solid rgba(255, 77, 109, 0.35)',
+                          borderRadius: '12px',
+                          color: '#ff4d6d',
+                          fontSize: '0.86rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '7px',
+                          cursor: cancellingQr ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <IconTrash size={15} color="#ff4d6d" />
+                        <span>{cancellingQr ? 'กำลังยกเลิกรายการ...' : '🗑️ ยกเลิกคิวอาร์นี้ (เพื่อเปลี่ยนยอดใหม่)'}</span>
+                      </button>
+                    )}
+                    <div style={{ fontSize: '0.72rem', color: '#7a6368', marginTop: '6px' }}>
+                      *ระบบล็อคเวลา 2 นาที เพื่อป้องกันการสร้าง QR โค้ดซ้ำซ้อน
+                    </div>
                   </div>
 
                   {qrCountdown <= 0 && (
