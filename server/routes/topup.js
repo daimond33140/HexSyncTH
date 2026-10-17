@@ -1073,11 +1073,67 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       });
     }
 
-    // 7. Amount verification (if QR Tag 54 is present)
-    if (slipDetails?.tag54Amount && Math.abs(slipDetails.tag54Amount - order.amount) > 0.01) {
+    // 7. STRICT AMOUNT VERIFICATION (SlipOK Bank API + QR Tag 54 + OCR image reading)
+    let detectedAmount = slipDetails?.tag54Amount || null;
+
+    // Check if SlipOK API is configured in Setting
+    const [slipokKeySetting, slipokBranchSetting] = await Promise.all([
+      Setting.findOne({ where: { key: 'slipok_api_key' } }),
+      Setting.findOne({ where: { key: 'slipok_branch_id' } })
+    ]);
+
+    const slipokApiKey = slipokKeySetting?.value?.trim();
+    const slipokBranchId = slipokBranchSetting?.value?.trim();
+    const isRealSlipOkConfig = slipokApiKey && slipokBranchId && slipokApiKey !== 'daimond33140' && slipokApiKey.length > 8 && slipokBranchId !== 'admin';
+
+    if (isRealSlipOkConfig && qrData) {
+      try {
+        const slipOkRes = await fetch(`https://api.slipok.com/api/line/apikey/${slipokBranchId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-authorization': slipokApiKey
+          },
+          body: JSON.stringify({ data: qrData, log: true })
+        });
+        const slipOkData = await slipOkRes.json();
+        if (slipOkRes.ok && slipOkData.success) {
+          const realBankAmount = Number(slipOkData.data?.amount);
+          if (realBankAmount && realBankAmount > 0) {
+            detectedAmount = realBankAmount;
+          }
+        }
+      } catch (err) {
+        console.error('SlipOK API error in confirm-qr:', err);
+      }
+    }
+
+    if (!detectedAmount) {
+      try {
+        const ocrResult = await extractAmountFromSlip(slipImage);
+        if (ocrResult?.detectedAmount) {
+          detectedAmount = ocrResult.detectedAmount;
+        }
+      } catch (ocrErr) {
+        console.error('OCR check in confirm-qr error:', ocrErr);
+      }
+    }
+
+    // If an amount is detected and doesn't match the order amount, reject immediately!
+    if (detectedAmount && Math.abs(detectedAmount - order.amount) > 0.01) {
+      recordFailedSlip(`ยอดไม่ตรง (สลิป ฿${detectedAmount} แต่ออเดอร์ ฿${order.amount})`);
       return res.status(400).json({
         success: false,
-        message: `❌ ยอดเงินในสลิปไม่ตรงกับยอดที่สั่งเติม! สลิปมียอด ฿${slipDetails.tag54Amount.toLocaleString()} บาท แต่ออเดอร์นี้มียอด ฿${order.amount.toLocaleString()} บาท`
+        message: `❌ ยอดเงินไม่ตรงกับสลิป! สลิปนี้มียอดโอนจริง ฿${detectedAmount.toLocaleString()} บาท แต่คุณสั่งเติม ฿${order.amount.toLocaleString()} บาท (กรุณาระบุยอดเงินให้ตรงกับสลิปโอนเงิน)`
+      });
+    }
+
+    // SAFEGUARD: High order amounts (>= 50 THB) must have detectedAmount matching to prevent amount forgery
+    if (order.amount >= 50 && !detectedAmount) {
+      recordFailedSlip('ไม่สามารถตรวจยอดเงินบนสลิปได้');
+      return res.status(400).json({
+        success: false,
+        message: '❌ ไม่สามารถตรวจสอบตัวเลขยอดเงินบนสลิปได้ชัดเจน เพื่อความปลอดภัยกรุณาใช้สลิปที่มีตัวเลขยอดเงินชัดเจน หรือเชื่อมต่อ SlipOK API ในระบบหลังบ้าน'
       });
     }
 
