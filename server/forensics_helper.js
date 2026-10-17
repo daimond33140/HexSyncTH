@@ -64,17 +64,43 @@ async function inspectSlipForensics(slipBase64) {
 
     if (imgBuffer[0] === 0x89 && imgBuffer[1] === 0x50 && imgBuffer[2] === 0x4e && imgBuffer[3] === 0x47) {
       isPng = true;
-      try {
-        const png = PNG.sync.read(imgBuffer);
-        width = png.width;
-        height = png.height;
-      } catch (_) {}
+      if (imgBuffer.length >= 24) {
+        width = imgBuffer.readUInt32BE(16);
+        height = imgBuffer.readUInt32BE(20);
+      }
+      if (!width || !height) {
+        try {
+          const png = PNG.sync.read(imgBuffer);
+          width = png.width;
+          height = png.height;
+        } catch (_) {}
+      }
     } else if (imgBuffer[0] === 0xff && imgBuffer[1] === 0xd8 && imgBuffer[2] === 0xff) {
+      // JPEG SOF parser
       try {
-        const jpg = jpeg.decode(imgBuffer, { useTArray: true, formatAsRGBA: false });
-        width = jpg.width;
-        height = jpg.height;
+        let offset = 2;
+        while (offset < imgBuffer.length - 8) {
+          if (imgBuffer[offset] === 0xff) {
+            const marker = imgBuffer[offset + 1];
+            if (marker === 0xc0 || marker === 0xc2) { // SOF0 or SOF2
+              height = imgBuffer.readUInt16BE(offset + 5);
+              width = imgBuffer.readUInt16BE(offset + 7);
+              break;
+            }
+            offset += 2 + imgBuffer.readUInt16BE(offset + 2);
+          } else {
+            offset++;
+          }
+        }
       } catch (_) {}
+
+      if (!width || !height) {
+        try {
+          const jpg = jpeg.decode(imgBuffer, { useTArray: true, formatAsRGBA: false });
+          width = jpg.width;
+          height = jpg.height;
+        } catch (_) {}
+      }
     }
 
     if (width > 0 && height > 0) {
