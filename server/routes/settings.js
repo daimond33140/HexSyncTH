@@ -63,9 +63,13 @@ function invalidateSettingsCache() {
 
 // Get all settings (High-speed cached)
 router.get('/', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   try {
     const now = Date.now();
-    if (cachedSettings && now < settingsCacheExpiry) {
+    const bypassCache = req.query._t || req.headers['cache-control'] === 'no-cache';
+    if (!bypassCache && cachedSettings && now < settingsCacheExpiry) {
       return res.json({ settings: cachedSettings });
     }
 
@@ -84,7 +88,7 @@ router.get('/', async (req, res) => {
     delete settingsMap.superadmin_master_secret;
 
     cachedSettings = settingsMap;
-    settingsCacheExpiry = now + 60000; // 60s cache // 4 seconds micro-cache
+    settingsCacheExpiry = now + 2000; // 2s micro-cache
 
     res.json({ settings: settingsMap });
   } catch (err) {

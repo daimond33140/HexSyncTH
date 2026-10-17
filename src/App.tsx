@@ -265,27 +265,45 @@ interface StoreStats {
 }
 
 // Universal Screen Size & Responsive Device Hook (Mobile, Tablet, iPad, Desktop)
+// Universal Screen Size & Responsive Device Hook (Mobile, Tablet, iPad, Desktop)
 const useScreenSize = () => {
   const [screenInfo, setScreenInfo] = useState(() => {
-    if (typeof window === 'undefined') return { width: 1200, isMobile: false, isTablet: false, isDesktop: true };
+    if (typeof window === 'undefined') return { width: 1200, isMobile: false, isTablet: false, isDesktop: true, deviceType: 'desktop' };
     const w = window.innerWidth;
+    const ua = navigator.userAgent || '';
+    const isTouch = navigator.maxTouchPoints > 1;
+    const isIPad = /iPad/i.test(ua) || (isTouch && /Macintosh/i.test(ua) && w <= 1366);
+    const isPhone = /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || (w <= 768 && isTouch);
+    const isTab = isIPad || (/Android/i.test(ua) && !isPhone) || (w > 768 && w <= 1080);
+    const isMob = isPhone || w <= 768;
+    const isDesk = !isMob && !isTab;
+    const deviceType = isMob ? 'mobile' : isTab ? 'tablet' : 'desktop';
     return {
       width: w,
-      isMobile: w <= 768,
-      isTablet: w > 768 && w <= 1080,
-      isDesktop: w > 1080,
+      isMobile: isMob,
+      isTablet: isTab,
+      isDesktop: isDesk,
+      deviceType
     };
   });
 
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
-      const isMob = w <= 768;
-      const isTab = w > 768 && w <= 1080;
-      const isDesk = w > 1080;
-      setScreenInfo({ width: w, isMobile: isMob, isTablet: isTab, isDesktop: isDesk });
+      const ua = navigator.userAgent || '';
+      const isTouch = navigator.maxTouchPoints > 1;
+      const isIPad = /iPad/i.test(ua) || (isTouch && /Macintosh/i.test(ua) && w <= 1366);
+      const isPhone = /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) || (w <= 768 && isTouch);
+      const isTab = isIPad || (/Android/i.test(ua) && !isPhone) || (w > 768 && w <= 1080);
+      const isMob = isPhone || w <= 768;
+      const isDesk = !isMob && !isTab;
+      const deviceType = isMob ? 'mobile' : isTab ? 'tablet' : 'desktop';
+
+      setScreenInfo({ width: w, isMobile: isMob, isTablet: isTab, isDesktop: isDesk, deviceType });
       try {
-        document.documentElement.setAttribute('data-device', isMob ? 'mobile' : isTab ? 'tablet' : 'desktop');
+        document.documentElement.setAttribute('data-device', deviceType);
+        document.body.classList.remove('device-mobile', 'device-tablet', 'device-desktop');
+        document.body.classList.add(`device-${deviceType}`);
       } catch {}
     };
 
@@ -2270,7 +2288,7 @@ export default function App() {
   // Fetch products
   const fetchProducts = async () => {
     try {
-      const res = await fetch('/api/products');
+      const res = await fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.products) {
@@ -2287,7 +2305,7 @@ export default function App() {
   // Fetch games list for linked product rental
   const fetchGamesList = async () => {
     try {
-      const res = await fetch('/api/games');
+      const res = await fetch(`/api/games?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.games && Array.isArray(data.games)) {
@@ -2300,7 +2318,7 @@ export default function App() {
   // Fetch categories
   const fetchCategories = async () => {
     try {
-      const res = await fetch('/api/categories');
+      const res = await fetch(`/api/categories?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.categories) {
@@ -2342,8 +2360,9 @@ export default function App() {
   const fetchPurchases = async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/purchases?username=${encodeURIComponent(user.username)}`, {
-        headers: getAuthHeaders()
+      const res = await fetch(`/api/purchases?username=${encodeURIComponent(user.username)}&_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
       });
       if (res.ok) {
         const data = await res.json();
@@ -2357,7 +2376,7 @@ export default function App() {
   // Fetch site settings & Angpao config
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch(`/api/settings?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.settings) {
@@ -2374,7 +2393,7 @@ export default function App() {
           } catch {}
         }
       }
-      const phoneRes = await fetch('/api/topup/config');
+      const phoneRes = await fetch(`/api/topup/config?_t=${Date.now()}`, { cache: 'no-store' });
       if (phoneRes.ok) {
         const pData = await phoneRes.json();
         if (pData.phone) setAngpaoPhone(pData.phone);
@@ -6781,13 +6800,8 @@ export default function App() {
               style={{ cursor: 'pointer' }}
               title="HexSyncTH - คลิกเพื่อเปิดหน้าต่างเข้าสู่ระบบแอดมิน"
             >
-              <HexSyncLogo size={38} showVersion={true} />
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="lockdown-brand-name">{siteSettings.brand_name || 'HexSyncTH'}</span>
-                  <span className="lockdown-brand-tag">{siteSettings.brand_tag || 'No.1 in TH'}</span>
-                </div>
-              </div>
+              <HexSyncLogo size={42} showVersion={true} />
+              <span className="lockdown-brand-tag">{siteSettings.brand_tag || 'No.1 in TH'}</span>
             </div>
 
             {/* Animated Technical Repair Mechanism */}
@@ -6932,6 +6946,28 @@ export default function App() {
         </div>
       ) : (
         <div className="hex-app-layout">
+          {/* Admin Emergency Lockdown Banner (Sticky on top above navbar when admin is active) */}
+          {siteSettings.site_lockdown_enabled === 'true' && user && (user.role === 'admin' || user.role === 'superadmin') && (
+            <div className="admin-lockdown-emergency-banner">
+              <div className="admin-lockdown-banner-content">
+                <span className="pulse-lockdown-dot" />
+                <div className="admin-lockdown-text-group">
+                  <strong>🚨 เว็บไซต์กำลังอยู่ในสถานะ LOCKDOWN (ปิดปรับปรุงทั้งเว็บ)</strong>
+                  <span className="admin-lockdown-subtext">
+                    (ผู้ใช้ทั่วไปจะมองเห็นเฉพาะหน้าแจ้งปิดปรับปรุง ไม่สามารถเข้าชมสินค้าหรือสั่งซื้อได้)
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-unlock-site"
+                onClick={handleDisableLockdown}
+              >
+                🟢 ปลดล็อก & เปิดเว็บไซต์ตามปกติ
+              </button>
+            </div>
+          )}
+
           {/* HexSyncTH 2.0 Full-Width Top Navbar Header */}
           <header className="navbar">
             <div className="navbar-brand-container">
@@ -6949,45 +6985,41 @@ export default function App() {
             </div>
 
             <div className="nav-actions">
-              {/* HUD Icon Action 1: Chat Icon Button */}
+              {/* HUD Icon Action 1: Chat Icon Button -> Discord */}
               <button
                 type="button"
                 className="hud-icon-btn"
-                onClick={() => alert('💬 ระบบแชทซัพพอร์ต HexSyncTH: ติดต่อทีมงานได้ตลอด 24 ชั่วโมง')}
-                title="แชทติดต่อสอบถาม"
+                onClick={() => window.open('https://discord.gg/4KahhB8Em3', '_blank', 'noopener,noreferrer')}
+                title="ดิสคอร์ด HexSyncTH"
               >
                 <MessageSquare size={19} />
               </button>
 
-              {/* HUD Icon Action 2: Notification Bell Icon Button with Red Badge Dot */}
+              {/* HUD Icon Action 2: Notification Bell Icon Button with Red Badge Dot -> Discord */}
               <button
                 type="button"
                 className="hud-icon-btn notification-bell-btn"
-                onClick={() => alert(siteSettings.banner_announcement || '🔔 การแจ้งเตือน: ยินดีต้อนรับสู่ HexSyncTH 2.0!')}
-                title="การแจ้งเตือน"
+                onClick={() => window.open('https://discord.gg/4KahhB8Em3', '_blank', 'noopener,noreferrer')}
+                title="ดิสคอร์ด HexSyncTH"
               >
                 <Bell size={19} />
                 <span className="hud-bell-dot" />
               </button>
 
-              {/* HUD Icon Action 3: Settings Gear Icon Button */}
-              <button
-                type="button"
-                className="hud-icon-btn"
-                onClick={() => {
-                  if (user && (user.role === 'admin' || user.role === 'superadmin')) {
+              {/* HUD Icon Action 3: Settings Gear Icon Button (Only for Admin/Superadmin) */}
+              {user && (user.role === 'admin' || user.role === 'superadmin') && (
+                <button
+                  type="button"
+                  className="hud-icon-btn"
+                  onClick={() => {
                     setView('admin');
                     fetchAdminData();
-                  } else if (user) {
-                    handleOpenProfile('password');
-                  } else {
-                    handleOpenAuthModal('login');
-                  }
-                }}
-                title="ตั้งค่าระบบ"
-              >
-                <Settings size={19} />
-              </button>
+                  }}
+                  title="ระบบหลังบ้าน (Admin Settings)"
+                >
+                  <Settings size={19} />
+                </button>
+              )}
 
               {/* HUD Action 4: Wallet Balance Pill & Cart */}
               {user && (
@@ -7161,25 +7193,28 @@ export default function App() {
                   onClick={() => { setView('store'); setSidebarOpen(false); }}
                 >
                   <div className="item-icon"><IconGamepad size={22} /></div>
-                  <span>DASHBOARD</span>
+                  <span>Home</span>
                 </button>
                 <button
                   className={`hex-sidebar-item ${view === 'status' ? 'active' : ''}`}
                   onClick={() => { setView('status'); setSidebarOpen(false); }}
                 >
                   <div className="item-icon"><ShieldCheck size={22} /></div>
-                  <span>GAMES LIBRARY</span>
+                  <span>download</span>
                 </button>
                 <button
                   className={`hex-sidebar-item ${view === 'history' ? 'active' : ''}`}
                   onClick={() => { setView('history'); setSidebarOpen(false); }}
                 >
                   <div className="item-icon"><IconHistory size={22} /></div>
-                  <span>SYNC TOOLS</span>
+                  <span>ประวัติการซื้อ</span>
                 </button>
                 <button
                   className="hex-sidebar-item"
-                  onClick={() => { alert(siteSettings.banner_announcement || 'ยินดีต้อนรับสู่ HexSyncTH v2.0!'); setSidebarOpen(false); }}
+                  onClick={() => {
+                    window.open('https://discord.gg/4KahhB8Em3', '_blank', 'noopener,noreferrer');
+                    setSidebarOpen(false);
+                  }}
                 >
                   <div className="item-icon"><IconZap size={22} /></div>
                   <span>NEWS</span>
@@ -7197,27 +7232,6 @@ export default function App() {
             </aside>
 
             <div className="hex-main-wrapper">
-              {/* Admin Emergency Lockdown Banner (Sticky on top when admin is bypassed and lockdown is active) */}
-              {siteSettings.site_lockdown_enabled === 'true' && user && (user.role === 'admin' || user.role === 'superadmin') && (
-                <div className="admin-lockdown-emergency-banner">
-                  <div className="admin-lockdown-banner-content">
-                    <span className="pulse-lockdown-dot" />
-                    <div>
-                      <strong>🚨 เว็บไซต์กำลังอยู่ในสถานะ LOCKDOWN (ปิดปรับปรุงทั้งเว็บ)</strong>
-                      <span style={{ marginLeft: '8px', opacity: 0.9, fontSize: '0.82rem' }}>
-                        (ผู้ใช้ทั่วไปจะมองเห็นเฉพาะหน้าแจ้งปิดปรับปรุง ไม่สามารถเข้าชมสินค้าหรือสั่งซื้อได้)
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-unlock-site"
-                    onClick={handleDisableLockdown}
-                  >
-                    🟢 ปลดล็อก & เปิดเว็บไซต์ตามปกติ
-                  </button>
-                </div>
-              )}
 
       {/* VIEW: STORE */}
       {view === 'store' && (

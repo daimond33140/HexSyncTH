@@ -91,9 +91,13 @@ function invalidateProductCache() {
 
 // Get all products with actual dynamic stock count (High-speed cached)
 router.get('/', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   try {
     const now = Date.now();
-    if (cachedProducts && now < cacheExpiry) {
+    const bypassCache = req.query._t || req.headers['cache-control'] === 'no-cache';
+    if (!bypassCache && cachedProducts && now < cacheExpiry) {
       return res.json({ products: cachedProducts });
     }
 
@@ -125,7 +129,7 @@ router.get('/', async (req, res) => {
     });
 
     cachedProducts = results;
-    cacheExpiry = now + 30000; // 30 seconds micro-cache
+    cacheExpiry = now + 2000; // 2 seconds micro-cache
 
     res.json({ products: results });
   } catch (err) {
