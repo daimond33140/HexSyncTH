@@ -199,12 +199,12 @@ function extractQrFromImage(base64Image) {
 
 function parseThaiSlipQr(qrString) {
   if (!qrString || typeof qrString !== 'string') return null;
+  let sendingBankCode = null;
+  let transRef = null;
+  let tag54Amount = null;
+
   try {
     const parsed = promptparse.parse(qrString);
-    let sendingBankCode = null;
-    let transRef = null;
-    let tag54Amount = null;
-
     if (parsed && parsed.tags) {
       for (const tag of parsed.tags) {
         // Tag 00 has subTags in BOT mini QR standard
@@ -220,17 +220,38 @@ function parseThaiSlipQr(qrString) {
         }
       }
     }
+  } catch (_) {}
 
-    return {
-      sendingBankCode,
-      sendingBankName: sendingBankCode ? (THAI_BANKS[sendingBankCode] || `ธนาคารรหัส ${sendingBankCode}`) : null,
-      transRef,
-      tag54Amount: !isNaN(tag54Amount) && tag54Amount > 0 ? tag54Amount : null,
-      rawPayload: qrString
-    };
-  } catch (e) {
-    return null;
+  // Fallback string parser for BOT slip QR standard (000001 / 0103 / 02)
+  if (!transRef && (qrString.includes('000001') || qrString.startsWith('00'))) {
+    const bIdx = qrString.indexOf('0103');
+    if (bIdx !== -1) {
+      sendingBankCode = qrString.substring(bIdx + 4, bIdx + 7);
+    }
+    const refIdx = qrString.indexOf('02', bIdx !== -1 ? bIdx + 7 : 0);
+    if (refIdx !== -1) {
+      const len = parseInt(qrString.substring(refIdx + 2, refIdx + 4), 10);
+      if (!isNaN(len) && len > 5 && len < 50) {
+        transRef = qrString.substring(refIdx + 4, refIdx + 4 + len);
+      }
+    }
+    const amtIdx = qrString.indexOf('54');
+    if (amtIdx !== -1 && !tag54Amount) {
+      const len = parseInt(qrString.substring(amtIdx + 2, amtIdx + 4), 10);
+      if (!isNaN(len) && len > 0 && len < 15) {
+        const a = parseFloat(qrString.substring(amtIdx + 4, amtIdx + 4 + len));
+        if (!isNaN(a) && a > 0) tag54Amount = a;
+      }
+    }
   }
+
+  return {
+    sendingBankCode,
+    sendingBankName: sendingBankCode ? (THAI_BANKS[sendingBankCode] || `ธนาคารรหัส ${sendingBankCode}`) : null,
+    transRef,
+    tag54Amount: !isNaN(tag54Amount) && tag54Amount > 0 ? tag54Amount : null,
+    rawPayload: qrString
+  };
 }
 
 // Quick Scan Slip API: Extracts Bank, TransRef, and Real Amount from Slip (QR + OCR)
@@ -809,34 +830,15 @@ router.post('/angpao', verifyToken, async (req, res) => {
   }
 });
 
-// Helper: Generate EMVCo PromptPay Dynamic QR code payload with unique Tag 62 Reference ID
-function generatePromptPayQR(target, amount, orderId) {
+// Helper: Generate EMVCo PromptPay Dynamic QR code payload
+function generatePromptPayQR(target, amount) {
   const cleanTarget = String(target || '').replace(/[^0-9]/g, '');
   const type = cleanTarget.length === 13 ? 'NATID' : 'MSISDN';
-  const ppTarget = type === 'MSISDN' ? ('0000000000000' + cleanTarget.replace(/^0/, '66')).slice(-13) : cleanTarget;
-
-  const tag29 = promptparse.encode([
-    promptparse.tag('00', 'A000000677010111'),
-    promptparse.tag(type === 'NATID' ? '02' : '01', ppTarget)
-  ]);
-
-  const payload = [
-    promptparse.tag('00', '01'),
-    promptparse.tag('01', '12'), // 12 = Dynamic Single-Use QR
-    promptparse.tag('29', tag29),
-    promptparse.tag('53', '764'),
-    promptparse.tag('54', Number(amount).toFixed(2)),
-    promptparse.tag('58', 'TH')
-  ];
-
-  if (orderId) {
-    const tag62 = promptparse.encode([
-      promptparse.tag('07', String(orderId).slice(0, 25))
-    ]);
-    payload.push(promptparse.tag('62', tag62));
-  }
-
-  return promptparse.withCrcTag(promptparse.encode(payload), '63');
+  return promptparse.generate.anyId({
+    type,
+    target: cleanTarget,
+    amount: Number(amount)
+  });
 }
 
 // 1. Create Dynamic Single-Use PromptPay QR Order (Valid for 30 minutes)
@@ -885,8 +887,8 @@ router.post('/create-qr-order', verifyToken, async (req, res) => {
     // Unique Order ID (e.g. QR83910248-5231)
     const orderId = `QR${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Generate BOT EMVCo QR Payload with unique orderId embedded in Tag 62
-    const qrPayload = generatePromptPayQR(promptpayNumber, numAmount, orderId);
+    // Generate BOT EMVCo Standard Dynamic QR Payload
+    const qrPayload = generatePromptPayQR(promptpayNumber, numAmount);
 
     // 30 Minutes expiration
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
@@ -1011,7 +1013,6 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
     }
 
     // 3. SECURITY GUARD: Must attach slip to verify REAL bank transfer!
-    // (Prevents unauthorized free credit by just clicking confirm without transferring)
     if (!slipImage || typeof slipImage !== 'string' || slipImage.length < 50) {
       return res.status(400).json({
         success: false,
@@ -1034,14 +1035,28 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       qrData = extractQrFromImage(slipImage);
     }
 
+    // STRICT CHECK 1: The uploaded image MUST contain a readable QR code!
+    if (!qrData) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ ไม่พบคิวอาร์โค้ดบนรูปภาพ กรุณาอัปโหลดสลิปธนาคารที่มี QR Code ชัดเจน (ไม่ใช่รูปโปรไฟล์หรือภาพถ่ายอื่นๆ)'
+      });
+    }
+
     const slipDetails = parseThaiSlipQr(qrData);
     const transRef = slipDetails?.transRef || null;
     const sendingBank = slipDetails?.sendingBankName || null;
 
+    // STRICT CHECK 2: Must be a genuine Thai Bank Mini-QR (Must have transRef)
+    if (!transRef) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ คิวอาร์โค้ดบนรูปภาพไม่ใช่สลิปโอนเงินของธนาคาร กรุณาใช้สลิปการโอนเงินจากแอปธนาคารเท่านั้น'
+      });
+    }
+
     // 6. Anti-Duplicate Check: Prevent slip reuse 100%
-    const duplicateConditions = [{ slipHash }];
-    if (transRef) duplicateConditions.push({ transRef });
-    if (qrData) duplicateConditions.push({ qrData });
+    const duplicateConditions = [{ slipHash }, { transRef }, { qrData }];
 
     const existingSlip = await SlipTransaction.findOne({
       where: {
@@ -1053,13 +1068,15 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
     if (existingSlip) {
       const usedTime = new Date(existingSlip.createdAt).toLocaleString('th-TH');
       return res.status(400).json({
-        message: `❌ สลิปนี้ถูกนำมาใช้งานในระบบแล้ว ไม่สามารถใช้งานซ้ำได้! (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 10)} เคยใช้เมื่อ ${usedTime})`
+        success: false,
+        message: `❌ สลิปนี้ถูกนำมาใช้งานในระบบแล้ว ไม่สามารถใช้งานซ้ำได้! (รหัสอ้างอิง: ${transRef} เคยใช้เมื่อ ${usedTime})`
       });
     }
 
     // 7. Amount verification (if QR Tag 54 is present)
-    if (slipDetails?.tag54Amount && slipDetails.tag54Amount !== order.amount) {
+    if (slipDetails?.tag54Amount && Math.abs(slipDetails.tag54Amount - order.amount) > 0.01) {
       return res.status(400).json({
+        success: false,
         message: `❌ ยอดเงินในสลิปไม่ตรงกับยอดที่สั่งเติม! สลิปมียอด ฿${slipDetails.tag54Amount.toLocaleString()} บาท แต่ออเดอร์นี้มียอด ฿${order.amount.toLocaleString()} บาท`
       });
     }
@@ -1070,10 +1087,10 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       amount: order.amount,
       slipImageUrl: slipImage.length > 500 ? slipImage.substring(0, 500) + '...[Image]' : slipImage,
       slipHash,
-      transRef: transRef || null,
-      qrData: qrData || null,
-      sendingBank: sendingBank || null,
-      verifiedVia: qrData ? 'qr_slip_verified' : 'slip_hash_verified',
+      transRef,
+      qrData,
+      sendingBank,
+      verifiedVia: 'qr_bank_verified',
       status: 'approved',
     });
 
