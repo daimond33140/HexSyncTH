@@ -274,12 +274,133 @@ async function sendPurchaseAlert({ username, items = [], totalAmount = 0, balanc
   });
 }
 
+/**
+ * Real-Time Product List Alert (Broadcast Live Catalog to Discord #product-list)
+ */
+async function sendProductListAlert({ channelId = null } = {}) {
+  try {
+    const { Setting, Product, ProductKey } = require('../models');
+    const settings = await Setting.findAll();
+    const config = Object.fromEntries(settings.map(s => [s.key, s.value]));
+
+    const botToken = config['discord_bot_token'] || process.env.DISCORD_BOT_TOKEN;
+    const targetChannelId = channelId || config['discord_product_channel_id'] || '1421672544770986045';
+
+    if (!botToken || !targetChannelId) {
+      console.warn('[Discord Alert] Bot token or target channel ID is missing.');
+      return false;
+    }
+
+    // Fetch real-time products and unconsumed keys from real database
+    const products = await Product.findAll({ order: [['createdAt', 'DESC']] });
+    const keys = await ProductKey.findAll({ where: { isUsed: false } });
+
+    const keyCountMap = {};
+    keys.forEach(k => {
+      keyCountMap[k.productId] = (keyCountMap[k.productId] || 0) + 1;
+    });
+
+    const activeProducts = products.filter(p => p.active !== false);
+    const inStockCount = activeProducts.filter(p => (keyCountMap[p.id] || p.stockCount || 0) > 0).length;
+    const totalAvailableKeys = keys.length;
+
+    // Build fields for up to 24 products (Discord embed field limit is 25)
+    const productFields = products.slice(0, 24).map(p => {
+      const stock = keyCountMap[p.id] !== undefined ? keyCountMap[p.id] : (p.stockCount || 0);
+      const isReady = p.active !== false && stock > 0;
+      const statusIcon = isReady ? '🟢 พร้อมใช้งาน' : (p.active === false ? '🔴 ปิดปรับปรุง' : '🟡 สินค้าหมดชั่วคราว');
+      const priceText = `฿${Number(p.price || 0).toLocaleString()}`;
+      const origPriceText = p.originalPrice ? ` ~฿${Number(p.originalPrice).toLocaleString()}~` : '';
+      
+      const badgeText = p.badge ? ` \`[${p.badge}]\`` : '';
+      const rentalDuration = p.durationHours ? `${p.durationHours} ชม.` : (p.durationDays ? `${p.durationDays} วัน` : 'ถาวร');
+
+      return {
+        name: `🛍️ ${p.name || 'สินค้า'}${badgeText}`,
+        value: `> **สถานะ:** ${statusIcon}\n> **คงเหลือ:** \`${stock}\` ชิ้น/คีย์\n> **ราคาเริ่มต้น:** \`${priceText}\`${origPriceText}\n> **อายุการใช้งาน:** \`${rentalDuration}\``,
+        inline: true
+      };
+    });
+
+    const embed = {
+      title: '🛒 HexSyncTH — รายการสินค้าอัปเดตแบบเรียลไทม์ (Live Catalog)',
+      description: 'ระบบอัปเดตสถานะคลังสินค้าอัตโนมัติจากเซิร์ฟเวอร์หลัก HexSyncTH\nสั่งซื้อผ่านหน้าเว็บ รับคีย์แท้ใช้งานได้ทันที 24 ชม. ตรวจสอบสถานะและสต็อกล่าสุดด้านล่างนี้ได้เลยครับ',
+      color: 0x00FF88, // Vivid Emerald
+      fields: [
+        {
+          name: '📊 ข้อมูลภาพรวมคลังสินค้า (Live Inventory Summary)',
+          value: `📦 สินค้าทั้งหมด: **${products.length}** รายการ | 🟢 พร้อมส่งทันที: **${inStockCount}** รายการ | 🔑 คีย์พร้อมใช้งาน: **${totalAvailableKeys}** คีย์`,
+          inline: false
+        },
+        ...productFields
+      ],
+      footer: {
+        text: 'HexSyncTH Security & Automation Gateway • ซิงค์สต็อกเรียลไทม์ 100%'
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    const payload = JSON.stringify({
+      embeds: [embed],
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 5,
+              label: '🌐 สั่งซื้อสินค้าผ่านหน้าเว็บ (Instant Web Order)',
+              url: 'https://hexsyncth.site'
+            }
+          ]
+        }
+      ]
+    });
+
+    return new Promise((resolve) => {
+      const req = https.request(`https://discord.com/api/v10/channels/${targetChannelId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      }, (res) => {
+        let respData = '';
+        res.on('data', c => respData += c);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log(`[Discord Alert] Successfully broadcasted real-time product list to channel ${targetChannelId}`);
+            resolve(true);
+          } else {
+            console.error(`[Discord Alert] Failed to broadcast product list: HTTP ${res.statusCode} - ${respData}`);
+            resolve(false);
+          }
+        });
+      });
+
+      req.on('error', (err) => {
+        console.error('[Discord Alert] Network error while broadcasting product list:', err.message);
+        resolve(false);
+      });
+
+      req.write(payload);
+      req.end();
+    });
+  } catch (err) {
+    console.error('[Discord Alert] sendProductListAlert error:', err);
+    return false;
+  }
+}
+
 module.exports = {
   sendDiscordSecurityAlert,
   sendSuspiciousActivityAlert,
   sendTopupAlert,
   sendRegisterAlert,
   sendPurchaseAlert,
+  sendProductListAlert,
   getQuickUnbanUrl
 };
+
 

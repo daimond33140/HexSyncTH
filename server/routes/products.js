@@ -2,7 +2,9 @@
 const express = require('express');
 const { Product, ProductKey, Log, sequelize } = require('../models');
 const { requireAdmin } = require('../middleware/auth');
+const { sendProductListAlert } = require('../utils/discordAlert');
 const router = express.Router();
+
 
 // Auto seed default products and distinct stock keys into PostgreSQL (Only on initial empty database)
 async function ensureProducts() {
@@ -194,6 +196,7 @@ router.post('/:id/keys', requireAdmin, async (req, res) => {
     });
 
     invalidateProductCache();
+    sendProductListAlert().catch(() => {});
     res.status(201).json({
       message: `เติมสต็อกสำเร็จ +${lines.length} คีย์ (สต็อกคงเหลือ: ${newTotalStock})`,
       countAdded: lines.length,
@@ -220,6 +223,7 @@ router.delete('/:id/keys/:keyId', requireAdmin, async (req, res) => {
     await Product.update({ stock: newTotalStock }, { where: { id } });
 
     invalidateProductCache();
+    sendProductListAlert().catch(() => {});
     res.json({ message: 'ลบคีย์ออกจากสต็อกเรียบร้อย', totalStock: newTotalStock });
   } catch (err) {
     res.status(500).json({ message: 'ลบคีย์ไม่สำเร็จ' });
@@ -290,6 +294,7 @@ router.post('/', requireAdmin, async (req, res) => {
     });
 
     invalidateProductCache();
+    sendProductListAlert().catch(() => {});
     res.status(201).json(newProduct);
   } catch (err) {
     res.status(500).json({ message: 'เพิ่มสินค้าไม่สำเร็จ: ' + err.message });
@@ -329,6 +334,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     });
 
     invalidateProductCache();
+    sendProductListAlert().catch(() => {});
     res.json(product);
   } catch (err) {
     res.status(500).json({ message: 'อัปเดตสินค้าไม่สำเร็จ: ' + err.message });
@@ -359,6 +365,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
     });
 
     invalidateProductCache();
+    sendProductListAlert().catch(() => {});
     res.json({ success: true, message: `ลบสินค้า "${name}" สำเร็จ`, id: Number(id) });
   } catch (err) {
     console.error('DELETE product error:', err);
@@ -408,6 +415,7 @@ router.post('/bulk-rental', requireAdmin, async (req, res) => {
     } catch {}
 
     invalidateProductCache();
+    sendProductListAlert().catch(() => {});
     res.json({ success: true, message: `ตั้งค่าสำเร็จ ${updatedCount} รายการ`, updatedCount });
   } catch (err) {
     console.error('Error bulk updating rental:', err);
@@ -415,5 +423,20 @@ router.post('/bulk-rental', requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/products/broadcast-discord - Broadcast live real-time product catalog to Discord #product-list
+router.post('/broadcast-discord', requireAdmin, async (req, res) => {
+  try {
+    const success = await sendProductListAlert();
+    if (success) {
+      res.json({ success: true, message: 'อัปเดตและส่งรายการสินค้าล่าสุดไปยัง Discord #product-list สำเร็จเรียบร้อยแล้ว' });
+    } else {
+      res.status(500).json({ success: false, message: 'ไม่สามารถส่งรายการสินค้าไปยัง Discord ได้ กรุณาตรวจสอบการตั้งค่า Bot Token และ Channel' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
 module.exports.invalidateProductCache = invalidateProductCache;
+

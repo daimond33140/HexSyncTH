@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS = {
   discord_security_webhook: '',
   discord_bot_token: '',
   discord_alert_channel_id: '',
+  discord_product_channel_id: '1421672544770986045',
 };
 
 const jwt = require('jsonwebtoken');
