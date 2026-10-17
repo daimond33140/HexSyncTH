@@ -2,11 +2,13 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
 const { User, Log } = require('../models');
 const { getClientIp } = require('../middleware/ipBan');
 const { recordFailedLogin, clearFailedLogin, checkLoginLockout } = require('../middleware/wafSecurity');
 const { resolveIpLocation } = require('../utils/geoIp');
 const { verifyToken } = require('../middleware/auth');
+const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
 require('dotenv').config();
 
 const router = express.Router();
@@ -47,17 +49,56 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน' });
     }
 
+    const clientIp = req.clientIp || getClientIp(req);
+
+    // 1. Block disposable / throwaway burner emails
+    const disposableDomains = [
+      'guerrillamail.com', 'sharklasers.com', 'guerrillamail.info', 'grr.la', 'guerrillamail.biz',
+      'guerrillamail.net', 'tempmail.com', '10minutemail.com', 'mailinator.com', 'trashmail.com',
+      'dispostable.com', 'yopmail.com', 'getairmail.com'
+    ];
+    const emailDomain = (email.split('@')[1] || '').toLowerCase().trim();
+    if (disposableDomains.includes(emailDomain)) {
+      return res.status(400).json({ message: '❌ ไม่อนุญาตให้ใช้อีเมลชั่วคราว (Disposable/Temp Email) ในการสมัครสมาชิก' });
+    }
+
+    // 2. IP Registration Rate Limiting: Max 3 accounts per IP in 24 hours
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentIpRegistrations = await User.count({
+      where: {
+        registerIp: clientIp,
+        createdAt: { [Op.gte]: dayAgo }
+      }
+    });
+
+    if (recentIpRegistrations >= 3) {
+      sendDiscordSecurityAlert({
+        title: '🚨 ตรวจพบการพยายามสแปมสมัครสมาชิก (Registration Rate-Limit)',
+        description: `IP \`${clientIp}\` พยายามสมัครสมาชิกเกินโควต้า 3 บัญชีในรอบ 24 ชั่วโมง`,
+        color: 0xf59e0b,
+        fields: [
+          { name: 'IP Address', value: clientIp, inline: true },
+          { name: 'Username ที่พยายามสมัคร', value: username, inline: true },
+          { name: 'Email ที่พยายามสมัคร', value: email, inline: true },
+          { name: 'จำนวนบัญชีเดิมจาก IP นี้ (24 ชม.)', value: `${recentIpRegistrations} บัญชี`, inline: true }
+        ]
+      }).catch(() => {});
+
+      return res.status(429).json({
+        message: '⚠️ IP ของคุณมีการสมัครสมาชิกเกินกำหนด (สูงสุด 3 บัญชีต่อวัน) เพื่อความปลอดภัยของระบบ'
+      });
+    }
+
     // Check if user already exists
     const exists = await User.findOne({
       where: {
-        [require('sequelize').Op.or]: [{ username }, { email }]
+        [Op.or]: [{ username }, { email }]
       }
     });
     if (exists) {
       return res.status(409).json({ message: 'ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้งานแล้ว' });
     }
 
-    const clientIp = req.clientIp || getClientIp(req);
     const passwordHash = await bcrypt.hash(password, 10);
     const parsedModel = deviceModel || (deviceInfo && deviceInfo.model) || 'Unknown Device';
     const parsedInfoStr = deviceInfo ? (typeof deviceInfo === 'string' ? deviceInfo : JSON.stringify(deviceInfo)) : null;
@@ -83,6 +124,19 @@ router.post('/register', async (req, res) => {
       username,
       ip: clientIp,
     });
+
+    // Send Discord security notification for new member
+    sendDiscordSecurityAlert({
+      title: '👤 สมาชิกใหม่ลงทะเบียน (New User Registered)',
+      description: `มีผู้ใช้งานสมัครสมาชิกใหม่เข้าสู่ระบบ`,
+      color: 0x3b82f6,
+      fields: [
+        { name: 'Username', value: username, inline: true },
+        { name: 'Email', value: email, inline: true },
+        { name: 'IP Address', value: clientIp, inline: true },
+        { name: 'อุปกรณ์/เบราว์เซอร์', value: parsedModel, inline: true }
+      ]
+    }).catch(() => {});
 
     const token = jwt.sign(
       { id: newUser.id, username: newUser.username, role: newUser.role },

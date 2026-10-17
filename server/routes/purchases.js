@@ -3,6 +3,7 @@ const express = require('express');
 const { Purchase, Product, ProductKey, User, Log, Coupon, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { verifyToken, requireAdmin } = require('../middleware/auth');
+const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
 const router = express.Router();
 
 // Get purchase history for user or all (if admin)
@@ -84,7 +85,12 @@ router.post('/checkout', verifyToken, async (req, res) => {
 
     // Execute checkout inside an ACID database transaction to prevent race conditions & double-spending
     const result = await sequelize.transaction(async (t) => {
-      const user = await User.findOne({ where: { username }, transaction: t });
+      // Row lock user record with SELECT ... FOR UPDATE to eliminate double-spending race conditions
+      const user = await User.findOne({
+        where: { username },
+        transaction: t,
+        lock: t.LOCK.UPDATE
+      });
       if (!user) {
         throw new Error('ไม่พบบัญชีผู้ใช้');
       }
@@ -155,11 +161,12 @@ router.post('/checkout', verifyToken, async (req, res) => {
       for (const order of orderItems) {
         const p = order.product;
         for (let i = 0; i < order.quantity; i++) {
-          // Find next unused distinct key
+          // Find next unused distinct key with row lock to avoid race conditions
           const pKey = await ProductKey.findOne({
             where: { productId: p.id, isUsed: false },
             order: [['id', 'ASC']],
-            transaction: t
+            transaction: t,
+            lock: t.LOCK.UPDATE
           });
 
           if (!pKey) {
@@ -248,6 +255,18 @@ router.post('/checkout', verifyToken, async (req, res) => {
       const { invalidateProductCache } = require('./products');
       if (typeof invalidateProductCache === 'function') invalidateProductCache();
     } catch {}
+
+    // Send Discord security notification
+    sendDiscordSecurityAlert({
+      title: '🛒 สมาชิกสั่งซื้อสินค้าสำเร็จ (Purchase Completed)',
+      description: `ผู้ใช้ \`${username}\` ทำรายการซื้อสินค้าจำนวน ${result.createdPurchases.length} ชิ้น`,
+      color: 0x10b981,
+      fields: [
+        { name: 'ผู้ซื้อ', value: username, inline: true },
+        { name: 'จำนวนชิ้น', value: `${result.createdPurchases.length} รายการ`, inline: true },
+        { name: 'ยอดคงเหลือใหม่', value: `฿${result.newBalance.toLocaleString()}`, inline: true }
+      ]
+    }).catch(() => {});
 
     res.status(201).json({
       message: 'การสั่งซื้อสำเร็จ ระบบได้ดึงคีย์จริงออกจากสต็อกเรียบร้อยแล้ว',

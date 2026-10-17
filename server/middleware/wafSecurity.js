@@ -2,6 +2,7 @@
 const { getClientIp, banIpImmediately, isIpBanned, isIpWhitelisted } = require('./ipBan');
 const { autoJailMap } = require('./antiFlood');
 const { Log } = require('../models');
+const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
 
 // In-memory sliding trackers for stateful attack detection
 const fuzzerTrackingMap = new Map(); // ip -> { count404: number, windowStart: number }
@@ -200,6 +201,18 @@ async function wafSecurityMiddleware(req, res, next) {
     if (uaRegex.test(userAgent)) {
       console.warn(`[WAF Block] 🚨 Scanner User-Agent blocked from ${ip}: ${userAgent}`);
       await banIpImmediately(ip, `ตรวจพบเครื่องมือสแกนเจาะระบบ (Scanner/Recon User-Agent): ${userAgent.slice(0, 80)}`);
+      
+      sendDiscordSecurityAlert({
+        title: '🚨 ตรวจพบเครื่องมือเจาะระบบ (Scanner Blocked)',
+        description: `WAF ได้ทำการบล็อกและแบน IP \`${ip}\` ทันทีหลังพบการใช้งานเครื่องมือสแกนเจาะระบบ`,
+        color: 0xef4444,
+        fields: [
+          { name: 'IP Address', value: ip, inline: true },
+          { name: 'Target Path', value: requestPath, inline: true },
+          { name: 'User-Agent', value: `\`${userAgent.slice(0, 100)}\``, inline: false }
+        ]
+      }).catch(() => {});
+
       try {
         await Log.create({
           action: 'SCANNER_AGENT_BLOCKED',
@@ -221,6 +234,17 @@ async function wafSecurityMiddleware(req, res, next) {
     if (honeyRegex.test(requestPath)) {
       console.warn(`[WAF Honeypot] 🪤 Honeypot tripped by ${ip} on path: ${requestPath}`);
       await banIpImmediately(ip, `[Honeypot Trap] ตรวจพบการสแกนหาไฟล์ลับ/ระบบ: ${requestPath}`);
+      
+      sendDiscordSecurityAlert({
+        title: '🪤 ตรวจพบการติดบ่อล่อโจร (Honeypot Tripped)',
+        description: `IP \`${ip}\` พยายามแอบสแกนหาไฟล์ลับ/ระบบ (\`${requestPath}\`) ถูกระงับการใช้งานทันที`,
+        color: 0xdc2626,
+        fields: [
+          { name: 'IP Address', value: ip, inline: true },
+          { name: 'Path ที่พยายามเข้าถึง', value: `\`${requestPath}\``, inline: true }
+        ]
+      }).catch(() => {});
+
       try {
         await Log.create({
           action: 'HONEYPOT_TRIPPED',
@@ -272,6 +296,18 @@ async function wafSecurityMiddleware(req, res, next) {
         await banIpImmediately(ip, `ตรวจพบ Payload โจมตีระบบ (${violation.type}): ${violation.matched}`);
       }
 
+      sendDiscordSecurityAlert({
+        title: `🛡️ สกัดกั้นการโจมตีระบบ (${violation.type})`,
+        description: `HexSync WAF สกัดกั้นการโจมตีจาก IP \`${ip}\` บนเส้นทาง \`${requestPath}\``,
+        color: 0xef4444,
+        fields: [
+          { name: 'ประเภทการโจมตี', value: violation.type, inline: true },
+          { name: 'ระดับความรุนแรง', value: violation.severity || 'high', inline: true },
+          { name: 'IP Address', value: ip, inline: true },
+          { name: 'Matched Pattern', value: `\`${violation.matched?.slice(0, 100) || 'unknown'}\``, inline: false }
+        ]
+      }).catch(() => {});
+
       try {
         await Log.create({
           action: `WAF_${violation.type}`,
@@ -307,6 +343,16 @@ async function wafSecurityMiddleware(req, res, next) {
           console.warn(`[WAF Anti-Fuzzing] 🚨 Fuzzing sweep detected from ${ip} (${fuzzerData.count404} errors in 10s)`);
           banIpImmediately(ip, `[Vulnerability Fuzzer] ตรวจพบการสแกนและ Fuzzing ไดเรกทอรีผิดปกติ (Gobuster/Dirbuster/FFUF)`).catch(() => {});
           autoJailMap.set(ip, now + 15 * 60 * 1000); // 15-min jail
+
+          sendDiscordSecurityAlert({
+            title: '🚨 ตรวจพบการรัวสแกนไดเรกทอรี (Directory Fuzzing / Gobuster)',
+            description: `IP \`${ip}\` พยายามสแกนหาช่องโหว่/ไฟล์ลับแบบรัว (${fuzzerData.count404} ครั้ง ใน 10 วิ) จึงถูกกักกัน 15 นาที`,
+            color: 0xf59e0b,
+            fields: [
+              { name: 'IP Address', value: ip, inline: true },
+              { name: 'จำนวน 404', value: `${fuzzerData.count404} ครั้ง`, inline: true }
+            ]
+          }).catch(() => {});
         }
       }
     }
@@ -345,6 +391,17 @@ function recordFailedLogin(ip, username = '') {
   if (attempt.usernames.size >= 15) {
     console.warn(`[WAF Brute-Force] 🚨 Credential Stuffing / Password Spraying detected from IP ${ip}`);
     banIpImmediately(ip, 'ตรวจพบการสุ่มรหัสผ่านข้ามหลายบัญชี (Credential Stuffing / Hydra Attack)').catch(() => {});
+    
+    sendDiscordSecurityAlert({
+      title: '🚨 ตรวจพบการสุ่มรหัสผ่านข้ามบัญชี (Credential Stuffing)',
+      description: `IP \`${ip}\` พยายามสุ่มรหัสผ่านมากกว่า 15 ชื่อผู้ใช้ในเวลาสั้นๆ ถูกแบนทันที`,
+      color: 0xdc2626,
+      fields: [
+        { name: 'IP Address', value: ip, inline: true },
+        { name: 'จำนวน Username ที่สุ่ม', value: `${attempt.usernames.size} บัญชี`, inline: true }
+      ]
+    }).catch(() => {});
+
     return { blocked: true, reason: 'CREDENTIAL_STUFFING', ban: true };
   }
 
@@ -352,6 +409,17 @@ function recordFailedLogin(ip, username = '') {
   if (attempt.failedCount >= 15) {
     autoJailMap.set(ip, now + 5 * 60 * 1000); // 5 min jail
     console.warn(`[WAF Brute-Force] 🔒 IP ${ip} quarantined for 5 minutes due to 15+ failed logins`);
+    
+    sendDiscordSecurityAlert({
+      title: '🔒 กักกัน IP เนื่องจากล็อกอินผิดเกินกำหนด (Brute-Force Lockdown)',
+      description: `IP \`${ip}\` ล็อกอินล้มเหลวติดต่อกัน 15 ครั้ง ถูกกักกัน 5 นาที`,
+      color: 0xf59e0b,
+      fields: [
+        { name: 'IP Address', value: ip, inline: true },
+        { name: 'จำนวนครั้งที่ล็อกอินผิด', value: `${attempt.failedCount} ครั้ง`, inline: true }
+      ]
+    }).catch(() => {});
+
     return { blocked: true, reason: 'TOO_MANY_FAILED_LOGINS', jailMinutes: 5 };
   }
 

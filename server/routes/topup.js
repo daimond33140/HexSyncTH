@@ -95,6 +95,10 @@ const promptparse = require('promptparse');
 const jpeg = require('jpeg-js');
 const { PNG } = require('pngjs');
 const { extractAmountFromSlip } = require('../ocr_helper');
+const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
+
+// In-memory sliding tracker for slip submission attempts (prevent automated brute force / spam)
+const slipAttemptMap = new Map(); // ip_or_username -> { failedCount, windowStart, lockedUntil }
 
 // Map of Thai Bank codes to friendly names
 const THAI_BANKS = {
@@ -270,7 +274,43 @@ router.post('/scan-slip', async (req, res) => {
 
 // Top-up via Bank Transfer Slip Verification (Anti-Duplicate + Real Amount Checking)
 router.post('/bank-slip', verifyToken, async (req, res) => {
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const trackKey = `${clientIp}_${req.user?.username || req.body?.username || 'anon'}`;
+  const now = Date.now();
+
+  // Helper to record failed slip attempt
+  const recordFailedSlip = (reason) => {
+    let tr = slipAttemptMap.get(trackKey) || { failedCount: 0, windowStart: now, lockedUntil: 0 };
+    if (now - tr.windowStart > 10 * 60 * 1000) {
+      tr = { failedCount: 0, windowStart: now, lockedUntil: 0 };
+    }
+    tr.failedCount += 1;
+    if (tr.failedCount >= 3) {
+      tr.lockedUntil = now + 15 * 60 * 1000; // Lockout for 15 minutes
+      sendDiscordSecurityAlert({
+        title: '🚨 ตรวจพบการพยายามสแปม/ปลอมแปลงสลิป (Slip Abuse)',
+        description: `IP \`${clientIp}\` (ผู้ใช้: \`${req.body?.username || 'unknown'}\`) ทำรายการสลิปไม่ผ่านเกิน 3 ครั้ง จึงถูกระงับชั่วคราว 15 นาที`,
+        color: 0xef4444,
+        fields: [
+          { name: 'สาเหตุล่าสุด', value: reason || 'ตรวจสอบสลิปไม่ผ่าน', inline: false },
+          { name: 'IP Address', value: clientIp, inline: true },
+          { name: 'จำนวนครั้งที่ล้มเหลว', value: `${tr.failedCount} ครั้ง`, inline: true }
+        ]
+      }).catch(() => {});
+    }
+    slipAttemptMap.set(trackKey, tr);
+  };
+
   try {
+    // 0. Check lockout status
+    const tr = slipAttemptMap.get(trackKey);
+    if (tr && tr.lockedUntil > now) {
+      const remainingMin = Math.ceil((tr.lockedUntil - now) / 60000);
+      return res.status(429).json({
+        message: `⚠️ คุณทำรายการสลิปไม่ผ่านเกินกำหนด ระบบระงับการอัปโหลดสลิปชั่วคราวเป็นเวลาอีก ${remainingMin} นาที เพื่อความปลอดภัย`
+      });
+    }
+
     const { username, amount, slipImage, clientQrData } = req.body;
     const requestedAmount = Number(amount);
 
@@ -281,18 +321,53 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     if (!requestedAmount || isNaN(requestedAmount) || requestedAmount < 20) {
       return res.status(400).json({ message: '⚠️ ยอดเติมเงินขั้นต่ำคือ 20 บาทขึ้นไป (ห้ามต่ำกว่า 20 บาท)' });
     }
-    if (!slipImage) {
+    if (!slipImage || typeof slipImage !== 'string') {
       return res.status(400).json({ message: 'กรุณาอัปโหลดรูปภาพสลิปหลักฐานการโอนเงิน' });
     }
 
     const user = await User.findOne({ where: { username } });
     if (!user) return res.status(404).json({ message: 'ไม่พบบัญชีผู้ใช้งาน' });
 
-    // 1. Compute SHA-256 hash of the slip image
+    // 1. Validate image format and buffer size (prevent 1x1 dummy / pixel exploit)
     const cleanData = slipImage.replace(/^data:image\/[a-z0-9-+]+;base64,/, '');
+    const imgBuffer = Buffer.from(cleanData, 'base64');
+    
+    // Bank slips are real photos/screenshots, always at least 5KB (usually 20KB - 500KB)
+    if (imgBuffer.length < 4096) {
+      recordFailedSlip('ไฟล์สลิปมีขนาดเล็กผิดปกติ (ต่ำกว่า 4KB)');
+      return res.status(400).json({
+        message: '❌ ไฟล์รูปภาพสลิปมีขนาดเล็กผิดปกติหรือไม่สมบูรณ์ กรุณาอัปโหลดสลิปธนาคารฉบับจริง'
+      });
+    }
+
+    // Check dimensions if readable
+    try {
+      let width = 0;
+      let height = 0;
+      if (slipImage.startsWith('data:image/png') || cleanData.startsWith('iVBORw0KGgo')) {
+        const png = PNG.sync.read(imgBuffer);
+        width = png.width;
+        height = png.height;
+      } else {
+        const jpg = jpeg.decode(imgBuffer, { useTArray: true, formatAsRGBA: false });
+        width = jpg.width;
+        height = jpg.height;
+      }
+
+      if (width < 200 || height < 200) {
+        recordFailedSlip(`มิติภาพสลิปเล็กเกินไป (${width}x${height})`);
+        return res.status(400).json({
+          message: `❌ ขนาดของรูปภาพสลิป (${width}x${height}px) มีขนาดเล็กเกินไป ไม่ใช่สลิปธนาคารที่ถูกต้อง`
+        });
+      }
+    } catch (_) {
+      // If dimension decoding throws due to exotic compression, continue to QR check
+    }
+
+    // 2. Compute SHA-256 hash of the slip image
     const slipHash = crypto.createHash('sha256').update(cleanData).digest('hex');
 
-    // 2. Decode QR Code (from client or server decode)
+    // 3. Decode QR Code (from client or server decode)
     let qrData = (clientQrData && typeof clientQrData === 'string') ? clientQrData.trim() : null;
     if (!qrData) {
       qrData = extractQrFromImage(slipImage);
@@ -302,7 +377,7 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     const transRef = slipDetails?.transRef || null;
     const sendingBankName = slipDetails?.sendingBankName || null;
 
-    // 3. CHECK 1: PREVENT SLIP REUSE (ป้องกันสลิปซ้ำ 100%)
+    // 4. CHECK: PREVENT SLIP REUSE (ป้องกันสลิปซ้ำ 100%)
     const duplicateConditions = [{ slipHash }];
     if (transRef) duplicateConditions.push({ transRef });
     if (qrData) duplicateConditions.push({ qrData });
@@ -315,13 +390,25 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     });
 
     if (existingSlip) {
+      recordFailedSlip(`พยายามใช้สลิปซ้ำ (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 10)})`);
+      sendDiscordSecurityAlert({
+        title: '⚠️ ตรวจพบการพยายามใช้สลิปซ้ำ (Duplicate Slip Attempt)',
+        description: `ผู้ใช้ \`${username}\` (IP: \`${clientIp}\`) พยายามอัปโหลดสลิปที่เคยถูกใช้งานไปแล้ว`,
+        color: 0xf59e0b,
+        fields: [
+          { name: 'ผู้ใช้งาน', value: username, inline: true },
+          { name: 'รหัสอ้างอิง', value: transRef || slipHash.slice(0, 12), inline: true },
+          { name: 'สลิปเดิมอนุมัติเมื่อ', value: new Date(existingSlip.createdAt).toLocaleString('th-TH'), inline: true }
+        ]
+      }).catch(() => {});
+
       const usedTime = new Date(existingSlip.createdAt).toLocaleString('th-TH');
       return res.status(400).json({
         message: `❌ สลิปนี้ถูกใช้งานไปแล้ว ไม่สามารถใช้งานซ้ำได้! (รหัสอ้างอิง: ${transRef || slipHash.slice(0, 12)} เคยทำรายการเมื่อ ${usedTime})`
       });
     }
 
-    // 4. CHECK 2: AMOUNT VERIFICATION (ป้องกันโอน 1 บาท แต่กรอก 100 บาท)
+    // 5. CHECK: AMOUNT VERIFICATION
     let finalCreditAmount = requestedAmount;
     let verifiedVia = 'anti_duplicate_verified';
     let verifyNotice = '';
@@ -338,7 +425,6 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     const isRealSlipOkConfig = slipokApiKey && slipokBranchId && slipokApiKey !== '9999' && slipokApiKey.length > 8 && slipokBranchId !== 'admin';
 
     if (isRealSlipOkConfig && qrData) {
-      // Call official SlipOK bank verification API
       try {
         const slipOkRes = await fetch(`https://api.slipok.com/api/line/apikey/${slipokBranchId}`, {
           method: 'POST',
@@ -353,6 +439,7 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
         if (slipOkRes.status === 401 || slipOkRes.status === 403 || (slipOkData.message && slipOkData.message.includes('กรุณาใส่ข้อมูลให้ถูกต้อง'))) {
           console.warn('SlipOK key invalid or expired, falling back to internal verification');
         } else if (!slipOkRes.ok || !slipOkData.success) {
+          recordFailedSlip(`SlipOK ตรวจไม่ผ่าน: ${slipOkData.message || 'ไม่พบในระบบ'}`);
           return res.status(400).json({
             message: '❌ ตรวจสอบสลิปกับระบบธนาคารไม่ผ่าน: ' + (slipOkData.message || 'ไม่พบรายการโอนเงินนี้ในระบบธนาคาร หรือสลิปไม่ถูกต้อง')
           });
@@ -363,6 +450,7 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
             verifiedVia = 'slipok_bank_verified';
 
             if (requestedAmount !== finalCreditAmount) {
+              recordFailedSlip(`ยอดเงินไม่ตรง (ขอ ฿${requestedAmount} แต่สลิปมียอด ฿${finalCreditAmount})`);
               return res.status(400).json({
                 message: `❌ ยอดเงินไม่ตรงกับสลิป! สลิปนี้มียอดโอนจริง ฿${finalCreditAmount.toLocaleString()} บาท แต่คุณเลือกเติม ฿${requestedAmount.toLocaleString()} บาท (กรุณาระบุยอดเงินให้ตรงกับสลิปโอนเงิน)`
               });
@@ -373,24 +461,25 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
         console.error('SlipOK API error:', apiErr);
       }
     } else if (slipDetails?.tag54Amount) {
-      // Amount embedded in QR Tag 54
       finalCreditAmount = slipDetails.tag54Amount;
       verifiedVia = 'qr_tag54_verified';
       if (requestedAmount !== finalCreditAmount) {
+        recordFailedSlip(`ยอดไม่ตรงกับ Tag54`);
         return res.status(400).json({
-          message: `❌ ยอดเงินไม่ตรงกับ QR สลิป! สลิประบุยอดโอน ฿${finalCreditAmount.toLocaleString()} บาท แต่คุณเลือกเติม ฿${requestedAmount.toLocaleString()} บาท (กรุณาระบุยอดเงินให้ตรงกับสลิปโอนเงิน)`
+          message: `❌ ยอดเงินไม่ตรงกับ QR สลิป! สลิประบุยอดโอน ฿${finalCreditAmount.toLocaleString()} บาท แต่คุณเลือกเติม ฿${requestedAmount.toLocaleString()} บาท`
         });
       }
     } else {
-      // 3. Fallback: OCR Scan slip image to extract transfer amount
+      // Fallback: OCR Scan slip image to extract transfer amount
       try {
         const ocrResult = await extractAmountFromSlip(slipImage);
         if (ocrResult && ocrResult.detectedAmount) {
           finalCreditAmount = ocrResult.detectedAmount;
           verifiedVia = 'ocr_slip_verified';
           if (requestedAmount !== finalCreditAmount) {
+            recordFailedSlip(`ยอดไม่ตรงกับ OCR`);
             return res.status(400).json({
-              message: `❌ ยอดเงินไม่ตรงกับสลิป! สลิประบุยอดโอน ฿${finalCreditAmount.toLocaleString()} บาท แต่คุณเลือกเติม ฿${requestedAmount.toLocaleString()} บาท (กรุณาระบุยอดเงินให้ตรงกับสลิปโอนเงิน)`
+              message: `❌ ยอดเงินไม่ตรงกับสลิป! สลิประบุยอดโอน ฿${finalCreditAmount.toLocaleString()} บาท แต่คุณเลือกเติม ฿${requestedAmount.toLocaleString()} บาท`
             });
           }
         }
@@ -400,17 +489,37 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
     }
 
     if (!finalCreditAmount || finalCreditAmount <= 0) {
+      recordFailedSlip('ยอดเงินไม่ถูกต้อง');
       return res.status(400).json({ message: '❌ ยอดเงินที่เติมต้องมากกว่า 0 บาท' });
     }
 
-    // Security Check: NEVER auto-approve unverified slips without valid bank QR or SlipOK verification
+    // CRITICAL SECURITY RULE: Reject any unverified slip without genuine bank QR / SlipOK
     if (verifiedVia === 'anti_duplicate_verified') {
+      recordFailedSlip('ไม่พบ QR Code ของธนาคารบนสลิป');
       return res.status(400).json({
         message: '❌ ไม่สามารถตรวจสอบสลิปนี้ได้: ไม่พบ QR Code ของธนาคารบนสลิป หรือรูปภาพไม่ถูกต้อง กรุณาอัปโหลดสลิปโอนเงินที่มี QR Code ชัดเจน'
       });
     }
 
-    // 5. Store approved transaction with slipHash and transRef to prevent any future reuse
+    // SAFEGUARD: High-amount transactions (> ฿5,000) must have bank-verified SlipOK confirmation
+    if (finalCreditAmount > 5000 && verifiedVia !== 'slipok_bank_verified') {
+      sendDiscordSecurityAlert({
+        title: '⚠️ ตรวจพบการพยายามเติมเงินยอดสูง (> ฿5,000)',
+        description: `ผู้ใช้ \`${username}\` พยายามเติมเงิน ฿${finalCreditAmount.toLocaleString()} บาท แต่ไม่มี SlipOK ยืนยันธนาคารโดยตรง`,
+        color: 0xf59e0b,
+        fields: [
+          { name: 'ผู้ใช้งาน', value: username, inline: true },
+          { name: 'ยอดเงิน', value: `฿${finalCreditAmount.toLocaleString()}`, inline: true },
+          { name: 'IP Address', value: clientIp, inline: true }
+        ]
+      }).catch(() => {});
+
+      return res.status(400).json({
+        message: '⚠️ ยอดเงินเติมเกิน ฿5,000 บาท จำเป็นต้องได้รับการยืนยันผ่านระบบ SlipOK ธนาคารโดยตรง หรือติดต่อแอดมินเพื่อตรวจสอบ'
+      });
+    }
+
+    // 6. Store approved transaction
     const slipTx = await SlipTransaction.create({
       username,
       amount: finalCreditAmount,
@@ -423,7 +532,7 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
       status: 'approved',
     });
 
-    // 6. Credit amount to user
+    // 7. Credit amount to user
     user.creditBalance = Number(user.creditBalance || 0) + finalCreditAmount;
     await user.save();
 
@@ -431,7 +540,26 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
       action: 'TOPUP_BANK_SLIP',
       detail: `ผู้ใช้ ${username} เติมเงินผ่านสลิปสำเร็จ +${finalCreditAmount} บาท (รหัสสลิป #${slipTx.id}, อ้างอิง: ${transRef || slipHash.slice(0, 10)}, โหมด: ${verifiedVia})`,
       username,
+      ip: clientIp,
     });
+
+    // Reset failed tracker on success
+    slipAttemptMap.delete(trackKey);
+
+    // Send Discord security notification
+    sendDiscordSecurityAlert({
+      title: '💰 สมาชิกเติมเงินผ่านสลิปสำเร็จ (Bank Slip Approved)',
+      description: `ผู้ใช้ \`${username}\` เติมเงินเข้ากระเป๋าสำเร็จ +฿${finalCreditAmount.toLocaleString()} บาท`,
+      color: 0x10b981,
+      fields: [
+        { name: 'ผู้ใช้งาน', value: username, inline: true },
+        { name: 'ยอดเงิน', value: `+฿${finalCreditAmount.toLocaleString()}`, inline: true },
+        { name: 'ยอดคงเหลือใหม่', value: `฿${user.creditBalance.toLocaleString()}`, inline: true },
+        { name: 'ธนาคารต้นทาง', value: sendingBankName || 'ไม่ระบุ', inline: true },
+        { name: 'รหัสอ้างอิง', value: transRef || slipHash.slice(0, 12), inline: true },
+        { name: 'วิธีตรวจสอบ', value: verifiedVia, inline: true }
+      ]
+    }).catch(() => {});
 
     res.json({
       message: `🎉 ตรวจสอบสลิปสำเร็จ! เติมเงิน +฿${finalCreditAmount.toLocaleString()} บาท เข้าบัญชีเรียบร้อยแล้ว${verifyNotice}`,
