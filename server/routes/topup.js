@@ -1134,6 +1134,39 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'ไม่พบผู้ใช้ในระบบ' });
     }
 
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    const trackKey = `${clientIp}_${targetUsername}`;
+    const now = Date.now();
+    const recordFailedSlip = (reason) => {
+      let tr = slipAttemptMap.get(trackKey) || { failedCount: 0, windowStart: now, lockedUntil: 0 };
+      if (now - tr.windowStart > 10 * 60 * 1000) {
+        tr = { failedCount: 0, windowStart: now, lockedUntil: 0 };
+      }
+      tr.failedCount += 1;
+      if (tr.failedCount >= 5) {
+        tr.lockedUntil = now + 15 * 60 * 1000;
+        sendDiscordSecurityAlert({
+          title: '🚨 ตรวจพบการพยายามสแปม/ปลอมแปลงสลิป (QR Topup Abuse)',
+          description: `IP \`${clientIp}\` (ผู้ใช้: \`${targetUsername}\`) ทำรายการสลิปไม่ผ่านเกิน 5 ครั้ง`,
+          color: 0xef4444,
+          fields: [
+            { name: 'สาเหตุล่าสุด', value: reason || 'ตรวจสอบสลิปไม่ผ่าน', inline: false },
+            { name: 'IP Address', value: clientIp, inline: true },
+            { name: 'จำนวนครั้งที่ล้มเหลว', value: `${tr.failedCount} ครั้ง`, inline: true }
+          ]
+        }).catch(() => {});
+      }
+      slipAttemptMap.set(trackKey, tr);
+    };
+
+    const tr = slipAttemptMap.get(trackKey);
+    if (tr && tr.lockedUntil > now) {
+      const remainingMin = Math.ceil((tr.lockedUntil - now) / 60000);
+      return res.status(429).json({
+        message: `⚠️ คุณทำรายการสลิปไม่ผ่านเกินกำหนด ระบบระงับการตรวจสอบสลิปชั่วคราวเป็นเวลาอีก ${remainingMin} นาที เพื่อความปลอดภัย`
+      });
+    }
+
     // 3. SECURITY GUARD: Must attach slip to verify REAL bank transfer!
     if (!slipImage || typeof slipImage !== 'string' || slipImage.length < 50) {
       return res.status(400).json({
