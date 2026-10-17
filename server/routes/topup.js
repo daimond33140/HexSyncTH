@@ -95,6 +95,7 @@ const promptparse = require('promptparse');
 const jpeg = require('jpeg-js');
 const { PNG } = require('pngjs');
 const { extractAmountFromSlip } = require('../ocr_helper');
+const { inspectSlipForensics } = require('../forensics_helper');
 const { sendDiscordSecurityAlert } = require('../utils/discordAlert');
 
 // In-memory sliding tracker for slip submission attempts (prevent automated brute force / spam)
@@ -383,6 +384,15 @@ router.post('/bank-slip', verifyToken, async (req, res) => {
       }
     } catch (_) {
       // If dimension decoding throws due to exotic compression, continue to QR check
+    }
+
+    // 1.1 AI Digital Forensics & Manipulation Detection
+    const forensics = await inspectSlipForensics(slipImage);
+    if (!forensics.isClean) {
+      recordFailedSlip(forensics.reason || 'ตรวจพบการตัดต่อภาพสลิป');
+      return res.status(400).json({
+        message: forensics.reason || '❌ ระบบ AI ปฏิเสธสลิป: ตรวจพบร่องรอยการดัดแปลงหรือตัดต่อภาพสลิป'
+      });
     }
 
     // 2. Compute SHA-256 hash of the slip image
@@ -1175,6 +1185,16 @@ router.post('/confirm-qr-payment', verifyToken, async (req, res) => {
         status: 'pending',
         orderId: order.orderId,
         message: '⚠️ กรุณาแนบรูปสลิปการโอนเงิน เพื่อให้ระบบตรวจสอบความถูกต้องและยอดเงินจริงก่อนเติมเครดิตครับ'
+      });
+    }
+
+    // 3.1 AI DIGITAL FORENSICS & IMAGE MANIPULATION CHECK
+    const forensics = await inspectSlipForensics(slipImage);
+    if (!forensics.isClean) {
+      recordFailedSlip(forensics.reason || 'ตรวจพบการตัดต่อภาพสลิป');
+      return res.status(400).json({
+        success: false,
+        message: forensics.reason || '❌ ระบบ AI ปฏิเสธสลิป: ตรวจพบร่องรอยการดัดแปลงหรือตัดต่อภาพสลิป'
       });
     }
 
