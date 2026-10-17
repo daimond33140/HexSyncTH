@@ -592,7 +592,19 @@ export function groupProductsByGame(
     const cat = categoriesList.find(c => c.slug === p.categoryId);
     const catName = cat ? cat.name : p.categoryId;
 
-    const custom = customMap[baseTitle] || {};
+    let custom = customMap[baseTitle];
+    if (!custom) {
+      const foundKey = Object.keys(customMap).find(k => {
+        const cleanK = k.trim().toLowerCase();
+        const cleanTitle = baseTitle.trim().toLowerCase();
+        return cleanK === cleanTitle || cleanTitle.includes(cleanK) || cleanK.includes(cleanTitle);
+      });
+      if (foundKey) custom = customMap[foundKey];
+    }
+    custom = custom || {};
+
+    const localBanner = typeof window !== 'undefined' ? (localStorage.getItem('hexsync_banner_' + baseTitle) || localStorage.getItem('hexsync_banner_' + p.name)) : null;
+    const localIcon = typeof window !== 'undefined' ? (localStorage.getItem('hexsync_icon_' + baseTitle) || localStorage.getItem('hexsync_icon_' + p.name)) : null;
 
     // Only allow category banner if the category name or slug actually matches the game baseTitle
     const isCatMatch = !!(cat && (
@@ -603,13 +615,14 @@ export function groupProductsByGame(
     const catBanner = isCatMatch ? (cat.bannerImage || '') : '';
     const hasValidProdImage = !!(p.image && !p.image.includes('unsplash') && p.image.trim() !== '');
 
-    // Strict priority hierarchy:
+    // Strict priority hierarchy for 0ms instant display without old image flash:
     // 1. custom.bannerImage (explicit admin setting for this game)
-    // 2. p.image (product's own custom uploaded image)
-    // 3. catBanner (only if category matches the game title!)
-    // 4. Default fallback
-    const resolvedBanner = custom.bannerImage || (hasValidProdImage ? p.image : '') || catBanner || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
-    const resolvedImage = custom.image || (hasValidProdImage ? p.image : '') || catBanner || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600';
+    // 2. localBanner (0ms instant cached image from localStorage)
+    // 3. p.image (product's own custom uploaded image)
+    // 4. catBanner (only if category matches the game title!)
+    // 5. Default fallback
+    const resolvedBanner = custom.bannerImage || localBanner || (hasValidProdImage ? p.image : '') || catBanner || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800';
+    const resolvedImage = custom.image || localIcon || (hasValidProdImage ? p.image : '') || catBanner || p.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600';
 
     if (!map[baseTitle]) {
       map[baseTitle] = {
@@ -1506,6 +1519,12 @@ export default function App() {
         initial.hexsync_game_custom_images = customImgs;
       }
     } catch {}
+    try {
+      const savedOrder = localStorage.getItem('hexsync_game_order');
+      if (savedOrder) {
+        initial.hexsync_game_order = savedOrder;
+      }
+    } catch {}
     return initial;
   });
 
@@ -2385,7 +2404,22 @@ export default function App() {
           setSiteSettings(data.settings);
           if (data.settings.hexsync_game_custom_images) {
             try {
+              const parsed = JSON.parse(data.settings.hexsync_game_custom_images);
+              for (const [k, v] of Object.entries(parsed)) {
+                if (v && typeof v === 'object') {
+                  const item = v as any;
+                  if (item.bannerImage) localStorage.setItem('hexsync_banner_' + k, item.bannerImage);
+                  if (item.image) localStorage.setItem('hexsync_icon_' + k, item.image);
+                }
+              }
+            } catch {}
+            try {
               localStorage.setItem('hexsync_game_custom_images', data.settings.hexsync_game_custom_images);
+            } catch {}
+          }
+          if (data.settings.hexsync_game_order) {
+            try {
+              localStorage.setItem('hexsync_game_order', data.settings.hexsync_game_order);
             } catch {}
           }
           try {
@@ -3163,10 +3197,15 @@ export default function App() {
 
     setSiteSettings((prev: any) => ({ ...prev, hexsync_game_order: updatedJson }));
     try {
+      localStorage.setItem('hexsync_game_order', updatedJson);
+    } catch {}
+
+    try {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
+          settings: { hexsync_game_order: updatedJson },
           hexsync_game_order: updatedJson,
           adminUsername: user?.username
         })
@@ -3174,7 +3213,8 @@ export default function App() {
       if (res.ok) {
         showToast('จัดลำดับเกมสำเร็จแล้ว');
       } else {
-        showToast('บันทึกลำดับไม่สำเร็จ');
+        const data = await res.json().catch(() => ({}));
+        showToast(data.message || 'บันทึกลำดับไม่สำเร็จ');
       }
     } catch {
       showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ');
@@ -3195,9 +3235,12 @@ export default function App() {
       }
     } catch {}
 
+    const newBanner = gameBannerInput.trim() || editingGameMeta.bannerImage;
+    const newIcon = gameIconInput.trim() || editingGameMeta.image;
+
     customMap[editingGameMeta.title] = {
-      bannerImage: gameBannerInput.trim() || editingGameMeta.bannerImage,
-      image: gameIconInput.trim() || editingGameMeta.image,
+      bannerImage: newBanner,
+      image: newIcon,
       description: gameDescInput.trim() || editingGameMeta.description,
       availabilityStatus: gameAvailabilityInput,
       maintenanceNote: gameMaintenanceNoteInput.trim()
@@ -3205,11 +3248,23 @@ export default function App() {
 
     const updatedJson = JSON.stringify(customMap);
 
+    // Immediately cache banner and icon for 0ms instant loading
+    if (newBanner) {
+      try { localStorage.setItem('hexsync_banner_' + editingGameMeta.title, newBanner); } catch {}
+    }
+    if (newIcon) {
+      try { localStorage.setItem('hexsync_icon_' + editingGameMeta.title, newIcon); } catch {}
+    }
+
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ settings: { hexsync_game_custom_images: updatedJson }, adminUsername: user?.username })
+        body: JSON.stringify({
+          settings: { hexsync_game_custom_images: updatedJson },
+          hexsync_game_custom_images: updatedJson,
+          adminUsername: user?.username
+        })
       });
 
       if (res.ok) {
@@ -3222,8 +3277,6 @@ export default function App() {
         setSiteSettings((prev: any) => ({ ...prev, hexsync_game_custom_images: updatedJson }));
 
         // 3. Immediately update products in memory and in hexsync_cached_products
-        const newBanner = gameBannerInput.trim() || editingGameMeta.bannerImage;
-        const newIcon = gameIconInput.trim() || editingGameMeta.image;
         setProducts((prev) => {
           const updated = prev.map((prod) => {
             if (getGameBaseTitle(prod.name) === editingGameMeta.title) {

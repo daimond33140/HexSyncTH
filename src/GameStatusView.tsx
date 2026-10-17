@@ -180,7 +180,14 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
   const [games, setGames] = useState<GameItem[]>(() => {
     try {
       const saved = localStorage.getItem('hexsync_games_status');
-      return saved ? JSON.parse(saved) : DEFAULT_GAMES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0 && !parsed.some((g: any) => g.id === 'test' || g.title === 'test')) {
+          return parsed;
+        }
+        localStorage.removeItem('hexsync_games_status');
+      }
+      return DEFAULT_GAMES;
     } catch {
       return DEFAULT_GAMES;
     }
@@ -273,7 +280,9 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
       })
       .then((data) => {
         if (data && data.success && Array.isArray(data.games) && data.games.length > 0) {
-          let updatedGames = data.games;
+          const validGames = data.games.filter((g: any) => g.id !== 'test' && g.title !== 'test');
+          if (validGames.length === 0) return;
+          let updatedGames = validGames;
           try {
             const customImgStr = localStorage.getItem('hexsync_game_custom_images');
             if (customImgStr) {

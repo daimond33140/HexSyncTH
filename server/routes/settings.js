@@ -234,10 +234,23 @@ router.get('/stats', async (req, res) => {
 // Update settings (Admin Only)
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { settings, adminUsername } = req.body;
-    if (!settings) return res.status(400).json({ success: false, message: 'ไม่มีข้อมูลการตั้งค่า' });
+    let settingsToSave = {};
+    if (req.body.settings && typeof req.body.settings === 'object') {
+      settingsToSave = { ...req.body.settings };
+    }
+    
+    // Also include any direct keys in req.body that are not metadata
+    for (const [k, v] of Object.entries(req.body)) {
+      if (k !== 'settings' && k !== 'adminUsername' && v !== undefined && v !== null) {
+        settingsToSave[k] = v;
+      }
+    }
 
-    for (const [key, value] of Object.entries(settings)) {
+    if (Object.keys(settingsToSave).length === 0) {
+      return res.status(400).json({ success: false, message: 'ไม่มีข้อมูลการตั้งค่า' });
+    }
+
+    for (const [key, value] of Object.entries(settingsToSave)) {
       const [setting] = await Setting.findOrCreate({
         where: { key },
         defaults: { value: String(value) },
@@ -246,18 +259,19 @@ router.post('/', requireAdmin, async (req, res) => {
       await setting.save();
     }
 
+    const adminUsername = req.body.adminUsername || req.user?.username || 'Admin';
     try {
       await Log.create({
         action: 'ADMIN_UPDATE_THEME',
-        detail: `ปรับแต่งธีม สถิติ และการตั้งค่าเว็บไซต์โดย ${adminUsername || 'Admin'}`,
-        username: adminUsername || 'Admin',
+        detail: `ปรับแต่งการตั้งค่า (${Object.keys(settingsToSave).join(', ')}) โดย ${adminUsername}`,
+        username: adminUsername,
       });
     } catch (logErr) {
       console.warn('Non-fatal error logging admin update:', logErr.message);
     }
 
     invalidateSettingsCache();
-    res.json({ success: true, message: 'บันทึกการตั้งค่าตกแต่งเว็บไซต์สำเร็จ' });
+    res.json({ success: true, message: 'บันทึกการตั้งค่าสำเร็จ' });
   } catch (err) {
     console.error('Error saving settings:', err);
     res.status(500).json({ success: false, message: 'บันทึกการตั้งค่าไม่สำเร็จ: ' + err.message });
