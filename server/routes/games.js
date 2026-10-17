@@ -240,6 +240,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+function getResolvedDirectDownloadUrl(rawUrl) {
+  if (!rawUrl) return 'https://drive.google.com';
+  const driveMatch = rawUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || 
+                     rawUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+                     rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (driveMatch) {
+    const fileId = driveMatch[1];
+    return `https://drive.usercontent.google.com/download?id=${fileId}&export=download`;
+  }
+  return rawUrl;
+}
+
 // GET /api/games/:id/download-check - Verifies user download permission before initiating download
 router.get('/:id/download-check', async (req, res) => {
   try {
@@ -255,8 +268,10 @@ router.get('/:id/download-check', async (req, res) => {
       return res.status(403).json({ success: false, message: 'เกมนี้ถูกปิดการดาวน์โหลดชั่วคราว' });
     }
 
+    const resolvedUrl = getResolvedDirectDownloadUrl(game.downloadUrl);
+
     if (game.isFree) {
-      return res.json({ success: true, isFree: true, title: game.title });
+      return res.json({ success: true, isFree: true, title: game.title, downloadUrl: resolvedUrl });
     }
 
     let token = req.query.token;
@@ -277,7 +292,7 @@ router.get('/:id/download-check', async (req, res) => {
 
     const isAdmin = decoded.role === 'admin' || decoded.role === 'superadmin';
     if (isAdmin) {
-      return res.json({ success: true, isAdmin: true, title: game.title });
+      return res.json({ success: true, isAdmin: true, title: game.title, downloadUrl: resolvedUrl });
     }
 
     const activeLicense = await Purchase.findOne({
@@ -298,13 +313,13 @@ router.get('/:id/download-check', async (req, res) => {
       });
     }
 
-    return res.json({ success: true, isFree: false, title: game.title, expiresAt: activeLicense.expiresAt });
+    return res.json({ success: true, isFree: false, title: game.title, downloadUrl: resolvedUrl, expiresAt: activeLicense.expiresAt });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์: ' + err.message });
   }
 });
 
-// GET /api/games/:id/download - Direct proxy download (hides Google Drive URL, triggers native download)
+// GET /api/games/:id/download - Direct download redirect (resolves clean download URL, 0ms latency)
 router.get('/:id/download', async (req, res) => {
   try {
     const { id } = req.params;
@@ -373,24 +388,9 @@ router.get('/:id/download', async (req, res) => {
       } catch {}
     })();
 
-    // Resolve download URL
-    let downloadUrl = game.downloadUrl || 'https://drive.google.com';
-    let fileId = null;
-
-    // Check if it is a Google Drive link
-    const driveMatch = downloadUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || 
-                       downloadUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
-                       downloadUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-
-    if (driveMatch) {
-      fileId = driveMatch[1];
-      downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    }
-
-    const cleanFilename = `${game.title.replace(/[\\/:*?"<>|]/g, '_')}_v${game.version.replace(/[\\/:*?"<>|]/g, '_')}.zip`;
-
-    // Stream download directly to client
-    return streamFileFromUrl(downloadUrl, res, cleanFilename);
+    // Resolve direct download URL and redirect browser directly
+    const downloadUrl = getResolvedDirectDownloadUrl(game.downloadUrl);
+    return res.redirect(downloadUrl);
   } catch (err) {
     console.error('Error handling game download:', err);
     return res.status(500).send('เกิดข้อผิดพลาดในการดาวน์โหลด: ' + err.message);

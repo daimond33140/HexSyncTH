@@ -159,7 +159,7 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
     setIsDownloading(true);
     const token = localStorage.getItem('hexsync_token') || '';
 
-    // Quick verification check
+    let directUrl = '';
     try {
       const checkRes = await fetch(`/api/games/${game.id}/download-check`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -170,33 +170,45 @@ export const GameStatusView: React.FC<GameStatusViewProps> = ({ user, onBackToSt
         alert(checkData.message || 'ไม่สามารถดาวน์โหลดไฟล์ได้ กรุณาตรวจสอบสิทธิ์การเช่าเกมหรือเข้าสู่ระบบ');
         return;
       }
+      directUrl = checkData.downloadUrl || '';
     } catch (err) {
       console.warn('Download pre-check warning:', err);
     }
 
-    const downloadUrl = `/api/games/${game.id}/download?token=${encodeURIComponent(token)}`;
+    // Resolve target URL: use direct Google Drive download link or fallback to API download route
+    let targetUrl = directUrl;
+    if (!targetUrl) {
+      if (game.downloadUrl && game.downloadUrl.includes('drive.google.com')) {
+        const fileIdMatch = game.downloadUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || 
+                            game.downloadUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+                            game.downloadUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (fileIdMatch) {
+          targetUrl = `https://drive.usercontent.google.com/download?id=${fileIdMatch[1]}&export=download`;
+        } else {
+          targetUrl = game.downloadUrl;
+        }
+      } else {
+        const apiBase = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+          ? ''
+          : 'https://hexsyncth-backend.onrender.com';
+        targetUrl = `${apiBase}/api/games/${game.id}/download?token=${encodeURIComponent(token)}`;
+      }
+    }
 
-    // Trigger direct native browser download
+    // Trigger direct download reliably in browser without Chrome cross-origin download permission block
     try {
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.setAttribute('download', '');
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        if (document.body.contains(link)) document.body.removeChild(link);
-      }, 500);
+      window.open(targetUrl, '_blank');
     } catch {
-      window.location.href = downloadUrl;
+      window.location.href = targetUrl;
     }
 
     setGames(prev => prev.map(g => g.id === game.id ? { ...g, downloadCount: (g.downloadCount || 0) + 1 } : g));
 
     setTimeout(() => {
       setIsDownloading(false);
-    }, 2500);
+    }, 1500);
   };
+
 
   // Admin edit states
   const [editingGame, setEditingGame] = useState<GameItem | null>(null);

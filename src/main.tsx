@@ -2,7 +2,7 @@
 const CLOUD_API_URL = 'https://hexsyncth-backend.onrender.com';
 if (typeof window !== 'undefined') {
   const host = window.location.hostname;
-  const isLocal = host === 'localhost' || host === '127.0.0.1' || host === 'hexsyncth.site';
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
   if (!isLocal) {
     const originalFetch = window.fetch.bind(window);
     window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
